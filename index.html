@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7b7c9">
+  <title>打刻</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css?v=king-spec-staff-search-20260706-24">
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <div class="hero">
+        <div class="badge">Time Card</div>
+        <h1>打刻</h1>
+        <div id="yesterdayAlert" class="yesterday-alert" hidden>
+          <div class="yesterday-alert-main">昨日の打刻を忘れていませんか？</div>
+          <div class="yesterday-alert-sub">(お休みの日の場合は無視してください)</div>
+        </div>
+        <p class="hint">スタッフと打刻内容を選んで、更新を押してください。</p>
+      </div>
+
+      <div class="card-block staff-select-block">
+        <div class="section-title">スタッフ選択</div>
+
+        <div class="staff-search-area">
+          <label>
+            スタッフ検索
+            <input type="search" id="employeeSearch" placeholder="名前または社員番号で検索" autocomplete="off">
+          </label>
+
+          <label>
+            候補から選択
+            <select id="employeeSelect" aria-label="スタッフを選択"></select>
+          </label>
+
+          <p class="small">前回選択したスタッフは自動で選択されます。別のスタッフを選ぶ時だけ検索してください。</p>
+        </div>
+
+        <div class="selected-box">
+          <span>選択中</span>
+          <strong id="selectedEmployee">未選択</strong>
+        </div>
+      </div>
+
+      <div class="card-block">
+        <div class="section-title">打刻内容</div>
+        <div class="punch-grid" id="actionButtons">
+          <button type="button" data-action="出勤">出勤</button>
+          <button type="button" data-action="退勤">退勤</button>
+          <button type="button" data-action="途中退社">途中退社</button>
+          <button type="button" data-action="有給">有給</button>
+        </div>
+
+        <button type="button" id="updateButton" class="main-button">更新</button>
+
+        <div class="break-area" id="breakArea">
+          <div class="section-title">休憩設定</div>
+          <div class="break-grid" id="breakButtons" role="group" aria-label="休憩設定">
+            <button type="button" data-break-mode="normal">通常休憩</button>
+            <button type="button" data-break-mode="half">半分休憩</button>
+            <button type="button" data-break-mode="none">休憩なし</button>
+          </div>
+          <p class="small">退勤・途中退社・修正更新の勤務時間計算に使います。有給は休憩設定を使いません。</p>
+        </div>
+
+        <div class="week40-area">
+          <label>
+            週40時間超（L列へ反映）
+            <input type="number" id="week40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
+          </label>
+          <p class="small">入力した値を勤務表のL列へ反映します。空白ならL列も空白にします。</p>
+        </div>
+
+        <div class="status-box" id="todayStatus">本日の打刻状況を確認します。</div>
+      </div>
+
+      <details class="edit-area" open>
+        <summary>日付・時刻を指定して修正</summary>
+        <div class="edit-grid">
+          <label>
+            日付指定
+            <input type="date" id="editDate">
+          </label>
+          <label>
+            時刻指定
+            <input type="time" id="editTime" step="900">
+          </label>
+        </div>
+        <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
+        <p class="small">有給は日付だけを使います。時刻は無視されます。</p>
+      </details>
+
+      <div class="sheet-area">
+        <button type="button" id="pdfButton" class="sheet-button">スプレッドシートを開く</button>
+        <p class="small">選択中スタッフと指定日付の月別シートを開きます。当月・先月以外の月別勤務表は自動削除対象です。</p>
+      </div>
+
+      <details class="add-staff-area">
+        <summary>新規スタッフ追加</summary>
+        <p class="small">雇用形態シートへ追加し、「勤務表　雛形」から個人シートを自動作成します。</p>
+
+        <div class="add-staff-grid">
+          <label>
+            雇用形態
+            <select id="newEmploymentType">
+              <option value="社員">社員</option>
+              <option value="パート">パート</option>
+            </select>
+          </label>
+
+          <label>
+            スタッフ名
+            <input type="text" id="newStaffName" placeholder="例：佐藤　花子">
+          </label>
+          <p class="staff-name-note">スタッフ名は苗字と名前の間に【全角スペース】を入れてください。</p>
+
+          <label>
+            社員番号
+            <input type="text" id="newEmployeeNo" inputmode="numeric" placeholder="例：052">
+          </label>
+
+          <label>
+            出勤時間
+            <input type="time" id="newStartTime" value="08:00" step="900">
+          </label>
+
+          <label>
+            退勤時間
+            <input type="time" id="newEndTime" value="17:00" step="900">
+          </label>
+
+          <label>
+            休憩時間（分）
+            <input type="number" id="newBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
+          </label>
+        </div>
+
+        <button type="button" id="addStaffButton" class="sub-button add-staff-button">新規スタッフを登録</button>
+        <p class="small">登録後、この端末のスタッフ選択欄にも追加されます。</p>
+      </details>
+
+
+      <p id="message" class="message" aria-live="polite"></p>
+      <div id="pdfLinkArea" class="pdf-link-area"></div>
+
+      <details class="retire-staff-area">
+        <summary>退職スタッフ処理</summary>
+        <p class="small">危険操作です。選択中スタッフを退職扱いにし、スタッフ選択ボタンから非表示にします。</p>
+
+        <div class="retire-box">
+          <div>
+            <span>退職処理対象</span>
+            <strong id="retireTargetEmployee">未選択</strong>
+          </div>
+
+          <label class="retire-key-label">
+            合言葉
+            <input type="password" id="retireKeyInput" placeholder="otobe と入力">
+          </label>
+
+          <button type="button" id="retireStaffButton" class="danger-button" disabled>選択中スタッフを退職扱いにする</button>
+        </div>
+
+        <p class="small">個人シートは削除せず、非表示にします。必要ならスプレッドシート側で再表示できます。</p>
+      </details>
+    </section>
+  </main>
+
+<script src="./app.js?v=king-spec-staff-search-20260706-24"></script>
+</body>
+</html>
