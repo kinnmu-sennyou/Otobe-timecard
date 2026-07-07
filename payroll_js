@@ -1,0 +1,328 @@
+const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
+const APP_VERSION = "payroll-view-20260707-31";
+const WAGE_STORAGE_KEY = "otobe-payroll:wages";
+
+let payrollRows = [];
+let filteredRows = [];
+let isLoading = false;
+let wages = readWages();
+
+const adminKeyInput = document.getElementById("adminKeyInput");
+const loadButton = document.getElementById("loadButton");
+const summaryArea = document.getElementById("summaryArea");
+const controlsArea = document.getElementById("controlsArea");
+const tableArea = document.getElementById("tableArea");
+const targetMonthText = document.getElementById("targetMonthText");
+const staffCountText = document.getElementById("staffCountText");
+const totalPayText = document.getElementById("totalPayText");
+const searchInput = document.getElementById("searchInput");
+const bulkHourlyWage = document.getElementById("bulkHourlyWage");
+const applyBulkWageButton = document.getElementById("applyBulkWageButton");
+const payrollBody = document.getElementById("payrollBody");
+const message = document.getElementById("message");
+
+init();
+
+function init() {
+  loadButton.addEventListener("click", loadPayrollData);
+  adminKeyInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      loadPayrollData();
+    }
+  });
+
+  searchInput.addEventListener("input", renderPayrollTable);
+  applyBulkWageButton.addEventListener("click", applyBulkWageToVisibleRows);
+
+  showMessage("合言葉を入力して給与計算データを表示してください。", "neutral");
+}
+
+async function loadPayrollData() {
+  if (isLoading) return;
+
+  const adminKey = adminKeyInput.value.trim();
+
+  if (!adminKey) {
+    showMessage("合言葉を入力してください。", "error");
+    return;
+  }
+
+  startLoading();
+
+  try {
+    const result = await postToScript({
+      mode: "getPayrollCalc",
+      adminKey,
+      appVersion: APP_VERSION,
+    });
+
+    if (!result || !result.ok) {
+      throw new Error((result && result.message) || "給与計算データを取得できませんでした。");
+    }
+
+    payrollRows = Array.isArray(result.rows) ? result.rows : [];
+    targetMonthText.textContent = result.targetKey || "-";
+
+    summaryArea.hidden = false;
+    controlsArea.hidden = false;
+    tableArea.hidden = false;
+
+    renderPayrollTable();
+    showMessage(result.message || "給与計算データを取得しました。", "ok");
+  } catch (error) {
+    console.error(error);
+    showMessage(`取得できませんでした：${error.message}`, "error");
+  } finally {
+    stopLoading();
+  }
+}
+
+function renderPayrollTable() {
+  const query = normalizeName(searchInput.value).toLowerCase();
+
+  filteredRows = payrollRows.filter((row) => {
+    const staffName = normalizeName(row.staffName).toLowerCase();
+    return !query || staffName.includes(query);
+  });
+
+  payrollBody.innerHTML = "";
+
+  if (!filteredRows.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 11;
+    td.className = "empty-cell";
+    td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
+    tr.appendChild(td);
+    payrollBody.appendChild(tr);
+    updateSummary();
+    return;
+  }
+
+  filteredRows.forEach((row) => {
+    const staffName = String(row.staffName || "").trim();
+    const wage = getWage(staffName);
+    const calc = calculatePay(row, wage);
+
+    const tr = document.createElement("tr");
+
+    tr.appendChild(makeTextCell(staffName));
+    tr.appendChild(makeNumberCell(row.month));
+    tr.appendChild(makeNumberCell(row.attendanceDays));
+    tr.appendChild(makeNumberCell(row.totalHours));
+    tr.appendChild(makeNumberCell(row.overtimeHours));
+    tr.appendChild(makeNumberCell(row.week40Over));
+    tr.appendChild(makeNumberCell(row.nonWorkHours));
+    tr.appendChild(makeWageCell(staffName, wage));
+    tr.appendChild(makeMoneyCell(calc.basePay));
+    tr.appendChild(makeMoneyCell(calc.overtimePay));
+    tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
+
+    payrollBody.appendChild(tr);
+  });
+
+  updateSummary();
+}
+
+function makeTextCell(value) {
+  const td = document.createElement("td");
+  td.textContent = value || "";
+  return td;
+}
+
+function makeNumberCell(value) {
+  const td = document.createElement("td");
+  td.className = "number-cell";
+  td.textContent = formatNumber(value);
+  return td;
+}
+
+function makeMoneyCell(value, className) {
+  const td = document.createElement("td");
+  td.className = `money-cell ${className || ""}`.trim();
+  td.textContent = formatYen(value);
+  return td;
+}
+
+function makeWageCell(staffName, wage) {
+  const td = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.min = "0";
+  input.step = "1";
+  input.inputMode = "numeric";
+  input.className = "wage-input";
+  input.value = wage ? String(wage) : "";
+  input.placeholder = "時給";
+
+  input.addEventListener("change", () => {
+    const nextWage = normalizeMoneyInput(input.value);
+    if (nextWage === null) {
+      input.value = "";
+      delete wages[staffName];
+    } else {
+      input.value = String(nextWage);
+      wages[staffName] = nextWage;
+    }
+
+    saveWages();
+    renderPayrollTable();
+  });
+
+  td.appendChild(input);
+  return td;
+}
+
+function calculatePay(row, wage) {
+  const hourlyWage = Number(wage || 0);
+  const totalHours = safeNumber(row.totalHours);
+  const overtimeHours = safeNumber(row.overtimeHours);
+
+  const basePay = hourlyWage * totalHours;
+  const overtimePay = hourlyWage * overtimeHours * 0.25;
+  const totalPay = basePay + overtimePay;
+
+  return {
+    basePay: Math.round(basePay),
+    overtimePay: Math.round(overtimePay),
+    totalPay: Math.round(totalPay),
+  };
+}
+
+function updateSummary() {
+  let totalPay = 0;
+
+  filteredRows.forEach((row) => {
+    const wage = getWage(row.staffName);
+    totalPay += calculatePay(row, wage).totalPay;
+  });
+
+  staffCountText.textContent = `${filteredRows.length}名`;
+  totalPayText.textContent = formatYen(totalPay);
+}
+
+function applyBulkWageToVisibleRows() {
+  const wage = normalizeMoneyInput(bulkHourlyWage.value);
+
+  if (wage === null) {
+    showMessage("共通時給を入力してください。", "error");
+    return;
+  }
+
+  filteredRows.forEach((row) => {
+    const staffName = String(row.staffName || "").trim();
+    if (staffName) {
+      wages[staffName] = wage;
+    }
+  });
+
+  saveWages();
+  renderPayrollTable();
+  showMessage(`表示中の${filteredRows.length}名に時給${formatYen(wage)}を入れました。`, "ok");
+}
+
+function postToScript(payload) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `payrollCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Apps Scriptから応答がありませんでした。デプロイURLと公開設定を確認してください。"));
+    }, 30000);
+
+    function cleanup() {
+      window.clearTimeout(timer);
+      delete window[callbackName];
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    window[callbackName] = (result) => {
+      cleanup();
+      resolve(result);
+    };
+
+    const params = new URLSearchParams();
+    params.set("callback", callbackName);
+    params.set("payload", JSON.stringify(payload));
+    params.set("_", String(Date.now()));
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Apps Scriptを読み込めませんでした。ウェブアプリURLか公開設定を確認してください。"));
+    };
+
+    script.src = `${ENDPOINT_URL}?${params.toString()}`;
+    document.body.appendChild(script);
+  });
+}
+
+function startLoading() {
+  isLoading = true;
+  loadButton.disabled = true;
+  loadButton.classList.add("is-loading");
+  showMessage("給与計算データを取得中...", "loading");
+}
+
+function stopLoading() {
+  isLoading = false;
+  loadButton.disabled = false;
+  loadButton.classList.remove("is-loading");
+}
+
+function showMessage(text, status) {
+  message.textContent = text;
+  message.className = `message ${status || ""}`.trim();
+  message.classList.remove("flash");
+  void message.offsetWidth;
+  message.classList.add("flash");
+}
+
+function readWages() {
+  try {
+    const raw = localStorage.getItem(WAGE_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    console.warn("時給設定を読み込めませんでした。", error);
+    return {};
+  }
+}
+
+function saveWages() {
+  localStorage.setItem(WAGE_STORAGE_KEY, JSON.stringify(wages));
+}
+
+function getWage(staffName) {
+  return safeNumber(wages[String(staffName || "").trim()]);
+}
+
+function normalizeMoneyInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  const num = Number(text);
+  if (!Number.isFinite(num) || num < 0) return null;
+
+  return Math.round(num);
+}
+
+function safeNumber(value) {
+  const num = Number(value || 0);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function normalizeName(value) {
+  return String(value || "").replace(/\s/g, "");
+}
+
+function formatNumber(value) {
+  const num = safeNumber(value);
+  return Number.isInteger(num) ? String(num) : String(Math.round(num * 100) / 100);
+}
+
+function formatYen(value) {
+  const num = Math.round(safeNumber(value));
+  return `${num.toLocaleString("ja-JP")}円`;
+}
