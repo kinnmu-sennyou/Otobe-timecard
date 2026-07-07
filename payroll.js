@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-56";
+const APP_VERSION = "payroll-view-transport-public-manual-20260707-58";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -14,6 +14,9 @@ const DEFAULT_HEALTH_INSURANCE_RATE = 9.85;
 const DEFAULT_CARE_INSURANCE_RATE = 1.62;
 const DEFAULT_PENSION_INSURANCE_RATE = 18.3;
 const DEFAULT_EMPLOYMENT_INSURANCE_RATE = 0.5;
+const TRANSPORT_RATE_STORAGE_KEY = "otobe-payroll:transportRate";
+const DEFAULT_TRANSPORT_RATE = 0;
+const COMMUTE_METHODS = ["車", "公共交通機関", "徒歩(自転車)"];
 
 let payrollRows = [];
 let filteredRows = [];
@@ -29,6 +32,7 @@ let healthInsuranceRate = readNumberSetting(HEALTH_INSURANCE_RATE_STORAGE_KEY, D
 let careInsuranceRate = readNumberSetting(CARE_INSURANCE_RATE_STORAGE_KEY, DEFAULT_CARE_INSURANCE_RATE, 0);
 let pensionInsuranceRate = readNumberSetting(PENSION_INSURANCE_RATE_STORAGE_KEY, DEFAULT_PENSION_INSURANCE_RATE, 0);
 let employmentInsuranceRate = readNumberSetting(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
+let transportRate = readNumberSetting(TRANSPORT_RATE_STORAGE_KEY, DEFAULT_TRANSPORT_RATE, 0);
 let commonPayslipNote = "";
 let pendingCommonSettingType = "";
 let dom = {};
@@ -68,6 +72,8 @@ function initPayrollView() {
     pensionInsuranceRate: document.getElementById("pensionInsuranceRate"),
     employmentInsuranceRate: document.getElementById("employmentInsuranceRate"),
     commonPayslipNote: document.getElementById("commonPayslipNote"),
+    transportRate: document.getElementById("transportRate"),
+    updateTransportRateButton: document.getElementById("updateTransportRateButton"),
     updateDeductionRatesButton: document.getElementById("updateDeductionRatesButton"),
     commonSettingConfirmArea: document.getElementById("commonSettingConfirmArea"),
     commonSettingConfirmText: document.getElementById("commonSettingConfirmText"),
@@ -103,6 +109,10 @@ function initPayrollView() {
     editResidentTax: document.getElementById("editResidentTax"),
     editOtherDeduction: document.getElementById("editOtherDeduction"),
     editStaffPayslipNote: document.getElementById("editStaffPayslipNote"),
+    editStaffTransportRate: document.getElementById("editStaffTransportRate"),
+    editCommuteDistance: document.getElementById("editCommuteDistance"),
+    editCommuteMethod: document.getElementById("editCommuteMethod"),
+    editPublicTransportFare: document.getElementById("editPublicTransportFare"),
     staffEditHelpText: document.getElementById("staffEditHelpText"),
     saveStaffSettingButton: document.getElementById("saveStaffSettingButton"),
     closeStaffSettingButton: document.getElementById("closeStaffSettingButton"),
@@ -144,7 +154,9 @@ function initPayrollView() {
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.transportRate.value = formatDecimal(transportRate);
   dom.commonPayslipNote.value = commonPayslipNote;
+  dom.updateTransportRateButton.addEventListener("click", () => requestCommonSettingUpdate("transportRate"));
   dom.updateDeductionRatesButton.addEventListener("click", () => requestCommonSettingUpdate("deductionRates"));
   dom.confirmCommonSettingYesButton.addEventListener("click", confirmCommonSettingUpdate);
   dom.confirmCommonSettingNoButton.addEventListener("click", cancelCommonSettingUpdate);
@@ -334,7 +346,8 @@ function getSettingStatus(setting, employmentType) {
   const hasWage = employmentType === "パート" && Number(setting && setting.hourlyWage) > 0;
 
   const hasDeductions = hasDeductionSetting(setting);
-  if (hasSalary || hasWage || hasMultiplier || hasMonthlyAverage || hasDeductions) return "個別あり";
+  const hasTransport = hasTransportSetting(setting);
+  if (hasSalary || hasWage || hasMultiplier || hasMonthlyAverage || hasDeductions || hasTransport) return "個別あり";
   return "共通";
 }
 
@@ -376,6 +389,10 @@ function renderStaffEditor(staffName) {
   dom.editIncomeTax.value = setting.incomeTax ? String(setting.incomeTax) : "";
   dom.editResidentTax.value = setting.residentTax ? String(setting.residentTax) : "";
   dom.editOtherDeduction.value = setting.otherDeduction ? String(setting.otherDeduction) : "";
+  dom.editStaffTransportRate.value = setting.transportRate !== undefined && setting.transportRate !== null ? formatDecimal(setting.transportRate) : "";
+  dom.editCommuteDistance.value = setting.commuteDistance !== undefined && setting.commuteDistance !== null ? formatDecimal(setting.commuteDistance) : "";
+  dom.editCommuteMethod.value = normalizeCommuteMethod(setting.commuteMethod) || "";
+  dom.editPublicTransportFare.value = setting.publicTransportFare !== undefined && setting.publicTransportFare !== null ? String(Math.round(safeNumber(setting.publicTransportFare))) : "";
   dom.editStaffPayslipNote.value = String(temporaryStaffPayslipNotes[key] || "");
 
   if (isEmployee) {
@@ -407,6 +424,11 @@ function renderSelectedStaffDetail(row, setting, employmentType) {
     ["月平均所定", employmentType === "社員" ? `${formatDecimal(getStaffMonthlyAverageHours(setting))}時間` : "-"],
     ["通常分", formatYen(calc.basePay)],
     ["残業代", formatYen(calc.overtimePay)],
+    ["通勤手当", formatYen(calc.transportAllowance)],
+    ["通勤手段", getCommuteMethodLabel(setting)],
+    ["通勤距離", `${formatDecimal(safeNumber(setting.commuteDistance))}km`],
+    ["交通費利率", `${formatDecimal(getStaffTransportRate(setting))}円/km`],
+    ["公共交通機関 交通費", formatYen(setting.publicTransportFare || 0)],
     ["不就労控除", formatYen(calc.nonWorkDeduction)],
     ["健康保険", formatYen(calc.deductions.healthInsurance)],
     ["介護保険", formatYen(calc.deductions.careInsurance)],
@@ -507,7 +529,7 @@ function buildPayslipPage(row) {
   appendPayslipSection(page, "2. 支給項目（給与等の金額）", [
     ["基本給", formatYen(calc.basePay)],
     ["各種手当", formatYen(0)],
-    ["通勤手当", formatYen(0)],
+    ["通勤手当", formatYen(calc.transportAllowance)],
     ["時間外手当", formatYen(calc.overtimePay)],
     ["総支給額", formatYen(calc.totalPay)],
   ], true);
@@ -541,7 +563,7 @@ function buildPayslipPage(row) {
 
   const note = document.createElement("p");
   note.className = "payslip-note";
-  note.textContent = "この明細は給与計算ビューの設定内容をもとに作成しています。各種手当・通勤手当・有給消化数は現在の入力項目がないため、必要に応じて別途確認してください。";
+  note.textContent = "この明細は給与計算ビューの設定内容をもとに作成しています。各種手当・有給消化数は現在の入力項目がないため、必要に応じて別途確認してください。通勤手当は、車は交通費利率・通勤距離・出勤日数から計算し、公共交通機関はスタッフ別の手動入力金額を使っています。";
   page.appendChild(note);
 
   return page;
@@ -628,6 +650,10 @@ async function saveStaffEditor() {
   const incomeTax = normalizeMoneyInput(dom.editIncomeTax.value);
   const residentTax = normalizeMoneyInput(dom.editResidentTax.value);
   const otherDeduction = normalizeMoneyInput(dom.editOtherDeduction.value);
+  const staffTransportRate = normalizeDecimalInput(dom.editStaffTransportRate.value, 0);
+  const commuteDistance = normalizeDecimalInput(dom.editCommuteDistance.value, 0);
+  const commuteMethod = normalizeCommuteMethod(dom.editCommuteMethod.value);
+  const publicTransportFare = normalizeMoneyInput(dom.editPublicTransportFare.value);
 
   if (employmentType === "社員") {
     if (monthlySalary === null) {
@@ -669,6 +695,31 @@ async function saveStaffEditor() {
   setOrDeleteMoneySetting(current, "incomeTax", incomeTax);
   setOrDeleteMoneySetting(current, "residentTax", residentTax);
   setOrDeleteMoneySetting(current, "otherDeduction", otherDeduction);
+
+  if (staffTransportRate === null) {
+    delete current.transportRate;
+  } else {
+    current.transportRate = staffTransportRate;
+  }
+
+  if (commuteDistance === null) {
+    delete current.commuteDistance;
+  } else {
+    current.commuteDistance = commuteDistance;
+  }
+
+  if (commuteMethod) {
+    current.commuteMethod = commuteMethod;
+  } else {
+    delete current.commuteMethod;
+  }
+
+  if (publicTransportFare === null) {
+    delete current.publicTransportFare;
+  } else {
+    current.publicTransportFare = publicTransportFare;
+  }
+
   temporaryStaffPayslipNotes[selectedStaffName] = normalizeNoteInput(dom.editStaffPayslipNote.value);
 
   paySettings[selectedStaffName] = current;
@@ -701,6 +752,7 @@ function calculatePay(row, setting, employmentType) {
   const nonWorkHours = safeNumber(row.nonWorkHours);
   const normalHours = Math.max(0, totalHours - overtimeHours);
   const multiplier = getStaffOvertimeMultiplier(setting);
+  const transportAllowance = calculateTransportAllowance(row, setting);
 
   if (employmentType === "社員") {
     const monthlySalary = safeNumber(setting.monthlySalary);
@@ -709,11 +761,11 @@ function calculatePay(row, setting, employmentType) {
     const basePay = monthlySalary;
     const overtimePay = hourlyUnit * overtimeHours * multiplier;
     const nonWorkDeduction = hourlyUnit * nonWorkHours;
-    const totalPay = basePay + overtimePay - nonWorkDeduction;
+    const totalPay = basePay + overtimePay + transportAllowance - nonWorkDeduction;
     const deductions = calculateDeductions(setting, totalPay);
     const netPay = totalPay - deductions.totalDeduction;
 
-    return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay, deductions, netPay });
+    return roundPay({ hourlyUnit, basePay, overtimePay, transportAllowance, nonWorkDeduction, totalPay, deductions, netPay });
   }
 
   const hourlyWage = safeNumber(setting.hourlyWage);
@@ -721,11 +773,11 @@ function calculatePay(row, setting, employmentType) {
   const basePay = hourlyWage * normalHours;
   const overtimePay = hourlyWage * overtimeHours * multiplier;
   const nonWorkDeduction = 0;
-  const totalPay = basePay + overtimePay;
+  const totalPay = basePay + overtimePay + transportAllowance;
   const deductions = calculateDeductions(setting, totalPay);
   const netPay = totalPay - deductions.totalDeduction;
 
-  return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay, deductions, netPay });
+  return roundPay({ hourlyUnit, basePay, overtimePay, transportAllowance, nonWorkDeduction, totalPay, deductions, netPay });
 }
 
 function roundPay(calc) {
@@ -734,6 +786,7 @@ function roundPay(calc) {
     hourlyUnit: Math.round(safeNumber(calc.hourlyUnit)),
     basePay: Math.round(safeNumber(calc.basePay)),
     overtimePay: Math.round(safeNumber(calc.overtimePay)),
+    transportAllowance: Math.round(safeNumber(calc.transportAllowance)),
     nonWorkDeduction: Math.round(safeNumber(calc.nonWorkDeduction)),
     totalPay: Math.round(safeNumber(calc.totalPay)),
     deductions: {
@@ -785,6 +838,11 @@ function requestCommonSettingUpdate(type) {
     label = "共通残業割増倍率";
     nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_OVERTIME_MULTIPLIER)}` : formatDecimal(value);
     currentText = formatDecimal(overtimeMultiplier);
+  } else if (type === "transportRate") {
+    const value = normalizeDecimalInput(dom.transportRate.value, 0);
+    label = "共通：交通費利率";
+    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_TRANSPORT_RATE)} 円/km` : `${formatDecimal(value)} 円/km`;
+    currentText = `${formatDecimal(transportRate)} 円/km`;
   } else if (type === "deductionRates") {
     label = "控除共通料率・PDF全体備考";
     const nextNote = normalizeNoteInput(dom.commonPayslipNote.value);
@@ -804,6 +862,8 @@ async function confirmCommonSettingUpdate() {
     await applyMonthlyAverageHoursUpdate();
   } else if (pendingCommonSettingType === "overtimeMultiplier") {
     await applyOvertimeMultiplierUpdate();
+  } else if (pendingCommonSettingType === "transportRate") {
+    await applyTransportRateUpdate();
   } else if (pendingCommonSettingType === "deductionRates") {
     await applyDeductionRatesUpdate();
   }
@@ -829,6 +889,7 @@ function restoreCommonSettingInputs() {
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.transportRate.value = formatDecimal(transportRate);
   if (dom.commonPayslipNote) dom.commonPayslipNote.value = commonPayslipNote;
 }
 
@@ -884,6 +945,32 @@ async function applyOvertimeMultiplierUpdate() {
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
 
+async function applyTransportRateUpdate() {
+  const value = normalizeDecimalInput(dom.transportRate.value, 0);
+
+  if (value === null) {
+    transportRate = DEFAULT_TRANSPORT_RATE;
+    dom.transportRate.value = formatDecimal(transportRate);
+    localStorage.removeItem(TRANSPORT_RATE_STORAGE_KEY);
+    showMessage(`共通の交通費利率を初期値 ${formatDecimal(transportRate)} 円/kmに戻しました。`, "neutral");
+  } else {
+    transportRate = value;
+    dom.transportRate.value = formatDecimal(transportRate);
+    localStorage.setItem(TRANSPORT_RATE_STORAGE_KEY, String(transportRate));
+    showMessage(`共通の交通費利率を ${formatDecimal(transportRate)} 円/kmにしました。`, "ok");
+  }
+
+  try {
+    await saveCommonSettingsToServer();
+  } catch (error) {
+    console.error(error);
+    showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
+  }
+
+  renderPayrollTable();
+  if (selectedStaffName) renderStaffEditor(selectedStaffName);
+}
+
 async function applyDeductionRatesUpdate() {
   healthInsuranceRate = readRateInput(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE);
   careInsuranceRate = readRateInput(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE);
@@ -895,6 +982,7 @@ async function applyDeductionRatesUpdate() {
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.transportRate.value = formatDecimal(transportRate);
   dom.commonPayslipNote.value = commonPayslipNote;
 
   localStorage.setItem(HEALTH_INSURANCE_RATE_STORAGE_KEY, String(healthInsuranceRate));
@@ -947,7 +1035,8 @@ function applyRemotePayrollSettings(settings) {
   careInsuranceRate = normalizeRemoteNumber(common.careInsuranceRate, DEFAULT_CARE_INSURANCE_RATE, 0);
   pensionInsuranceRate = normalizeRemoteNumber(common.pensionInsuranceRate, DEFAULT_PENSION_INSURANCE_RATE, 0);
   employmentInsuranceRate = normalizeRemoteNumber(common.employmentInsuranceRate, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
-  commonPayslipNote = "";
+  transportRate = normalizeRemoteNumber(common.transportRate, DEFAULT_TRANSPORT_RATE, 0);
+  commonPayslipNote = normalizeNoteInput(common.commonPayslipNote || "");
 
   restoreCommonSettingInputs();
 }
@@ -965,6 +1054,8 @@ function makeCommonSettingsPayload() {
     careInsuranceRate,
     pensionInsuranceRate,
     employmentInsuranceRate,
+    transportRate,
+    commonPayslipNote,
   };
 }
 
@@ -1012,6 +1103,7 @@ function saveCommonSettingsToLocal() {
   localStorage.setItem(CARE_INSURANCE_RATE_STORAGE_KEY, String(careInsuranceRate));
   localStorage.setItem(PENSION_INSURANCE_RATE_STORAGE_KEY, String(pensionInsuranceRate));
   localStorage.setItem(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, String(employmentInsuranceRate));
+  localStorage.setItem(TRANSPORT_RATE_STORAGE_KEY, String(transportRate));
 }
 
 function postToScript(payload) {
@@ -1128,6 +1220,39 @@ function getStaffOvertimeMultiplier(setting) {
   return Number.isFinite(value) && value >= 1 ? value : getOvertimeMultiplier();
 }
 
+function getTransportRate() {
+  const value = Number(transportRate || DEFAULT_TRANSPORT_RATE);
+  return Number.isFinite(value) && value >= 0 ? value : DEFAULT_TRANSPORT_RATE;
+}
+
+function getStaffTransportRate(setting) {
+  const value = Number(setting && setting.transportRate);
+  return Number.isFinite(value) && value >= 0 ? value : getTransportRate();
+}
+
+function normalizeCommuteMethod(value) {
+  const text = String(value || "").trim();
+  return COMMUTE_METHODS.includes(text) ? text : "";
+}
+
+function getCommuteMethodLabel(setting) {
+  return normalizeCommuteMethod(setting && setting.commuteMethod) || "未設定";
+}
+
+function calculateTransportAllowance(row, setting) {
+  const method = normalizeCommuteMethod(setting && setting.commuteMethod);
+  if (!method || method === "徒歩(自転車)") return 0;
+
+  if (method === "公共交通機関") {
+    return safeNumber(setting && setting.publicTransportFare);
+  }
+
+  const distance = safeNumber(setting && setting.commuteDistance);
+  const rate = getStaffTransportRate(setting);
+  const days = safeNumber(row && row.attendanceDays);
+  return distance * rate * days;
+}
+
 function calculateDeductions(setting, totalPay) {
   const standardMonthlyRemuneration = safeNumber(setting && setting.standardMonthlyRemuneration);
   const healthInsurance = setting && setting.healthInsuranceEnabled ? standardMonthlyRemuneration * healthInsuranceRate / 100 / 2 : 0;
@@ -1175,6 +1300,16 @@ function hasDeductionSetting(setting) {
     safeNumber(setting.incomeTax) > 0 ||
     safeNumber(setting.residentTax) > 0 ||
     safeNumber(setting.otherDeduction) > 0
+  );
+}
+
+function hasTransportSetting(setting) {
+  if (!setting || typeof setting !== "object") return false;
+  return Boolean(
+    safeNumber(setting.transportRate) > 0 ||
+    safeNumber(setting.commuteDistance) > 0 ||
+    safeNumber(setting.publicTransportFare) > 0 ||
+    normalizeCommuteMethod(setting.commuteMethod)
   );
 }
 
