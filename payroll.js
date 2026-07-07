@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-35";
+const APP_VERSION = "payroll-view-20260707-40";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -118,7 +118,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 14;
+    td.colSpan = 15;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -143,6 +143,7 @@ function renderPayrollTable() {
     tr.appendChild(makeNumberCell(row.week40Over));
     tr.appendChild(makeNumberCell(row.nonWorkHours));
     tr.appendChild(makePayInputCell(staffName, setting, employmentType));
+    tr.appendChild(makeMultiplierInputCell(staffName, setting));
     tr.appendChild(makeMoneyCell(calc.hourlyUnit));
     tr.appendChild(makeMoneyCell(calc.basePay));
     tr.appendChild(makeMoneyCell(calc.overtimePay));
@@ -223,12 +224,50 @@ function makePayInputCell(staffName, setting, employmentType) {
   return td;
 }
 
+
+function makeMultiplierInputCell(staffName, setting) {
+  const td = document.createElement("td");
+  const input = document.createElement("input");
+  input.type = "number";
+  input.min = "1";
+  input.step = "0.01";
+  input.inputMode = "decimal";
+  input.className = "multiplier-input";
+  input.placeholder = formatDecimal(getOvertimeMultiplier());
+
+  if (setting.overtimeMultiplier) {
+    input.value = formatDecimal(setting.overtimeMultiplier);
+  }
+
+  input.title = "空欄の場合は共通残業割増倍率を使います。";
+
+  input.addEventListener("change", () => {
+    const value = normalizeDecimalInput(input.value, 1);
+    const current = getPaySetting(staffName);
+
+    if (value === null) {
+      input.value = "";
+      delete current.overtimeMultiplier;
+    } else {
+      input.value = formatDecimal(value);
+      current.overtimeMultiplier = value;
+    }
+
+    paySettings[staffName] = current;
+    savePaySettings();
+    renderPayrollTable();
+  });
+
+  td.appendChild(input);
+  return td;
+}
+
 function calculatePay(row, setting, employmentType) {
   const totalHours = safeNumber(row.totalHours);
   const overtimeHours = safeNumber(row.overtimeHours);
   const nonWorkHours = safeNumber(row.nonWorkHours);
   const normalHours = Math.max(0, totalHours - overtimeHours);
-  const multiplier = getOvertimeMultiplier();
+  const multiplier = getStaffOvertimeMultiplier(setting);
 
   if (employmentType === "社員") {
     const monthlySalary = safeNumber(setting.monthlySalary);
@@ -300,12 +339,12 @@ function updateOvertimeMultiplier() {
     overtimeMultiplier = DEFAULT_OVERTIME_MULTIPLIER;
     dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
     localStorage.removeItem(OVERTIME_MULTIPLIER_STORAGE_KEY);
-    showMessage(`残業割増倍率を初期値 ${formatDecimal(overtimeMultiplier)} に戻しました。`, "neutral");
+    showMessage(`共通残業割増倍率を初期値 ${formatDecimal(overtimeMultiplier)} に戻しました。`, "neutral");
   } else {
     overtimeMultiplier = value;
     dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
     localStorage.setItem(OVERTIME_MULTIPLIER_STORAGE_KEY, String(overtimeMultiplier));
-    showMessage(`残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
+    showMessage(`共通残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
   }
 
   renderPayrollTable();
@@ -413,6 +452,12 @@ function getMonthlyAverageHours() {
 function getOvertimeMultiplier() {
   const value = Number(overtimeMultiplier || DEFAULT_OVERTIME_MULTIPLIER);
   return Number.isFinite(value) && value >= 1 ? value : DEFAULT_OVERTIME_MULTIPLIER;
+}
+
+
+function getStaffOvertimeMultiplier(setting) {
+  const value = Number(setting && setting.overtimeMultiplier);
+  return Number.isFinite(value) && value >= 1 ? value : getOvertimeMultiplier();
 }
 
 function normalizeEmploymentType(value) {
