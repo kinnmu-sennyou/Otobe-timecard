@@ -1,11 +1,18 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-33";
-const WAGE_STORAGE_KEY = "otobe-payroll:wages";
+const APP_VERSION = "payroll-view-20260707-35";
+
+const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
+const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
+const MONTHLY_AVERAGE_HOURS_STORAGE_KEY = "otobe-payroll:monthlyAverageHours";
+const DEFAULT_OVERTIME_MULTIPLIER = 1.25;
+const DEFAULT_MONTHLY_AVERAGE_HOURS = 173.33;
 
 let payrollRows = [];
 let filteredRows = [];
 let isLoading = false;
-let wages = readWages();
+let paySettings = readPaySettings();
+let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
+let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
 let dom = {};
 
 window.addEventListener("error", (event) => {
@@ -33,14 +40,13 @@ function initPayrollView() {
     staffCountText: document.getElementById("staffCountText"),
     totalPayText: document.getElementById("totalPayText"),
     searchInput: document.getElementById("searchInput"),
-    bulkHourlyWage: document.getElementById("bulkHourlyWage"),
-    applyBulkWageButton: document.getElementById("applyBulkWageButton"),
+    monthlyAverageHours: document.getElementById("monthlyAverageHours"),
+    overtimeMultiplier: document.getElementById("overtimeMultiplier"),
     payrollBody: document.getElementById("payrollBody"),
     message: document.getElementById("message"),
   };
 
   const missingIds = Object.keys(dom).filter((key) => !dom[key]);
-
   if (missingIds.length) {
     const text = `画面部品が見つかりません：${missingIds.join(", ")}。payroll.htmlを最新版に張り替えてください。`;
     alert(text);
@@ -49,13 +55,15 @@ function initPayrollView() {
 
   dom.loadButton.addEventListener("click", loadPayrollData);
   dom.adminKeyInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      loadPayrollData();
-    }
+    if (event.key === "Enter") loadPayrollData();
   });
-
   dom.searchInput.addEventListener("input", renderPayrollTable);
-  dom.applyBulkWageButton.addEventListener("click", applyBulkWageToVisibleRows);
+
+  dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
+  dom.monthlyAverageHours.addEventListener("change", updateMonthlyAverageHours);
+
+  dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+  dom.overtimeMultiplier.addEventListener("change", updateOvertimeMultiplier);
 
   showMessage(`準備OK。合言葉を入力して表示してください。版：${APP_VERSION}`, "neutral");
 }
@@ -64,7 +72,6 @@ async function loadPayrollData() {
   if (isLoading) return;
 
   const adminKey = dom.adminKeyInput.value.trim();
-
   if (!adminKey) {
     showMessage("合言葉を入力してください。", "error");
     return;
@@ -85,11 +92,9 @@ async function loadPayrollData() {
 
     payrollRows = Array.isArray(result.rows) ? result.rows : [];
     dom.targetMonthText.textContent = result.targetKey || "-";
-
     dom.summaryArea.hidden = false;
     dom.controlsArea.hidden = false;
     dom.tableArea.hidden = false;
-
     renderPayrollTable();
     showMessage(result.message || "給与計算データを取得しました。", "ok");
   } catch (error) {
@@ -113,7 +118,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 11;
+    td.colSpan = 14;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -124,21 +129,24 @@ function renderPayrollTable() {
 
   filteredRows.forEach((row) => {
     const staffName = String(row.staffName || "").trim();
-    const wage = getWage(staffName);
-    const calc = calculatePay(row, wage);
-
+    const employmentType = normalizeEmploymentType(row.employmentType);
+    const setting = getPaySetting(staffName);
+    const calc = calculatePay(row, setting, employmentType);
     const tr = document.createElement("tr");
 
     tr.appendChild(makeTextCell(staffName));
+    tr.appendChild(makeTextCell(employmentType || "未設定"));
     tr.appendChild(makeNumberCell(row.month));
     tr.appendChild(makeNumberCell(row.attendanceDays));
     tr.appendChild(makeNumberCell(row.totalHours));
     tr.appendChild(makeNumberCell(row.overtimeHours));
     tr.appendChild(makeNumberCell(row.week40Over));
     tr.appendChild(makeNumberCell(row.nonWorkHours));
-    tr.appendChild(makeWageCell(staffName, wage));
+    tr.appendChild(makePayInputCell(staffName, setting, employmentType));
+    tr.appendChild(makeMoneyCell(calc.hourlyUnit));
     tr.appendChild(makeMoneyCell(calc.basePay));
     tr.appendChild(makeMoneyCell(calc.overtimePay));
+    tr.appendChild(makeMoneyCell(calc.nonWorkDeduction));
     tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
 
     dom.payrollBody.appendChild(tr);
@@ -167,7 +175,7 @@ function makeMoneyCell(value, className) {
   return td;
 }
 
-function makeWageCell(staffName, wage) {
+function makePayInputCell(staffName, setting, employmentType) {
   const td = document.createElement("td");
   const input = document.createElement("input");
   input.type = "number";
@@ -175,20 +183,39 @@ function makeWageCell(staffName, wage) {
   input.step = "1";
   input.inputMode = "numeric";
   input.className = "wage-input";
-  input.value = wage ? String(wage) : "";
-  input.placeholder = "時給";
+
+  if (employmentType === "社員") {
+    input.value = setting.monthlySalary ? String(setting.monthlySalary) : "";
+    input.placeholder = "月給";
+  } else {
+    input.value = setting.hourlyWage ? String(setting.hourlyWage) : "";
+    input.placeholder = "時給";
+  }
 
   input.addEventListener("change", () => {
-    const nextWage = normalizeMoneyInput(input.value);
-    if (nextWage === null) {
-      input.value = "";
-      delete wages[staffName];
+    const amount = normalizeMoneyInput(input.value);
+    const current = getPaySetting(staffName);
+
+    if (employmentType === "社員") {
+      if (amount === null) {
+        input.value = "";
+        delete current.monthlySalary;
+      } else {
+        input.value = String(amount);
+        current.monthlySalary = amount;
+      }
     } else {
-      input.value = String(nextWage);
-      wages[staffName] = nextWage;
+      if (amount === null) {
+        input.value = "";
+        delete current.hourlyWage;
+      } else {
+        input.value = String(amount);
+        current.hourlyWage = amount;
+      }
     }
 
-    saveWages();
+    paySettings[staffName] = current;
+    savePaySettings();
     renderPayrollTable();
   });
 
@@ -196,19 +223,41 @@ function makeWageCell(staffName, wage) {
   return td;
 }
 
-function calculatePay(row, wage) {
-  const hourlyWage = Number(wage || 0);
+function calculatePay(row, setting, employmentType) {
   const totalHours = safeNumber(row.totalHours);
   const overtimeHours = safeNumber(row.overtimeHours);
+  const nonWorkHours = safeNumber(row.nonWorkHours);
+  const normalHours = Math.max(0, totalHours - overtimeHours);
+  const multiplier = getOvertimeMultiplier();
 
-  const basePay = hourlyWage * totalHours;
-  const overtimePay = hourlyWage * overtimeHours * 0.25;
+  if (employmentType === "社員") {
+    const monthlySalary = safeNumber(setting.monthlySalary);
+    const hourlyUnit = monthlySalary > 0 ? monthlySalary / getMonthlyAverageHours() : 0;
+    const basePay = monthlySalary;
+    const overtimePay = hourlyUnit * overtimeHours * multiplier;
+    const nonWorkDeduction = hourlyUnit * nonWorkHours;
+    const totalPay = basePay + overtimePay - nonWorkDeduction;
+
+    return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay });
+  }
+
+  const hourlyWage = safeNumber(setting.hourlyWage);
+  const hourlyUnit = hourlyWage;
+  const basePay = hourlyWage * normalHours;
+  const overtimePay = hourlyWage * overtimeHours * multiplier;
+  const nonWorkDeduction = 0;
   const totalPay = basePay + overtimePay;
 
+  return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay });
+}
+
+function roundPay(calc) {
   return {
-    basePay: Math.round(basePay),
-    overtimePay: Math.round(overtimePay),
-    totalPay: Math.round(totalPay),
+    hourlyUnit: Math.round(safeNumber(calc.hourlyUnit)),
+    basePay: Math.round(safeNumber(calc.basePay)),
+    overtimePay: Math.round(safeNumber(calc.overtimePay)),
+    nonWorkDeduction: Math.round(safeNumber(calc.nonWorkDeduction)),
+    totalPay: Math.round(safeNumber(calc.totalPay)),
   };
 }
 
@@ -216,32 +265,50 @@ function updateSummary() {
   let totalPay = 0;
 
   filteredRows.forEach((row) => {
-    const wage = getWage(row.staffName);
-    totalPay += calculatePay(row, wage).totalPay;
+    const staffName = String(row.staffName || "").trim();
+    const setting = getPaySetting(staffName);
+    const employmentType = normalizeEmploymentType(row.employmentType);
+    totalPay += calculatePay(row, setting, employmentType).totalPay;
   });
 
   dom.staffCountText.textContent = `${filteredRows.length}名`;
   dom.totalPayText.textContent = formatYen(totalPay);
 }
 
-function applyBulkWageToVisibleRows() {
-  const wage = normalizeMoneyInput(dom.bulkHourlyWage.value);
+function updateMonthlyAverageHours() {
+  const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
 
-  if (wage === null) {
-    showMessage("共通時給を入力してください。", "error");
-    return;
+  if (value === null) {
+    monthlyAverageHours = DEFAULT_MONTHLY_AVERAGE_HOURS;
+    dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
+    localStorage.removeItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY);
+    showMessage(`月平均所定労働時間を初期値 ${formatDecimal(monthlyAverageHours)} に戻しました。`, "neutral");
+  } else {
+    monthlyAverageHours = value;
+    dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
+    localStorage.setItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, String(monthlyAverageHours));
+    showMessage(`月平均所定労働時間を ${formatDecimal(monthlyAverageHours)} 時間にしました。`, "ok");
   }
 
-  filteredRows.forEach((row) => {
-    const staffName = String(row.staffName || "").trim();
-    if (staffName) {
-      wages[staffName] = wage;
-    }
-  });
-
-  saveWages();
   renderPayrollTable();
-  showMessage(`表示中の${filteredRows.length}名に時給${formatYen(wage)}を入れました。`, "ok");
+}
+
+function updateOvertimeMultiplier() {
+  const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
+
+  if (value === null) {
+    overtimeMultiplier = DEFAULT_OVERTIME_MULTIPLIER;
+    dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+    localStorage.removeItem(OVERTIME_MULTIPLIER_STORAGE_KEY);
+    showMessage(`残業割増倍率を初期値 ${formatDecimal(overtimeMultiplier)} に戻しました。`, "neutral");
+  } else {
+    overtimeMultiplier = value;
+    dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+    localStorage.setItem(OVERTIME_MULTIPLIER_STORAGE_KEY, String(overtimeMultiplier));
+    showMessage(`残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
+  }
+
+  renderPayrollTable();
 }
 
 function postToScript(payload) {
@@ -261,9 +328,7 @@ function postToScript(payload) {
     function cleanup() {
       window.clearTimeout(timer);
       delete window[callbackName];
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
+      if (script.parentNode) script.parentNode.removeChild(script);
     }
 
     window[callbackName] = (result) => {
@@ -308,33 +373,69 @@ function showMessage(text, status) {
   dom.message.classList.add("flash");
 }
 
-function readWages() {
+function readPaySettings() {
   try {
-    const raw = localStorage.getItem(WAGE_STORAGE_KEY);
+    const raw = localStorage.getItem(PAY_SETTING_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch (error) {
-    console.warn("時給設定を読み込めませんでした。", error);
+    console.warn("給与設定を読み込めませんでした。", error);
     return {};
   }
 }
 
-function saveWages() {
-  localStorage.setItem(WAGE_STORAGE_KEY, JSON.stringify(wages));
+function savePaySettings() {
+  localStorage.setItem(PAY_SETTING_STORAGE_KEY, JSON.stringify(paySettings));
 }
 
-function getWage(staffName) {
-  return safeNumber(wages[String(staffName || "").trim()]);
+function getPaySetting(staffName) {
+  const key = String(staffName || "").trim();
+  const setting = paySettings[key];
+  return setting && typeof setting === "object" ? setting : {};
+}
+
+function readNumberSetting(key, fallback, min) {
+  try {
+    const raw = localStorage.getItem(key);
+    const parsed = raw ? Number(raw) : fallback;
+    return Number.isFinite(parsed) && parsed >= min ? parsed : fallback;
+  } catch (error) {
+    console.warn("数値設定を読み込めませんでした。", error);
+    return fallback;
+  }
+}
+
+function getMonthlyAverageHours() {
+  const value = Number(monthlyAverageHours || DEFAULT_MONTHLY_AVERAGE_HOURS);
+  return Number.isFinite(value) && value >= 1 ? value : DEFAULT_MONTHLY_AVERAGE_HOURS;
+}
+
+function getOvertimeMultiplier() {
+  const value = Number(overtimeMultiplier || DEFAULT_OVERTIME_MULTIPLIER);
+  return Number.isFinite(value) && value >= 1 ? value : DEFAULT_OVERTIME_MULTIPLIER;
+}
+
+function normalizeEmploymentType(value) {
+  const text = String(value || "").trim();
+  if (text === "社員" || text === "正社員") return "社員";
+  if (text === "パート" || text === "アルバイト") return "パート";
+  return text;
 }
 
 function normalizeMoneyInput(value) {
   const text = String(value || "").trim();
   if (!text) return null;
-
   const num = Number(text);
   if (!Number.isFinite(num) || num < 0) return null;
-
   return Math.round(num);
+}
+
+function normalizeDecimalInput(value, min) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const num = Number(text);
+  if (!Number.isFinite(num) || num < min) return null;
+  return Math.round(num * 100) / 100;
 }
 
 function safeNumber(value) {
@@ -349,6 +450,11 @@ function normalizeName(value) {
 function formatNumber(value) {
   const num = safeNumber(value);
   return Number.isInteger(num) ? String(num) : String(Math.round(num * 100) / 100);
+}
+
+function formatDecimal(value) {
+  const num = safeNumber(value);
+  return String(Math.round(num * 100) / 100);
 }
 
 function formatYen(value) {
