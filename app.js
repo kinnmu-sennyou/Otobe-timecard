@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "king-spec-sheet-visibility-20260707-25";
+const APP_VERSION = "king-spec-update-status-20260707-26";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -32,6 +32,7 @@ const editTime = document.getElementById("editTime");
 const todayStatus = document.getElementById("todayStatus");
 const yesterdayAlert = document.getElementById("yesterdayAlert");
 const message = document.getElementById("message");
+const updateStatus = document.getElementById("updateStatus");
 const pdfLinkArea = document.getElementById("pdfLinkArea");
 
 const addStaffButton = document.getElementById("addStaffButton");
@@ -85,6 +86,7 @@ async function init() {
   selectAction(selectedAction);
   selectBreakMode(selectedBreakMode);
   todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
+  setUpdateStatus("更新状況：待機中", "neutral");
   showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
 }
 
@@ -245,6 +247,7 @@ function selectEmployee(emp) {
   }
   localStorage.setItem(STORAGE_KEY, emp.no);
   pdfLinkArea.innerHTML = "";
+  setUpdateStatus("更新状況：待機中", "neutral");
 
   todayStatus.textContent = `${emp.name} を選択中です。`;
   showMessage(`${emp.name}を選択しました。`, "ok");
@@ -341,9 +344,13 @@ function initEditDateTime() {
 }
 
 async function punchNow() {
-  if (!canSend()) return;
+  if (!canSend()) {
+    setUpdateStatus("反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
+    return;
+  }
 
   startSending(updateButton, `${selectedAction}を更新中...`);
+  setUpdateStatus(`${selectedEmployee.name}：${selectedAction}を更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
@@ -361,10 +368,12 @@ async function punchNow() {
     });
 
     handleResult(result, `${selectedEmployee.name}：${selectedAction}を更新しました。`);
+    setUpdateStatus(`反映完了：${selectedEmployee.name}：${selectedAction}`, "ok");
     todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
     initEditDateTime();
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
+    setUpdateStatus(`反映失敗：${error.message}`, "error");
     handleError(error);
   } finally {
     stopSending(updateButton);
@@ -372,19 +381,25 @@ async function punchNow() {
 }
 
 async function punchBySpecifiedDateTime() {
-  if (!canSend()) return;
+  if (!canSend()) {
+    setUpdateStatus("修正反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
+    return;
+  }
 
   if (!editDate.value) {
     showMessage("日付を指定してね。", "error");
+    setUpdateStatus("修正反映失敗：日付を指定してください。", "error");
     return;
   }
 
   if (selectedAction !== "有給" && !editTime.value) {
     showMessage("時刻を指定してね。", "error");
+    setUpdateStatus("修正反映失敗：時刻を指定してください。", "error");
     return;
   }
 
   startSending(editUpdateButton, "修正更新中...");
+  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
@@ -403,9 +418,11 @@ async function punchBySpecifiedDateTime() {
     });
 
     handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新しました。`);
+    setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${selectedAction}`, "ok");
     todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を反映しました。`;
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
+    setUpdateStatus(`修正反映失敗：${error.message}`, "error");
     handleError(error);
   } finally {
     stopSending(editUpdateButton);
@@ -814,6 +831,16 @@ function handleError(error) {
 
 function isEndpointSet() {
   return ENDPOINT_URL && !ENDPOINT_URL.includes("ここに");
+}
+
+function setUpdateStatus(text, status) {
+  if (!updateStatus) return;
+
+  updateStatus.textContent = text;
+  updateStatus.className = `update-status ${status || "neutral"}`.trim();
+  updateStatus.classList.remove("flash");
+  void updateStatus.offsetWidth;
+  updateStatus.classList.add("flash");
 }
 
 function showMessage(text, status) {
