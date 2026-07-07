@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-40";
+const APP_VERSION = "payroll-view-20260707-42";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -10,6 +10,7 @@ const DEFAULT_MONTHLY_AVERAGE_HOURS = 173.33;
 let payrollRows = [];
 let filteredRows = [];
 let isLoading = false;
+let selectedStaffName = "";
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
 let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
@@ -43,6 +44,19 @@ function initPayrollView() {
     monthlyAverageHours: document.getElementById("monthlyAverageHours"),
     overtimeMultiplier: document.getElementById("overtimeMultiplier"),
     payrollBody: document.getElementById("payrollBody"),
+    staffEditArea: document.getElementById("staffEditArea"),
+    editStaffNameText: document.getElementById("editStaffNameText"),
+    editEmploymentTypeText: document.getElementById("editEmploymentTypeText"),
+    monthlySalaryLabel: document.getElementById("monthlySalaryLabel"),
+    hourlyWageLabel: document.getElementById("hourlyWageLabel"),
+    editMonthlySalary: document.getElementById("editMonthlySalary"),
+    editHourlyWage: document.getElementById("editHourlyWage"),
+    editOvertimeMultiplier: document.getElementById("editOvertimeMultiplier"),
+    staffMonthlyAverageHoursLabel: document.getElementById("staffMonthlyAverageHoursLabel"),
+    editStaffMonthlyAverageHours: document.getElementById("editStaffMonthlyAverageHours"),
+    staffEditHelpText: document.getElementById("staffEditHelpText"),
+    saveStaffSettingButton: document.getElementById("saveStaffSettingButton"),
+    closeStaffSettingButton: document.getElementById("closeStaffSettingButton"),
     message: document.getElementById("message"),
   };
 
@@ -57,13 +71,19 @@ function initPayrollView() {
   dom.adminKeyInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") loadPayrollData();
   });
-  dom.searchInput.addEventListener("input", renderPayrollTable);
+  dom.searchInput.addEventListener("input", () => {
+    closeStaffEditor(false);
+    renderPayrollTable();
+  });
 
   dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
   dom.monthlyAverageHours.addEventListener("change", updateMonthlyAverageHours);
 
   dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
   dom.overtimeMultiplier.addEventListener("change", updateOvertimeMultiplier);
+
+  dom.saveStaffSettingButton.addEventListener("click", saveStaffEditor);
+  dom.closeStaffSettingButton.addEventListener("click", () => closeStaffEditor(true));
 
   showMessage(`準備OK。合言葉を入力して表示してください。版：${APP_VERSION}`, "neutral");
 }
@@ -91,6 +111,8 @@ async function loadPayrollData() {
     }
 
     payrollRows = Array.isArray(result.rows) ? result.rows : [];
+    selectedStaffName = "";
+    dom.staffEditArea.hidden = true;
     dom.targetMonthText.textContent = result.targetKey || "-";
     dom.summaryArea.hidden = false;
     dom.controlsArea.hidden = false;
@@ -118,7 +140,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 15;
+    td.colSpan = 17;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -134,7 +156,7 @@ function renderPayrollTable() {
     const calc = calculatePay(row, setting, employmentType);
     const tr = document.createElement("tr");
 
-    tr.appendChild(makeTextCell(staffName));
+    tr.appendChild(makeStaffNameCell(staffName));
     tr.appendChild(makeTextCell(employmentType || "未設定"));
     tr.appendChild(makeNumberCell(row.month));
     tr.appendChild(makeNumberCell(row.attendanceDays));
@@ -142,18 +164,40 @@ function renderPayrollTable() {
     tr.appendChild(makeNumberCell(row.overtimeHours));
     tr.appendChild(makeNumberCell(row.week40Over));
     tr.appendChild(makeNumberCell(row.nonWorkHours));
-    tr.appendChild(makePayInputCell(staffName, setting, employmentType));
-    tr.appendChild(makeMultiplierInputCell(staffName, setting));
+    tr.appendChild(makePaySettingResultCell(setting, employmentType));
+    tr.appendChild(makeNumberCell(getStaffOvertimeMultiplier(setting)));
+    tr.appendChild(makeMonthlyAverageResultCell(setting, employmentType));
     tr.appendChild(makeMoneyCell(calc.hourlyUnit));
     tr.appendChild(makeMoneyCell(calc.basePay));
     tr.appendChild(makeMoneyCell(calc.overtimePay));
     tr.appendChild(makeMoneyCell(calc.nonWorkDeduction));
     tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
+    tr.appendChild(makeTextCell(getSettingStatus(setting, employmentType)));
 
     dom.payrollBody.appendChild(tr);
   });
 
+  if (selectedStaffName) {
+    const selectedStillVisible = filteredRows.some((row) => String(row.staffName || "").trim() === selectedStaffName);
+    if (selectedStillVisible) {
+      renderStaffEditor(selectedStaffName);
+    } else {
+      closeStaffEditor(false);
+    }
+  }
+
   updateSummary();
+}
+
+function makeStaffNameCell(staffName) {
+  const td = document.createElement("td");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = staffName || "名称未設定";
+  button.title = "このスタッフの給与設定を開く";
+  button.addEventListener("click", () => renderStaffEditor(staffName));
+  td.appendChild(button);
+  return td;
 }
 
 function makeTextCell(value) {
@@ -176,90 +220,145 @@ function makeMoneyCell(value, className) {
   return td;
 }
 
-function makePayInputCell(staffName, setting, employmentType) {
-  const td = document.createElement("td");
-  const input = document.createElement("input");
-  input.type = "number";
-  input.min = "0";
-  input.step = "1";
-  input.inputMode = "numeric";
-  input.className = "wage-input";
-
+function makePaySettingResultCell(setting, employmentType) {
   if (employmentType === "社員") {
-    input.value = setting.monthlySalary ? String(setting.monthlySalary) : "";
-    input.placeholder = "月給";
-  } else {
-    input.value = setting.hourlyWage ? String(setting.hourlyWage) : "";
-    input.placeholder = "時給";
+    return makeMoneyCell(setting.monthlySalary || 0);
+  }
+  if (employmentType === "パート") {
+    return makeMoneyCell(setting.hourlyWage || 0);
+  }
+  return makeTextCell("-");
+}
+
+function makeMonthlyAverageResultCell(setting, employmentType) {
+  const td = document.createElement("td");
+  td.className = "number-cell";
+
+  if (employmentType !== "社員") {
+    td.textContent = "-";
+    return td;
   }
 
-  input.addEventListener("change", () => {
-    const amount = normalizeMoneyInput(input.value);
-    const current = getPaySetting(staffName);
-
-    if (employmentType === "社員") {
-      if (amount === null) {
-        input.value = "";
-        delete current.monthlySalary;
-      } else {
-        input.value = String(amount);
-        current.monthlySalary = amount;
-      }
-    } else {
-      if (amount === null) {
-        input.value = "";
-        delete current.hourlyWage;
-      } else {
-        input.value = String(amount);
-        current.hourlyWage = amount;
-      }
-    }
-
-    paySettings[staffName] = current;
-    savePaySettings();
-    renderPayrollTable();
-  });
-
-  td.appendChild(input);
+  td.textContent = formatDecimal(getStaffMonthlyAverageHours(setting));
   return td;
 }
 
+function getSettingStatus(setting, employmentType) {
+  const hasMultiplier = Number(setting && setting.overtimeMultiplier) >= 1;
+  const hasMonthlyAverage = employmentType === "社員" && Number(setting && setting.monthlyAverageHours) >= 1;
+  const hasSalary = employmentType === "社員" && Number(setting && setting.monthlySalary) > 0;
+  const hasWage = employmentType === "パート" && Number(setting && setting.hourlyWage) > 0;
 
-function makeMultiplierInputCell(staffName, setting) {
-  const td = document.createElement("td");
-  const input = document.createElement("input");
-  input.type = "number";
-  input.min = "1";
-  input.step = "0.01";
-  input.inputMode = "decimal";
-  input.className = "multiplier-input";
-  input.placeholder = formatDecimal(getOvertimeMultiplier());
+  if (hasSalary || hasWage || hasMultiplier || hasMonthlyAverage) return "個別あり";
+  return "共通";
+}
 
-  if (setting.overtimeMultiplier) {
-    input.value = formatDecimal(setting.overtimeMultiplier);
+function renderStaffEditor(staffName) {
+  const key = String(staffName || "").trim();
+  if (!key) return;
+
+  const row = payrollRows.find((item) => String(item.staffName || "").trim() === key);
+  if (!row) {
+    showMessage("対象スタッフが見つかりませんでした。", "error");
+    return;
   }
 
-  input.title = "空欄の場合は共通残業割増倍率を使います。";
+  selectedStaffName = key;
+  const employmentType = normalizeEmploymentType(row.employmentType);
+  const setting = getPaySetting(key);
 
-  input.addEventListener("change", () => {
-    const value = normalizeDecimalInput(input.value, 1);
-    const current = getPaySetting(staffName);
+  dom.editStaffNameText.textContent = key;
+  dom.editEmploymentTypeText.textContent = employmentType || "未設定";
 
-    if (value === null) {
-      input.value = "";
-      delete current.overtimeMultiplier;
+  const isEmployee = employmentType === "社員";
+  const isPartTime = employmentType === "パート";
+
+  dom.monthlySalaryLabel.hidden = !isEmployee;
+  dom.hourlyWageLabel.hidden = isEmployee;
+  dom.staffMonthlyAverageHoursLabel.hidden = !isEmployee;
+
+  dom.editMonthlySalary.value = setting.monthlySalary ? String(setting.monthlySalary) : "";
+  dom.editHourlyWage.value = setting.hourlyWage ? String(setting.hourlyWage) : "";
+  dom.editOvertimeMultiplier.value = setting.overtimeMultiplier ? formatDecimal(setting.overtimeMultiplier) : "";
+  dom.editOvertimeMultiplier.placeholder = `共通 ${formatDecimal(getOvertimeMultiplier())}`;
+  dom.editStaffMonthlyAverageHours.value = setting.monthlyAverageHours ? formatDecimal(setting.monthlyAverageHours) : "";
+  dom.editStaffMonthlyAverageHours.placeholder = `共通 ${formatDecimal(getMonthlyAverageHours())}`;
+
+  if (isEmployee) {
+    dom.staffEditHelpText.textContent = "月給・残業倍率・月平均所定労働時間をスタッフ別に設定できます。空欄の残業倍率と月平均所定労働時間は共通設定を使います。";
+  } else if (isPartTime) {
+    dom.staffEditHelpText.textContent = "パートは時給と残業倍率を設定できます。月平均所定労働時間は対象外です。";
+  } else {
+    dom.staffEditHelpText.textContent = "雇用形態が未設定です。必要な項目だけ入力できます。";
+  }
+
+  dom.staffEditArea.hidden = false;
+  dom.staffEditArea.scrollIntoView({ behavior: "smooth", block: "start" });
+  showMessage(`${key} さんの設定フォームを開きました。`, "neutral");
+}
+
+function saveStaffEditor() {
+  if (!selectedStaffName) {
+    showMessage("保存するスタッフを選んでください。", "error");
+    return;
+  }
+
+  const row = payrollRows.find((item) => String(item.staffName || "").trim() === selectedStaffName);
+  if (!row) {
+    showMessage("対象スタッフが見つかりませんでした。", "error");
+    return;
+  }
+
+  const employmentType = normalizeEmploymentType(row.employmentType);
+  const current = getPaySetting(selectedStaffName);
+  const monthlySalary = normalizeMoneyInput(dom.editMonthlySalary.value);
+  const hourlyWage = normalizeMoneyInput(dom.editHourlyWage.value);
+  const multiplier = normalizeDecimalInput(dom.editOvertimeMultiplier.value, 1);
+  const staffMonthlyHours = normalizeDecimalInput(dom.editStaffMonthlyAverageHours.value, 1);
+
+  if (employmentType === "社員") {
+    if (monthlySalary === null) {
+      delete current.monthlySalary;
     } else {
-      input.value = formatDecimal(value);
-      current.overtimeMultiplier = value;
+      current.monthlySalary = monthlySalary;
     }
+    delete current.hourlyWage;
+  } else {
+    if (hourlyWage === null) {
+      delete current.hourlyWage;
+    } else {
+      current.hourlyWage = hourlyWage;
+    }
+    delete current.monthlySalary;
+  }
 
-    paySettings[staffName] = current;
-    savePaySettings();
-    renderPayrollTable();
-  });
+  if (multiplier === null) {
+    delete current.overtimeMultiplier;
+  } else {
+    current.overtimeMultiplier = multiplier;
+  }
 
-  td.appendChild(input);
-  return td;
+  if (employmentType === "社員") {
+    if (staffMonthlyHours === null) {
+      delete current.monthlyAverageHours;
+    } else {
+      current.monthlyAverageHours = staffMonthlyHours;
+    }
+  } else {
+    delete current.monthlyAverageHours;
+  }
+
+  paySettings[selectedStaffName] = current;
+  savePaySettings();
+  renderPayrollTable();
+  renderStaffEditor(selectedStaffName);
+  showMessage(`${selectedStaffName} さんの給与設定を保存しました。`, "ok");
+}
+
+function closeStaffEditor(showClosedMessage) {
+  selectedStaffName = "";
+  if (dom.staffEditArea) dom.staffEditArea.hidden = true;
+  if (showClosedMessage) showMessage("スタッフ別設定を閉じました。", "neutral");
 }
 
 function calculatePay(row, setting, employmentType) {
@@ -271,7 +370,8 @@ function calculatePay(row, setting, employmentType) {
 
   if (employmentType === "社員") {
     const monthlySalary = safeNumber(setting.monthlySalary);
-    const hourlyUnit = monthlySalary > 0 ? monthlySalary / getMonthlyAverageHours() : 0;
+    const monthlyHours = getStaffMonthlyAverageHours(setting);
+    const hourlyUnit = monthlySalary > 0 ? monthlySalary / monthlyHours : 0;
     const basePay = monthlySalary;
     const overtimePay = hourlyUnit * overtimeHours * multiplier;
     const nonWorkDeduction = hourlyUnit * nonWorkHours;
@@ -321,12 +421,12 @@ function updateMonthlyAverageHours() {
     monthlyAverageHours = DEFAULT_MONTHLY_AVERAGE_HOURS;
     dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
     localStorage.removeItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY);
-    showMessage(`月平均所定労働時間を初期値 ${formatDecimal(monthlyAverageHours)} に戻しました。`, "neutral");
+    showMessage(`共通の月平均所定労働時間を初期値 ${formatDecimal(monthlyAverageHours)} に戻しました。`, "neutral");
   } else {
     monthlyAverageHours = value;
     dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
     localStorage.setItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, String(monthlyAverageHours));
-    showMessage(`月平均所定労働時間を ${formatDecimal(monthlyAverageHours)} 時間にしました。`, "ok");
+    showMessage(`共通の月平均所定労働時間を ${formatDecimal(monthlyAverageHours)} 時間にしました。`, "ok");
   }
 
   renderPayrollTable();
@@ -449,11 +549,15 @@ function getMonthlyAverageHours() {
   return Number.isFinite(value) && value >= 1 ? value : DEFAULT_MONTHLY_AVERAGE_HOURS;
 }
 
+function getStaffMonthlyAverageHours(setting) {
+  const value = Number(setting && setting.monthlyAverageHours);
+  return Number.isFinite(value) && value >= 1 ? value : getMonthlyAverageHours();
+}
+
 function getOvertimeMultiplier() {
   const value = Number(overtimeMultiplier || DEFAULT_OVERTIME_MULTIPLIER);
   return Number.isFinite(value) && value >= 1 ? value : DEFAULT_OVERTIME_MULTIPLIER;
 }
-
 
 function getStaffOvertimeMultiplier(setting) {
   const value = Number(setting && setting.overtimeMultiplier);
