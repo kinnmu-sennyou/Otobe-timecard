@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-52";
+const APP_VERSION = "payroll-view-20260707-56";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -21,6 +21,7 @@ let isLoading = false;
 let currentAdminKey = "";
 let selectedStaffName = "";
 let selectedPayslipStaffNames = new Set();
+let temporaryStaffPayslipNotes = {};
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
 let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
@@ -28,6 +29,7 @@ let healthInsuranceRate = readNumberSetting(HEALTH_INSURANCE_RATE_STORAGE_KEY, D
 let careInsuranceRate = readNumberSetting(CARE_INSURANCE_RATE_STORAGE_KEY, DEFAULT_CARE_INSURANCE_RATE, 0);
 let pensionInsuranceRate = readNumberSetting(PENSION_INSURANCE_RATE_STORAGE_KEY, DEFAULT_PENSION_INSURANCE_RATE, 0);
 let employmentInsuranceRate = readNumberSetting(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
+let commonPayslipNote = "";
 let pendingCommonSettingType = "";
 let dom = {};
 
@@ -65,6 +67,7 @@ function initPayrollView() {
     careInsuranceRate: document.getElementById("careInsuranceRate"),
     pensionInsuranceRate: document.getElementById("pensionInsuranceRate"),
     employmentInsuranceRate: document.getElementById("employmentInsuranceRate"),
+    commonPayslipNote: document.getElementById("commonPayslipNote"),
     updateDeductionRatesButton: document.getElementById("updateDeductionRatesButton"),
     commonSettingConfirmArea: document.getElementById("commonSettingConfirmArea"),
     commonSettingConfirmText: document.getElementById("commonSettingConfirmText"),
@@ -99,6 +102,7 @@ function initPayrollView() {
     editIncomeTax: document.getElementById("editIncomeTax"),
     editResidentTax: document.getElementById("editResidentTax"),
     editOtherDeduction: document.getElementById("editOtherDeduction"),
+    editStaffPayslipNote: document.getElementById("editStaffPayslipNote"),
     staffEditHelpText: document.getElementById("staffEditHelpText"),
     saveStaffSettingButton: document.getElementById("saveStaffSettingButton"),
     closeStaffSettingButton: document.getElementById("closeStaffSettingButton"),
@@ -123,6 +127,12 @@ function initPayrollView() {
   dom.selectVisibleStaffButton.addEventListener("click", selectVisibleStaffForPayslip);
   dom.clearSelectedStaffButton.addEventListener("click", clearSelectedStaffForPayslip);
   dom.createSelectedPayslipButton.addEventListener("click", createSelectedPayslipPdf);
+  dom.editStaffPayslipNote.addEventListener("input", () => {
+    if (selectedStaffName) temporaryStaffPayslipNotes[selectedStaffName] = normalizeNoteInput(dom.editStaffPayslipNote.value);
+  });
+  dom.commonPayslipNote.addEventListener("input", () => {
+    commonPayslipNote = normalizeNoteInput(dom.commonPayslipNote.value);
+  });
 
   dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
   dom.updateMonthlyAverageHoursButton.addEventListener("click", () => requestCommonSettingUpdate("monthlyAverageHours"));
@@ -134,6 +144,7 @@ function initPayrollView() {
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.commonPayslipNote.value = commonPayslipNote;
   dom.updateDeductionRatesButton.addEventListener("click", () => requestCommonSettingUpdate("deductionRates"));
   dom.confirmCommonSettingYesButton.addEventListener("click", confirmCommonSettingUpdate);
   dom.confirmCommonSettingNoButton.addEventListener("click", cancelCommonSettingUpdate);
@@ -365,6 +376,7 @@ function renderStaffEditor(staffName) {
   dom.editIncomeTax.value = setting.incomeTax ? String(setting.incomeTax) : "";
   dom.editResidentTax.value = setting.residentTax ? String(setting.residentTax) : "";
   dom.editOtherDeduction.value = setting.otherDeduction ? String(setting.otherDeduction) : "";
+  dom.editStaffPayslipNote.value = String(temporaryStaffPayslipNotes[key] || "");
 
   if (isEmployee) {
     dom.staffEditHelpText.textContent = "月給・残業倍率・月平均所定労働時間をスタッフ別に設定できます。0のまま保存すると共通設定を使います。";
@@ -518,6 +530,15 @@ function buildPayslipPage(row) {
     ["差引支給額", formatYen(calc.netPay)],
   ], true);
 
+  const remarks = [];
+  const staffNote = normalizeNoteInput(temporaryStaffPayslipNotes[staffName] || "");
+  const commonNote = normalizeNoteInput((dom.commonPayslipNote && dom.commonPayslipNote.value) || commonPayslipNote || "");
+  if (staffNote) remarks.push(["個別備考", staffNote]);
+  if (commonNote) remarks.push(["共通備考", commonNote]);
+  if (remarks.length) {
+    appendPayslipSection(page, "5. 備考", remarks, false);
+  }
+
   const note = document.createElement("p");
   note.className = "payslip-note";
   note.textContent = "この明細は給与計算ビューの設定内容をもとに作成しています。各種手当・通勤手当・有給消化数は現在の入力項目がないため、必要に応じて別途確認してください。";
@@ -648,6 +669,7 @@ async function saveStaffEditor() {
   setOrDeleteMoneySetting(current, "incomeTax", incomeTax);
   setOrDeleteMoneySetting(current, "residentTax", residentTax);
   setOrDeleteMoneySetting(current, "otherDeduction", otherDeduction);
+  temporaryStaffPayslipNotes[selectedStaffName] = normalizeNoteInput(dom.editStaffPayslipNote.value);
 
   paySettings[selectedStaffName] = current;
   savePaySettings();
@@ -764,9 +786,10 @@ function requestCommonSettingUpdate(type) {
     nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_OVERTIME_MULTIPLIER)}` : formatDecimal(value);
     currentText = formatDecimal(overtimeMultiplier);
   } else if (type === "deductionRates") {
-    label = "控除共通料率";
-    currentText = `健保 ${formatDecimal(healthInsuranceRate)}% / 介護 ${formatDecimal(careInsuranceRate)}% / 厚年 ${formatDecimal(pensionInsuranceRate)}% / 雇用 ${formatDecimal(employmentInsuranceRate)}%`;
-    nextText = `健保 ${formatDecimalInputOrDefault(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE)}% / 介護 ${formatDecimalInputOrDefault(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE)}% / 厚年 ${formatDecimalInputOrDefault(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE)}% / 雇用 ${formatDecimalInputOrDefault(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE)}%`;
+    label = "控除共通料率・PDF全体備考";
+    const nextNote = normalizeNoteInput(dom.commonPayslipNote.value);
+    currentText = `健保 ${formatDecimal(healthInsuranceRate)}% / 介護 ${formatDecimal(careInsuranceRate)}% / 厚年 ${formatDecimal(pensionInsuranceRate)}% / 雇用 ${formatDecimal(employmentInsuranceRate)}% / 備考 ${commonPayslipNote ? "あり" : "なし"}`;
+    nextText = `健保 ${formatDecimalInputOrDefault(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE)}% / 介護 ${formatDecimalInputOrDefault(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE)}% / 厚年 ${formatDecimalInputOrDefault(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE)}% / 雇用 ${formatDecimalInputOrDefault(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE)}% / 備考 ${nextNote ? "あり" : "なし"}`;
   } else {
     return;
   }
@@ -806,6 +829,7 @@ function restoreCommonSettingInputs() {
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  if (dom.commonPayslipNote) dom.commonPayslipNote.value = commonPayslipNote;
 }
 
 async function applyMonthlyAverageHoursUpdate() {
@@ -865,11 +889,13 @@ async function applyDeductionRatesUpdate() {
   careInsuranceRate = readRateInput(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE);
   pensionInsuranceRate = readRateInput(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE);
   employmentInsuranceRate = readRateInput(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE);
+  commonPayslipNote = normalizeNoteInput(dom.commonPayslipNote.value);
 
   dom.healthInsuranceRate.value = formatDecimal(healthInsuranceRate);
   dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
   dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.commonPayslipNote.value = commonPayslipNote;
 
   localStorage.setItem(HEALTH_INSURANCE_RATE_STORAGE_KEY, String(healthInsuranceRate));
   localStorage.setItem(CARE_INSURANCE_RATE_STORAGE_KEY, String(careInsuranceRate));
@@ -878,7 +904,7 @@ async function applyDeductionRatesUpdate() {
 
   try {
     await saveCommonSettingsToServer();
-    showMessage("控除共通料率を給与設定専用スプレッドシートへ保存しました。", "ok");
+    showMessage("控除共通料率を給与設定専用スプレッドシートへ保存しました。全体備考はPDF作成時だけ反映します。", "ok");
   } catch (error) {
     console.error(error);
     showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
@@ -921,6 +947,7 @@ function applyRemotePayrollSettings(settings) {
   careInsuranceRate = normalizeRemoteNumber(common.careInsuranceRate, DEFAULT_CARE_INSURANCE_RATE, 0);
   pensionInsuranceRate = normalizeRemoteNumber(common.pensionInsuranceRate, DEFAULT_PENSION_INSURANCE_RATE, 0);
   employmentInsuranceRate = normalizeRemoteNumber(common.employmentInsuranceRate, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
+  commonPayslipNote = "";
 
   restoreCommonSettingInputs();
 }
@@ -1157,6 +1184,22 @@ function setOrDeleteMoneySetting(target, key, value) {
   } else {
     target[key] = value;
   }
+}
+
+function setOrDeleteTextSetting(target, key, value) {
+  const text = normalizeNoteInput(value);
+  if (!text) {
+    delete target[key];
+  } else {
+    target[key] = text;
+  }
+}
+
+function normalizeNoteInput(value) {
+  return String(value || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
 }
 
 function readRateInput(value, fallback) {
