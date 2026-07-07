@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-32";
+const APP_VERSION = "payroll-view-20260707-33";
 const WAGE_STORAGE_KEY = "otobe-payroll:wages";
 
 let payrollRows = [];
@@ -8,7 +8,19 @@ let isLoading = false;
 let wages = readWages();
 let dom = {};
 
-document.addEventListener("DOMContentLoaded", initPayrollView);
+window.addEventListener("error", (event) => {
+  const el = document.getElementById("message");
+  if (el) {
+    el.textContent = `画面処理でエラー：${event.message || "不明なエラー"}`;
+    el.className = "message error";
+  }
+});
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initPayrollView);
+} else {
+  initPayrollView();
+}
 
 function initPayrollView() {
   dom = {
