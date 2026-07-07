@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-38">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-40">
 </head>
 <body>
   <main class="page">
@@ -58,14 +58,14 @@
                 <input type="number" id="monthlyAverageHours" min="1" step="0.01" inputmode="decimal" placeholder="例：173.33">
               </label>
               <label>
-                残業割増倍率
+                共通残業割増倍率
                 <input type="number" id="overtimeMultiplier" min="1" step="0.01" inputmode="decimal" placeholder="例：1.25">
               </label>
             </div>
-            <p class="small">月平均所定労働時間と残業割増倍率は、社員・パートの計算に使う全体設定です。</p>
+            <p class="small">月平均所定労働時間は社員の計算に使います。共通残業割増倍率はスタッフ別の倍率が空欄の時だけ使います。</p>
           </div>
 
-          <p class="small">月給・時給・月平均所定労働時間・残業割増倍率はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
+          <p class="small">月給・時給・スタッフ別残業割増倍率・月平均所定労働時間・共通残業割増倍率はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
         </section>
       </div>
 
@@ -84,6 +84,7 @@
                 <th>週40時間超</th>
                 <th>不就労時間</th>
                 <th>月給 / 時給</th>
+                <th>残業倍率</th>
                 <th>時間単価</th>
                 <th>通常分</th>
                 <th>残業代</th>
@@ -100,6 +101,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-35" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-20260707-40" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
