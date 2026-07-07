@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "king-spec-staff-search-20260706-24";
+const APP_VERSION = "king-spec-sheet-visibility-20260707-25";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -47,6 +47,9 @@ const retireStaffButton = document.getElementById("retireStaffButton");
 const retireTargetEmployee = document.getElementById("retireTargetEmployee");
 const retireKeyInput = document.getElementById("retireKeyInput");
 
+const adminOpenKeyInput = document.getElementById("adminOpenKeyInput");
+const showAllSheetsButton = document.getElementById("showAllSheetsButton");
+
 init();
 
 async function init() {
@@ -65,6 +68,7 @@ async function init() {
   initEditDateTime();
   setupAddStaffForm();
   setupRetireStaff();
+  setupAdminSheetOpen();
 
   updateButton.addEventListener("click", punchNow);
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
@@ -415,7 +419,7 @@ async function openStaffSheet() {
 
   const targetDate = editDate.value || formatDateInput(new Date());
 
-  startSending(pdfButton, "シートURLを取得中...");
+  startSending(pdfButton, "本人シートだけ表示して開きます...");
 
   try {
     const result = await postToScript({
@@ -427,7 +431,7 @@ async function openStaffSheet() {
       appVersion: APP_VERSION,
     });
 
-    handleResult(result, `${selectedEmployee.name} のシートを開きます。`);
+    handleResult(result, `${selectedEmployee.name} のシートだけ表示して開きます。`);
 
     if (result.sheetUrl) {
       window.location.href = result.sheetUrl;
@@ -436,6 +440,63 @@ async function openStaffSheet() {
     handleError(error);
   } finally {
     stopSending(pdfButton);
+  }
+}
+
+function setupAdminSheetOpen() {
+  if (!showAllSheetsButton) return;
+
+  showAllSheetsButton.addEventListener("click", showAllSheetsForAdmin);
+
+  if (adminOpenKeyInput) {
+    adminOpenKeyInput.addEventListener("input", updateShowAllSheetsButtonState);
+    updateShowAllSheetsButtonState();
+  }
+}
+
+function updateShowAllSheetsButtonState() {
+  if (!showAllSheetsButton || !adminOpenKeyInput) return;
+
+  showAllSheetsButton.disabled = adminOpenKeyInput.value.trim() !== "open" || isSending;
+}
+
+async function showAllSheetsForAdmin() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return;
+  }
+
+  const adminKey = adminOpenKeyInput ? adminOpenKeyInput.value.trim() : "";
+
+  if (adminKey !== "open") {
+    showMessage("全シート表示をするには、合言葉 open を入力してね。", "error");
+    updateShowAllSheetsButtonState();
+    return;
+  }
+
+  const ok = window.confirm("全シートを表示します。管理者作業用に戻してよろしいですか？");
+
+  if (!ok) return;
+
+  startSending(showAllSheetsButton, "全シート表示中...");
+
+  try {
+    const result = await postToScript({
+      mode: "showAllSheets",
+      adminKey,
+      appVersion: APP_VERSION,
+    });
+
+    handleResult(result, "全シートを表示しました。");
+
+    if (adminOpenKeyInput) {
+      adminOpenKeyInput.value = "";
+      updateShowAllSheetsButtonState();
+    }
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(showAllSheetsButton);
   }
 }
 
@@ -658,6 +719,7 @@ function stopSending(button) {
   isSending = false;
   setControlsDisabled(false);
   updateRetireButtonState();
+  updateShowAllSheetsButtonState();
   buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
 }
 
@@ -682,6 +744,8 @@ function setControlsDisabled(disabled) {
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (week40OverInput) week40OverInput.disabled = disabled;
+  if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
+  if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
 }
 
 function setButtonLoading(button, isLoading) {
