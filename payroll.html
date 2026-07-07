@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-47">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-48">
 </head>
 <body>
   <main class="page">
@@ -38,8 +38,6 @@
 
       <div id="controlsArea" hidden>
         <section class="card-block controls-area">
-          <div class="section-title">表示設定</div>
-
           <div class="control-section search-section">
             <div class="sub-section-title">スタッフ検索</div>
             <label>
@@ -48,6 +46,46 @@
             </label>
           </div>
         </section>
+
+      <section class="card-block table-area" id="tableArea" hidden>
+        <div class="section-title">給与計算一覧</div>
+        <p class="small">一覧は計算結果だけを表示します。個別設定を変更する時は、スタッフ名だけを押してください。</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>スタッフ名</th>
+                <th>雇用形態</th>
+                <th>月</th>
+                <th>出勤日数</th>
+                <th>総労働時間</th>
+                <th>時間外</th>
+                <th>週40時間超</th>
+                <th>不就労時間</th>
+                <th>月給 / 時給</th>
+                <th>残業倍率</th>
+                <th>月平均所定</th>
+                <th>時間単価</th>
+                <th>通常分</th>
+                <th>残業代</th>
+                <th>不就労控除</th>
+                <th>概算支給額</th>
+                <th>健康保険</th>
+                <th>介護保険</th>
+                <th>厚生年金</th>
+                <th>雇用保険</th>
+                <th>所得税</th>
+                <th>住民税</th>
+                <th>その他控除</th>
+                <th>控除合計</th>
+                <th>差引支給額</th>
+                <th>設定</th>
+              </tr>
+            </thead>
+            <tbody id="payrollBody"></tbody>
+          </table>
+        </div>
+      </section>
 
       <section class="card-block calc-settings-area" id="staffEditArea" hidden>
         <div class="section-title">スタッフ別設定</div>
@@ -199,50 +237,12 @@
         </section>
       </div>
 
-      <section class="card-block table-area" id="tableArea" hidden>
-        <div class="section-title">給与計算一覧</div>
-        <p class="small">一覧は計算結果だけを表示します。個別設定を変更する時は、スタッフ名だけを押してください。</p>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>スタッフ名</th>
-                <th>雇用形態</th>
-                <th>月</th>
-                <th>出勤日数</th>
-                <th>総労働時間</th>
-                <th>時間外</th>
-                <th>週40時間超</th>
-                <th>不就労時間</th>
-                <th>月給 / 時給</th>
-                <th>残業倍率</th>
-                <th>月平均所定</th>
-                <th>時間単価</th>
-                <th>通常分</th>
-                <th>残業代</th>
-                <th>不就労控除</th>
-                <th>概算支給額</th>
-                <th>健康保険</th>
-                <th>介護保険</th>
-                <th>厚生年金</th>
-                <th>雇用保険</th>
-                <th>所得税</th>
-                <th>住民税</th>
-                <th>その他控除</th>
-                <th>控除合計</th>
-                <th>差引支給額</th>
-                <th>設定</th>
-              </tr>
-            </thead>
-            <tbody id="payrollBody"></tbody>
-          </table>
-        </div>
-      </section>
+
 
       <p id="message" class="message" aria-live="polite">読み込み準備中...</p>
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-47" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-20260707-48" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
