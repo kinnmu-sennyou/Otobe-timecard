@@ -5,7 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-49">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-53">
+
+  <style>
+    #selectedStaffDetailArea table {
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border-radius: 12px;
+    }
+
+    #selectedStaffDetailArea tbody tr:nth-child(odd) td {
+      background: #fff8d9;
+    }
+
+    #selectedStaffDetailArea tbody tr:nth-child(even) td {
+      background: #ffffff;
+    }
+
+    #selectedStaffDetailArea tbody td {
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    #selectedStaffDetailArea tbody td:first-child {
+      font-weight: 700;
+    }
+  </style>
 </head>
 <body>
   <main class="page">
