@@ -110,7 +110,9 @@ h1 {
 }
 
 .key-label,
-.control-grid label {
+.control-grid label,
+.control-section label,
+.setting-grid label {
   display: grid;
   gap: 6px;
   font-weight: 900;
@@ -230,6 +232,35 @@ input:disabled {
 .control-grid {
   display: grid;
   grid-template-columns: 1.4fr .8fr;
+  gap: 10px;
+}
+
+.control-section {
+  margin-top: 12px;
+  padding: 13px;
+  border: 1px dashed #eac8d6;
+  border-radius: 18px;
+  background: #fffafd;
+}
+
+.search-section {
+  background: #fffafd;
+}
+
+.calc-setting-section {
+  background: #fff8fb;
+}
+
+.sub-section-title {
+  margin: 0 0 10px;
+  color: #8a3f59;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.setting-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -361,7 +392,8 @@ td {
   }
 
   .summary-grid,
-  .control-grid {
+  .control-grid,
+  .setting-grid {
     grid-template-columns: 1fr;
   }
 }
