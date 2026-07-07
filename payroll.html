@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-55">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-56">
 
   <style>
     #selectedStaffDetailArea table {
@@ -69,6 +69,23 @@
       width: 18px;
       height: 18px;
       accent-color: #d77792;
+    }
+
+    .payslip-note-input {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      box-sizing: border-box;
+      border: 1px solid #ead3a5;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fffdf7;
+    }
+
+    .payslip-note-input:focus {
+      outline: 2px solid rgba(215, 119, 146, 0.28);
+      border-color: #d77792;
     }
 
     .payslip-print-area {
@@ -382,7 +399,11 @@
               <input type="number" id="editOtherDeduction" min="0" step="1" inputmode="numeric" placeholder="例：0">
             </label>
           </div>
-          <p class="small">料率は下の給与計算設定で共通管理します。標準報酬月額と対象/対象外、所得税・住民税・その他控除はスタッフ別に給与設定専用スプレッドシートへ保存します。</p>
+          <label style="display:grid; gap:6px; margin-top:10px;">
+            備考欄（個別用・記入時のみPDFに反映）
+            <textarea id="editStaffPayslipNote" class="payslip-note-input" maxlength="500" placeholder="例：今月のみ通勤手当を別途支給、欠勤控除の補足など"></textarea>
+          </label>
+          <p class="small">料率は下の給与計算設定で共通管理します。標準報酬月額と対象/対象外、所得税・住民税・その他控除はスタッフ別に給与設定専用スプレッドシートへ保存します。個別備考はPDF作成時だけ反映し、空欄なら表示しません。</p>
         </div>
 
         <div class="button-row">
@@ -437,6 +458,11 @@
                 <button type="button" id="updateDeductionRatesButton" class="main-button" style="width:auto; min-width:96px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">控除料率を更新</button>
               </div>
               <p class="small">料率は全スタッフ共通です。入力は「9.85」のように%の数字をそのまま入れてください。</p>
+              <label style="display:grid; gap:6px; margin-top:10px;">
+                備考欄（全体反映用・記入時のみPDFに反映）
+                <textarea id="commonPayslipNote" class="payslip-note-input" maxlength="500" placeholder="例：全スタッフ共通の支給日、全体への補足など"></textarea>
+              </label>
+              <p class="small">ここに記入した内容は、給与明細PDFを作成した時だけ、選択した全スタッフのPDFに反映されます。空欄なら表示しません。</p>
             </div>
             <div class="control-section" id="commonSettingConfirmArea" role="alertdialog" aria-modal="true" aria-labelledby="commonSettingConfirmTitle" hidden>
               <div class="sub-section-title" id="commonSettingConfirmTitle">共通設定の更新確認</div>
@@ -462,6 +488,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-55" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-20260707-56" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
