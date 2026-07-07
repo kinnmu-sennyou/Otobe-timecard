@@ -1,11 +1,19 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-44";
+const APP_VERSION = "payroll-view-20260707-47";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
 const MONTHLY_AVERAGE_HOURS_STORAGE_KEY = "otobe-payroll:monthlyAverageHours";
 const DEFAULT_OVERTIME_MULTIPLIER = 1.25;
 const DEFAULT_MONTHLY_AVERAGE_HOURS = 173.33;
+const HEALTH_INSURANCE_RATE_STORAGE_KEY = "otobe-payroll:healthInsuranceRate";
+const CARE_INSURANCE_RATE_STORAGE_KEY = "otobe-payroll:careInsuranceRate";
+const PENSION_INSURANCE_RATE_STORAGE_KEY = "otobe-payroll:pensionInsuranceRate";
+const EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY = "otobe-payroll:employmentInsuranceRate";
+const DEFAULT_HEALTH_INSURANCE_RATE = 9.85;
+const DEFAULT_CARE_INSURANCE_RATE = 1.62;
+const DEFAULT_PENSION_INSURANCE_RATE = 18.3;
+const DEFAULT_EMPLOYMENT_INSURANCE_RATE = 0.5;
 
 let payrollRows = [];
 let filteredRows = [];
@@ -14,6 +22,10 @@ let selectedStaffName = "";
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
 let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
+let healthInsuranceRate = readNumberSetting(HEALTH_INSURANCE_RATE_STORAGE_KEY, DEFAULT_HEALTH_INSURANCE_RATE, 0);
+let careInsuranceRate = readNumberSetting(CARE_INSURANCE_RATE_STORAGE_KEY, DEFAULT_CARE_INSURANCE_RATE, 0);
+let pensionInsuranceRate = readNumberSetting(PENSION_INSURANCE_RATE_STORAGE_KEY, DEFAULT_PENSION_INSURANCE_RATE, 0);
+let employmentInsuranceRate = readNumberSetting(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
 let pendingCommonSettingType = "";
 let dom = {};
 
@@ -41,11 +53,17 @@ function initPayrollView() {
     targetMonthText: document.getElementById("targetMonthText"),
     staffCountText: document.getElementById("staffCountText"),
     totalPayText: document.getElementById("totalPayText"),
+    totalNetPayText: document.getElementById("totalNetPayText"),
     searchInput: document.getElementById("searchInput"),
     monthlyAverageHours: document.getElementById("monthlyAverageHours"),
     overtimeMultiplier: document.getElementById("overtimeMultiplier"),
     updateMonthlyAverageHoursButton: document.getElementById("updateMonthlyAverageHoursButton"),
     updateOvertimeMultiplierButton: document.getElementById("updateOvertimeMultiplierButton"),
+    healthInsuranceRate: document.getElementById("healthInsuranceRate"),
+    careInsuranceRate: document.getElementById("careInsuranceRate"),
+    pensionInsuranceRate: document.getElementById("pensionInsuranceRate"),
+    employmentInsuranceRate: document.getElementById("employmentInsuranceRate"),
+    updateDeductionRatesButton: document.getElementById("updateDeductionRatesButton"),
     commonSettingConfirmArea: document.getElementById("commonSettingConfirmArea"),
     commonSettingConfirmText: document.getElementById("commonSettingConfirmText"),
     confirmCommonSettingYesButton: document.getElementById("confirmCommonSettingYesButton"),
@@ -61,6 +79,14 @@ function initPayrollView() {
     editOvertimeMultiplier: document.getElementById("editOvertimeMultiplier"),
     staffMonthlyAverageHoursLabel: document.getElementById("staffMonthlyAverageHoursLabel"),
     editStaffMonthlyAverageHours: document.getElementById("editStaffMonthlyAverageHours"),
+    editStandardMonthlyRemuneration: document.getElementById("editStandardMonthlyRemuneration"),
+    editHealthInsuranceEnabled: document.getElementById("editHealthInsuranceEnabled"),
+    editCareInsuranceEnabled: document.getElementById("editCareInsuranceEnabled"),
+    editPensionInsuranceEnabled: document.getElementById("editPensionInsuranceEnabled"),
+    editEmploymentInsuranceEnabled: document.getElementById("editEmploymentInsuranceEnabled"),
+    editIncomeTax: document.getElementById("editIncomeTax"),
+    editResidentTax: document.getElementById("editResidentTax"),
+    editOtherDeduction: document.getElementById("editOtherDeduction"),
     staffEditHelpText: document.getElementById("staffEditHelpText"),
     saveStaffSettingButton: document.getElementById("saveStaffSettingButton"),
     closeStaffSettingButton: document.getElementById("closeStaffSettingButton"),
@@ -88,6 +114,12 @@ function initPayrollView() {
 
   dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
   dom.updateOvertimeMultiplierButton.addEventListener("click", () => requestCommonSettingUpdate("overtimeMultiplier"));
+
+  dom.healthInsuranceRate.value = formatDecimal(healthInsuranceRate);
+  dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
+  dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
+  dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+  dom.updateDeductionRatesButton.addEventListener("click", () => requestCommonSettingUpdate("deductionRates"));
   dom.confirmCommonSettingYesButton.addEventListener("click", confirmCommonSettingUpdate);
   dom.confirmCommonSettingNoButton.addEventListener("click", cancelCommonSettingUpdate);
 
@@ -149,7 +181,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 17;
+    td.colSpan = 26;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -181,6 +213,15 @@ function renderPayrollTable() {
     tr.appendChild(makeMoneyCell(calc.overtimePay));
     tr.appendChild(makeMoneyCell(calc.nonWorkDeduction));
     tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
+    tr.appendChild(makeMoneyCell(calc.deductions.healthInsurance));
+    tr.appendChild(makeMoneyCell(calc.deductions.careInsurance));
+    tr.appendChild(makeMoneyCell(calc.deductions.pensionInsurance));
+    tr.appendChild(makeMoneyCell(calc.deductions.employmentInsurance));
+    tr.appendChild(makeMoneyCell(calc.deductions.incomeTax));
+    tr.appendChild(makeMoneyCell(calc.deductions.residentTax));
+    tr.appendChild(makeMoneyCell(calc.deductions.otherDeduction));
+    tr.appendChild(makeMoneyCell(calc.deductions.totalDeduction));
+    tr.appendChild(makeMoneyCell(calc.netPay, "strong-money"));
     tr.appendChild(makeTextCell(getSettingStatus(setting, employmentType)));
 
     dom.payrollBody.appendChild(tr);
@@ -258,7 +299,8 @@ function getSettingStatus(setting, employmentType) {
   const hasSalary = employmentType === "社員" && Number(setting && setting.monthlySalary) > 0;
   const hasWage = employmentType === "パート" && Number(setting && setting.hourlyWage) > 0;
 
-  if (hasSalary || hasWage || hasMultiplier || hasMonthlyAverage) return "個別あり";
+  const hasDeductions = hasDeductionSetting(setting);
+  if (hasSalary || hasWage || hasMultiplier || hasMonthlyAverage || hasDeductions) return "個別あり";
   return "共通";
 }
 
@@ -292,6 +334,14 @@ function renderStaffEditor(staffName) {
   dom.editOvertimeMultiplier.placeholder = "";
   dom.editStaffMonthlyAverageHours.value = setting.monthlyAverageHours ? formatDecimal(setting.monthlyAverageHours) : "0";
   dom.editStaffMonthlyAverageHours.placeholder = "";
+  dom.editStandardMonthlyRemuneration.value = setting.standardMonthlyRemuneration ? String(setting.standardMonthlyRemuneration) : "";
+  dom.editHealthInsuranceEnabled.value = setting.healthInsuranceEnabled ? "on" : "off";
+  dom.editCareInsuranceEnabled.value = setting.careInsuranceEnabled ? "on" : "off";
+  dom.editPensionInsuranceEnabled.value = setting.pensionInsuranceEnabled ? "on" : "off";
+  dom.editEmploymentInsuranceEnabled.value = setting.employmentInsuranceEnabled ? "on" : "off";
+  dom.editIncomeTax.value = setting.incomeTax ? String(setting.incomeTax) : "";
+  dom.editResidentTax.value = setting.residentTax ? String(setting.residentTax) : "";
+  dom.editOtherDeduction.value = setting.otherDeduction ? String(setting.otherDeduction) : "";
 
   if (isEmployee) {
     dom.staffEditHelpText.textContent = "月給・残業倍率・月平均所定労働時間をスタッフ別に設定できます。0のまま保存すると共通設定を使います。";
@@ -324,6 +374,10 @@ function saveStaffEditor() {
   const hourlyWage = normalizeMoneyInput(dom.editHourlyWage.value);
   const multiplier = normalizeDecimalInput(dom.editOvertimeMultiplier.value, 1);
   const staffMonthlyHours = normalizeDecimalInput(dom.editStaffMonthlyAverageHours.value, 1);
+  const standardMonthlyRemuneration = normalizeMoneyInput(dom.editStandardMonthlyRemuneration.value);
+  const incomeTax = normalizeMoneyInput(dom.editIncomeTax.value);
+  const residentTax = normalizeMoneyInput(dom.editResidentTax.value);
+  const otherDeduction = normalizeMoneyInput(dom.editOtherDeduction.value);
 
   if (employmentType === "社員") {
     if (monthlySalary === null) {
@@ -357,6 +411,15 @@ function saveStaffEditor() {
     delete current.monthlyAverageHours;
   }
 
+  setOrDeleteMoneySetting(current, "standardMonthlyRemuneration", standardMonthlyRemuneration);
+  current.healthInsuranceEnabled = dom.editHealthInsuranceEnabled.value === "on";
+  current.careInsuranceEnabled = dom.editCareInsuranceEnabled.value === "on";
+  current.pensionInsuranceEnabled = dom.editPensionInsuranceEnabled.value === "on";
+  current.employmentInsuranceEnabled = dom.editEmploymentInsuranceEnabled.value === "on";
+  setOrDeleteMoneySetting(current, "incomeTax", incomeTax);
+  setOrDeleteMoneySetting(current, "residentTax", residentTax);
+  setOrDeleteMoneySetting(current, "otherDeduction", otherDeduction);
+
   paySettings[selectedStaffName] = current;
   savePaySettings();
   renderPayrollTable();
@@ -385,8 +448,10 @@ function calculatePay(row, setting, employmentType) {
     const overtimePay = hourlyUnit * overtimeHours * multiplier;
     const nonWorkDeduction = hourlyUnit * nonWorkHours;
     const totalPay = basePay + overtimePay - nonWorkDeduction;
+    const deductions = calculateDeductions(setting, totalPay);
+    const netPay = totalPay - deductions.totalDeduction;
 
-    return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay });
+    return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay, deductions, netPay });
   }
 
   const hourlyWage = safeNumber(setting.hourlyWage);
@@ -395,32 +460,50 @@ function calculatePay(row, setting, employmentType) {
   const overtimePay = hourlyWage * overtimeHours * multiplier;
   const nonWorkDeduction = 0;
   const totalPay = basePay + overtimePay;
+  const deductions = calculateDeductions(setting, totalPay);
+  const netPay = totalPay - deductions.totalDeduction;
 
-  return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay });
+  return roundPay({ hourlyUnit, basePay, overtimePay, nonWorkDeduction, totalPay, deductions, netPay });
 }
 
 function roundPay(calc) {
+  const deductions = calc.deductions || makeEmptyDeductions();
   return {
     hourlyUnit: Math.round(safeNumber(calc.hourlyUnit)),
     basePay: Math.round(safeNumber(calc.basePay)),
     overtimePay: Math.round(safeNumber(calc.overtimePay)),
     nonWorkDeduction: Math.round(safeNumber(calc.nonWorkDeduction)),
     totalPay: Math.round(safeNumber(calc.totalPay)),
+    deductions: {
+      healthInsurance: Math.round(safeNumber(deductions.healthInsurance)),
+      careInsurance: Math.round(safeNumber(deductions.careInsurance)),
+      pensionInsurance: Math.round(safeNumber(deductions.pensionInsurance)),
+      employmentInsurance: Math.round(safeNumber(deductions.employmentInsurance)),
+      incomeTax: Math.round(safeNumber(deductions.incomeTax)),
+      residentTax: Math.round(safeNumber(deductions.residentTax)),
+      otherDeduction: Math.round(safeNumber(deductions.otherDeduction)),
+      totalDeduction: Math.round(safeNumber(deductions.totalDeduction)),
+    },
+    netPay: Math.round(safeNumber(calc.netPay)),
   };
 }
 
 function updateSummary() {
   let totalPay = 0;
+  let totalNetPay = 0;
 
   filteredRows.forEach((row) => {
     const staffName = String(row.staffName || "").trim();
     const setting = getPaySetting(staffName);
     const employmentType = normalizeEmploymentType(row.employmentType);
-    totalPay += calculatePay(row, setting, employmentType).totalPay;
+    const calc = calculatePay(row, setting, employmentType);
+    totalPay += calc.totalPay;
+    totalNetPay += calc.netPay;
   });
 
   dom.staffCountText.textContent = `${filteredRows.length}名`;
   dom.totalPayText.textContent = formatYen(totalPay);
+  dom.totalNetPayText.textContent = formatYen(totalNetPay);
 }
 
 function requestCommonSettingUpdate(type) {
@@ -440,6 +523,10 @@ function requestCommonSettingUpdate(type) {
     label = "共通残業割増倍率";
     nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_OVERTIME_MULTIPLIER)}` : formatDecimal(value);
     currentText = formatDecimal(overtimeMultiplier);
+  } else if (type === "deductionRates") {
+    label = "控除共通料率";
+    currentText = `健保 ${formatDecimal(healthInsuranceRate)}% / 介護 ${formatDecimal(careInsuranceRate)}% / 厚年 ${formatDecimal(pensionInsuranceRate)}% / 雇用 ${formatDecimal(employmentInsuranceRate)}%`;
+    nextText = `健保 ${formatDecimalInputOrDefault(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE)}% / 介護 ${formatDecimalInputOrDefault(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE)}% / 厚年 ${formatDecimalInputOrDefault(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE)}% / 雇用 ${formatDecimalInputOrDefault(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE)}%`;
   } else {
     return;
   }
@@ -454,6 +541,8 @@ function confirmCommonSettingUpdate() {
     applyMonthlyAverageHoursUpdate();
   } else if (pendingCommonSettingType === "overtimeMultiplier") {
     applyOvertimeMultiplierUpdate();
+  } else if (pendingCommonSettingType === "deductionRates") {
+    applyDeductionRatesUpdate();
   }
 
   closeCommonSettingConfirm();
@@ -473,6 +562,10 @@ function closeCommonSettingConfirm() {
 function restoreCommonSettingInputs() {
   dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
   dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+  dom.healthInsuranceRate.value = formatDecimal(healthInsuranceRate);
+  dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
+  dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
+  dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
 }
 
 function applyMonthlyAverageHoursUpdate() {
@@ -509,6 +602,27 @@ function applyOvertimeMultiplierUpdate() {
     showMessage(`共通残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
   }
 
+  renderPayrollTable();
+  if (selectedStaffName) renderStaffEditor(selectedStaffName);
+}
+
+function applyDeductionRatesUpdate() {
+  healthInsuranceRate = readRateInput(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE);
+  careInsuranceRate = readRateInput(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE);
+  pensionInsuranceRate = readRateInput(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE);
+  employmentInsuranceRate = readRateInput(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE);
+
+  dom.healthInsuranceRate.value = formatDecimal(healthInsuranceRate);
+  dom.careInsuranceRate.value = formatDecimal(careInsuranceRate);
+  dom.pensionInsuranceRate.value = formatDecimal(pensionInsuranceRate);
+  dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
+
+  localStorage.setItem(HEALTH_INSURANCE_RATE_STORAGE_KEY, String(healthInsuranceRate));
+  localStorage.setItem(CARE_INSURANCE_RATE_STORAGE_KEY, String(careInsuranceRate));
+  localStorage.setItem(PENSION_INSURANCE_RATE_STORAGE_KEY, String(pensionInsuranceRate));
+  localStorage.setItem(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, String(employmentInsuranceRate));
+
+  showMessage("控除共通料率を更新しました。", "ok");
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
@@ -625,6 +739,73 @@ function getOvertimeMultiplier() {
 function getStaffOvertimeMultiplier(setting) {
   const value = Number(setting && setting.overtimeMultiplier);
   return Number.isFinite(value) && value >= 1 ? value : getOvertimeMultiplier();
+}
+
+function calculateDeductions(setting, totalPay) {
+  const standardMonthlyRemuneration = safeNumber(setting && setting.standardMonthlyRemuneration);
+  const healthInsurance = setting && setting.healthInsuranceEnabled ? standardMonthlyRemuneration * healthInsuranceRate / 100 / 2 : 0;
+  const careInsurance = setting && setting.careInsuranceEnabled ? standardMonthlyRemuneration * careInsuranceRate / 100 / 2 : 0;
+  const pensionInsurance = setting && setting.pensionInsuranceEnabled ? standardMonthlyRemuneration * pensionInsuranceRate / 100 / 2 : 0;
+  const employmentInsurance = setting && setting.employmentInsuranceEnabled ? safeNumber(totalPay) * employmentInsuranceRate / 100 : 0;
+  const incomeTax = safeNumber(setting && setting.incomeTax);
+  const residentTax = safeNumber(setting && setting.residentTax);
+  const otherDeduction = safeNumber(setting && setting.otherDeduction);
+  const totalDeduction = healthInsurance + careInsurance + pensionInsurance + employmentInsurance + incomeTax + residentTax + otherDeduction;
+
+  return {
+    healthInsurance,
+    careInsurance,
+    pensionInsurance,
+    employmentInsurance,
+    incomeTax,
+    residentTax,
+    otherDeduction,
+    totalDeduction,
+  };
+}
+
+function makeEmptyDeductions() {
+  return {
+    healthInsurance: 0,
+    careInsurance: 0,
+    pensionInsurance: 0,
+    employmentInsurance: 0,
+    incomeTax: 0,
+    residentTax: 0,
+    otherDeduction: 0,
+    totalDeduction: 0,
+  };
+}
+
+function hasDeductionSetting(setting) {
+  if (!setting || typeof setting !== "object") return false;
+  return Boolean(
+    safeNumber(setting.standardMonthlyRemuneration) > 0 ||
+    setting.healthInsuranceEnabled ||
+    setting.careInsuranceEnabled ||
+    setting.pensionInsuranceEnabled ||
+    setting.employmentInsuranceEnabled ||
+    safeNumber(setting.incomeTax) > 0 ||
+    safeNumber(setting.residentTax) > 0 ||
+    safeNumber(setting.otherDeduction) > 0
+  );
+}
+
+function setOrDeleteMoneySetting(target, key, value) {
+  if (value === null) {
+    delete target[key];
+  } else {
+    target[key] = value;
+  }
+}
+
+function readRateInput(value, fallback) {
+  const parsed = normalizeDecimalInput(value, 0);
+  return parsed === null ? fallback : parsed;
+}
+
+function formatDecimalInputOrDefault(value, fallback) {
+  return formatDecimal(readRateInput(value, fallback));
 }
 
 function normalizeEmploymentType(value) {
