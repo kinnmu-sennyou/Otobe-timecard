@@ -115,6 +115,7 @@ h1 {
 .edit-area,
 .sheet-area,
 .add-staff-area,
+.admin-sheet-area,
 .retire-staff-area {
   margin-top: 13px;
   padding: 15px;
@@ -243,7 +244,8 @@ button {
 .week40-area label,
 .edit-grid label,
 .add-staff-grid label,
-.retire-key-label {
+.retire-key-label,
+.admin-key-label {
   display: grid;
   gap: 6px;
   font-weight: 900;
@@ -366,6 +368,7 @@ select:disabled,
 
 .edit-area summary,
 .add-staff-area summary,
+.admin-sheet-area summary,
 .retire-staff-area summary {
   font-weight: 900;
   cursor: pointer;
@@ -450,6 +453,7 @@ select:disabled,
   font-weight: 900;
 }
 
+.admin-sheet-box,
 .retire-box {
   margin-top: 12px;
   padding: 13px 14px;
