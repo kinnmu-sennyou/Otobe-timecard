@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-42";
+const APP_VERSION = "payroll-view-20260707-43";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -14,6 +14,7 @@ let selectedStaffName = "";
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
 let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
+let pendingCommonSettingType = "";
 let dom = {};
 
 window.addEventListener("error", (event) => {
@@ -43,6 +44,12 @@ function initPayrollView() {
     searchInput: document.getElementById("searchInput"),
     monthlyAverageHours: document.getElementById("monthlyAverageHours"),
     overtimeMultiplier: document.getElementById("overtimeMultiplier"),
+    updateMonthlyAverageHoursButton: document.getElementById("updateMonthlyAverageHoursButton"),
+    updateOvertimeMultiplierButton: document.getElementById("updateOvertimeMultiplierButton"),
+    commonSettingConfirmArea: document.getElementById("commonSettingConfirmArea"),
+    commonSettingConfirmText: document.getElementById("commonSettingConfirmText"),
+    confirmCommonSettingYesButton: document.getElementById("confirmCommonSettingYesButton"),
+    confirmCommonSettingNoButton: document.getElementById("confirmCommonSettingNoButton"),
     payrollBody: document.getElementById("payrollBody"),
     staffEditArea: document.getElementById("staffEditArea"),
     editStaffNameText: document.getElementById("editStaffNameText"),
@@ -77,10 +84,12 @@ function initPayrollView() {
   });
 
   dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
-  dom.monthlyAverageHours.addEventListener("change", updateMonthlyAverageHours);
+  dom.updateMonthlyAverageHoursButton.addEventListener("click", () => requestCommonSettingUpdate("monthlyAverageHours"));
 
   dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
-  dom.overtimeMultiplier.addEventListener("change", updateOvertimeMultiplier);
+  dom.updateOvertimeMultiplierButton.addEventListener("click", () => requestCommonSettingUpdate("overtimeMultiplier"));
+  dom.confirmCommonSettingYesButton.addEventListener("click", confirmCommonSettingUpdate);
+  dom.confirmCommonSettingNoButton.addEventListener("click", cancelCommonSettingUpdate);
 
   dom.saveStaffSettingButton.addEventListener("click", saveStaffEditor);
   dom.closeStaffSettingButton.addEventListener("click", () => closeStaffEditor(true));
@@ -414,7 +423,59 @@ function updateSummary() {
   dom.totalPayText.textContent = formatYen(totalPay);
 }
 
-function updateMonthlyAverageHours() {
+function requestCommonSettingUpdate(type) {
+  pendingCommonSettingType = type;
+
+  let label = "";
+  let nextText = "";
+  let currentText = "";
+
+  if (type === "monthlyAverageHours") {
+    const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
+    label = "共通：社員用 月平均所定労働時間";
+    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_MONTHLY_AVERAGE_HOURS)} 時間` : `${formatDecimal(value)} 時間`;
+    currentText = `${formatDecimal(monthlyAverageHours)} 時間`;
+  } else if (type === "overtimeMultiplier") {
+    const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
+    label = "共通残業割増倍率";
+    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_OVERTIME_MULTIPLIER)}` : formatDecimal(value);
+    currentText = formatDecimal(overtimeMultiplier);
+  } else {
+    return;
+  }
+
+  dom.commonSettingConfirmText.textContent = `${label}を ${currentText} から ${nextText} に一括で変更いたしますがよろしいですか？`;
+  dom.commonSettingConfirmArea.hidden = false;
+  dom.confirmCommonSettingYesButton.focus();
+}
+
+function confirmCommonSettingUpdate() {
+  if (pendingCommonSettingType === "monthlyAverageHours") {
+    applyMonthlyAverageHoursUpdate();
+  } else if (pendingCommonSettingType === "overtimeMultiplier") {
+    applyOvertimeMultiplierUpdate();
+  }
+
+  closeCommonSettingConfirm();
+}
+
+function cancelCommonSettingUpdate() {
+  restoreCommonSettingInputs();
+  closeCommonSettingConfirm();
+  showMessage("共通設定の変更をキャンセルしました。", "neutral");
+}
+
+function closeCommonSettingConfirm() {
+  pendingCommonSettingType = "";
+  dom.commonSettingConfirmArea.hidden = true;
+}
+
+function restoreCommonSettingInputs() {
+  dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
+  dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+}
+
+function applyMonthlyAverageHoursUpdate() {
   const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
 
   if (value === null) {
@@ -430,9 +491,10 @@ function updateMonthlyAverageHours() {
   }
 
   renderPayrollTable();
+  if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
 
-function updateOvertimeMultiplier() {
+function applyOvertimeMultiplierUpdate() {
   const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
 
   if (value === null) {
@@ -448,6 +510,7 @@ function updateOvertimeMultiplier() {
   }
 
   renderPayrollTable();
+  if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
 
 function postToScript(payload) {
