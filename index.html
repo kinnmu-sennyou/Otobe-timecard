@@ -18,7 +18,7 @@
           <div class="yesterday-alert-main">昨日の打刻を忘れていませんか？</div>
           <div class="yesterday-alert-sub">(お休みの日の場合は無視してください)</div>
         </div>
-        <p class="hint">スタッフと打刻内容を選んで、更新を押してください。</p>
+        <p class="hint">スタッフと打刻内容を選んで更新を押してください。</p>
       </div>
 
       <div class="card-block staff-select-block">
@@ -35,7 +35,7 @@
             <select id="employeeSelect" aria-label="スタッフを選択"></select>
           </label>
 
-          <p class="small">前回選択したスタッフは自動で選択されます。別のスタッフを選ぶ時だけ検索してください。</p>
+          <p class="small">前回選択したスタッフは自動で選択されます</p>
         </div>
 
         <div class="selected-box">
@@ -63,7 +63,7 @@
             <button type="button" data-break-mode="half">半分休憩</button>
             <button type="button" data-break-mode="none">休憩なし</button>
           </div>
-          <p class="small">退勤・途中退社・修正更新の勤務時間計算に使います。有給は休憩設定を使いません。</p>
+          <p class="small">休憩が半分や取れなかった際に選んでください</p>
         </div>
 
         <div class="week40-area">
@@ -71,7 +71,7 @@
             週40時間超（L列へ反映）
             <input type="number" id="week40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
           </label>
-          <p class="small">入力した値を勤務表のL列へ反映します。空白ならL列も空白にします。</p>
+          <p class="small">入力した値を勤務表へ反映します</p>
         </div>
       </div>
 
@@ -88,17 +88,17 @@
           </label>
         </div>
         <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
-        <p class="small">有給は日付だけを使います。時刻は無視されます。</p>
+        <p class="small">この更新は上書きとなります</p>
       </details>
 
       <div class="sheet-area">
         <button type="button" id="pdfButton" class="sheet-button">スプレッドシートを開く</button>
-        <p class="small">選択中スタッフの月別シートだけを表示して開きます。他のシートは非表示になります。</p>
+        <p class="small">印刷時にご利用ください</p>
       </div>
 
       <details class="add-staff-area">
         <summary>新規スタッフ追加</summary>
-        <p class="small">雇用形態シートへ追加し、「勤務表　雛形」から個人シートを自動作成します。</p>
+        <p class="small">雇用形態を登録し、個人勤務表シートを自動作成します。</p>
 
         <div class="add-staff-grid">
           <label>
@@ -142,7 +142,7 @@
 
       <details class="admin-sheet-area">
         <summary>管理者用：全シート表示</summary>
-        <p class="small">管理者だけが使う操作です。合言葉を知っている人だけ全シートを表示できます。</p>
+        <p class="small">管理者のみの仕様としてください</p>
 
         <div class="admin-sheet-box">
           <label class="admin-key-label">
@@ -163,7 +163,7 @@
 
       <details class="retire-staff-area">
         <summary>退職スタッフ処理</summary>
-        <p class="small">危険操作です。選択中スタッフを退職扱いにし、スタッフ選択ボタンから非表示にします。</p>
+        <p class="small">危険操作です。選択中スタッフを退職にします</p>
 
         <div class="retire-box">
           <div>
@@ -176,10 +176,10 @@
             <input type="password" id="retireKeyInput" placeholder="otobe と入力">
           </label>
 
-          <button type="button" id="retireStaffButton" class="danger-button" disabled>選択中スタッフを退職扱いにする</button>
+          <button type="button" id="retireStaffButton" class="danger-button" disabled>選択中スタッフを退職にする</button>
         </div>
 
-        <p class="small">個人シートは削除せず、非表示にします。必要ならスプレッドシート側で再表示できます。</p>
+        <p class="small">必要に応じてスプレッドシートで可能</p>
       </details>
     </section>
   </main>
