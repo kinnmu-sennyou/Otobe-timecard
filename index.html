@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=king-spec-staff-search-20260706-24">
+  <link rel="stylesheet" href="./style.css?v=king-spec-sheet-visibility-20260707-25">
 </head>
 <body>
   <main class="page">
@@ -94,8 +94,24 @@
 
       <div class="sheet-area">
         <button type="button" id="pdfButton" class="sheet-button">スプレッドシートを開く</button>
-        <p class="small">選択中スタッフと指定日付の月別シートを開きます。当月・先月以外の月別勤務表は自動削除対象です。</p>
+        <p class="small">選択中スタッフの月別シートだけを表示して開きます。他のシートは非表示になります。</p>
       </div>
+
+      <details class="admin-sheet-area">
+        <summary>管理者用：全シート表示</summary>
+        <p class="small">管理者だけが使う操作です。合言葉を知っている人だけ全シートを表示できます。</p>
+
+        <div class="admin-sheet-box">
+          <label class="admin-key-label">
+            合言葉
+            <input type="password" id="adminOpenKeyInput" placeholder="合言葉を入力">
+          </label>
+
+          <button type="button" id="showAllSheetsButton" class="sub-button" disabled>全シート表示</button>
+        </div>
+
+        <p class="small">スタッフがスプレッドシートを開くと本人シート以外は非表示になります。管理作業時だけここから戻してください。</p>
+      </details>
 
       <details class="add-staff-area">
         <summary>新規スタッフ追加</summary>
@@ -168,6 +184,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=king-spec-staff-search-20260706-24"></script>
+<script src="./app.js?v=king-spec-sheet-visibility-20260707-25"></script>
 </body>
 </html>
