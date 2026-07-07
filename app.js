@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "king-spec-update-status-20260707-26";
+const APP_VERSION = "king-spec-update-status-clean-message-20260707-27";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -85,7 +85,7 @@ async function init() {
 
   selectAction(selectedAction);
   selectBreakMode(selectedBreakMode);
-  todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
+  if (todayStatus) todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
   setUpdateStatus("更新状況：待機中", "neutral");
   showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
 }
@@ -249,7 +249,7 @@ function selectEmployee(emp) {
   pdfLinkArea.innerHTML = "";
   setUpdateStatus("更新状況：待機中", "neutral");
 
-  todayStatus.textContent = `${emp.name} を選択中です。`;
+  if (todayStatus) todayStatus.textContent = `${emp.name} を選択中です。`;
   showMessage(`${emp.name}を選択しました。`, "ok");
   checkYesterdayPunchAlert(emp);
 }
@@ -262,7 +262,7 @@ function selectAction(action) {
   });
 
   if (selectedEmployee) {
-    todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を選択中です。`;
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を選択中です。`;
   }
 }
 
@@ -369,7 +369,7 @@ async function punchNow() {
 
     handleResult(result, `${selectedEmployee.name}：${selectedAction}を更新しました。`);
     setUpdateStatus(`反映完了：${selectedEmployee.name}：${selectedAction}`, "ok");
-    todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
     initEditDateTime();
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
@@ -419,7 +419,7 @@ async function punchBySpecifiedDateTime() {
 
     handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新しました。`);
     setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${selectedAction}`, "ok");
-    todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を反映しました。`;
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を反映しました。`;
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
     setUpdateStatus(`修正反映失敗：${error.message}`, "error");
@@ -598,7 +598,7 @@ async function retireSelectedStaff() {
       selectedEmployeeText.textContent = "未選択";
       if (retireTargetEmployee) retireTargetEmployee.textContent = "未選択";
       buildEmployeeSelector("");
-      todayStatus.textContent = "在籍スタッフがいません。";
+      if (todayStatus) todayStatus.textContent = "在籍スタッフがいません。";
       setYesterdayAlertVisible(false);
       return;
     }
@@ -698,7 +698,7 @@ async function addStaff() {
     newEndTime.value = "17:00";
     if (newBreakMinutes) newBreakMinutes.value = "60";
 
-    todayStatus.textContent = `${newEmp.name} を新規登録しました。`;
+    if (todayStatus) todayStatus.textContent = `${newEmp.name} を新規登録しました。`;
   } catch (error) {
     handleError(error);
   } finally {
@@ -821,7 +821,8 @@ function handleResult(result, successMessage) {
     throw new Error((result && result.message) || "更新に失敗しました。");
   }
 
-  showMessage(result.message || successMessage, "ok");
+  // Apps Scriptから返る詳細ログ文は長いため、画面には短い成功文だけ表示します。
+  showMessage(successMessage || "処理が完了しました。", "ok");
 }
 
 function handleError(error) {
