@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-43";
+const APP_VERSION = "payroll-view-20260707-44";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -288,17 +288,17 @@ function renderStaffEditor(staffName) {
 
   dom.editMonthlySalary.value = setting.monthlySalary ? String(setting.monthlySalary) : "";
   dom.editHourlyWage.value = setting.hourlyWage ? String(setting.hourlyWage) : "";
-  dom.editOvertimeMultiplier.value = setting.overtimeMultiplier ? formatDecimal(setting.overtimeMultiplier) : "";
-  dom.editOvertimeMultiplier.placeholder = `共通 ${formatDecimal(getOvertimeMultiplier())}`;
-  dom.editStaffMonthlyAverageHours.value = setting.monthlyAverageHours ? formatDecimal(setting.monthlyAverageHours) : "";
-  dom.editStaffMonthlyAverageHours.placeholder = `共通 ${formatDecimal(getMonthlyAverageHours())}`;
+  dom.editOvertimeMultiplier.value = setting.overtimeMultiplier ? formatDecimal(setting.overtimeMultiplier) : "0";
+  dom.editOvertimeMultiplier.placeholder = "";
+  dom.editStaffMonthlyAverageHours.value = setting.monthlyAverageHours ? formatDecimal(setting.monthlyAverageHours) : "0";
+  dom.editStaffMonthlyAverageHours.placeholder = "";
 
   if (isEmployee) {
-    dom.staffEditHelpText.textContent = "月給・残業倍率・月平均所定労働時間をスタッフ別に設定できます。空欄の残業倍率と月平均所定労働時間は共通設定を使います。";
+    dom.staffEditHelpText.textContent = "月給・残業倍率・月平均所定労働時間をスタッフ別に設定できます。0のまま保存すると共通設定を使います。";
   } else if (isPartTime) {
-    dom.staffEditHelpText.textContent = "パートは時給と残業倍率を設定できます。月平均所定労働時間は対象外です。";
+    dom.staffEditHelpText.textContent = "パートは時給と残業倍率を設定できます。残業倍率を0のまま保存すると共通設定を使います。月平均所定労働時間は対象外です。";
   } else {
-    dom.staffEditHelpText.textContent = "雇用形態が未設定です。必要な項目だけ入力できます。";
+    dom.staffEditHelpText.textContent = "雇用形態が未設定です。必要な項目だけ入力できます。残業倍率を0のまま保存すると共通設定を使います。";
   }
 
   dom.staffEditArea.hidden = false;
