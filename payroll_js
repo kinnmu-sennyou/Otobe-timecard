@@ -1,46 +1,57 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-31";
+const APP_VERSION = "payroll-view-20260707-32";
 const WAGE_STORAGE_KEY = "otobe-payroll:wages";
 
 let payrollRows = [];
 let filteredRows = [];
 let isLoading = false;
 let wages = readWages();
+let dom = {};
 
-const adminKeyInput = document.getElementById("adminKeyInput");
-const loadButton = document.getElementById("loadButton");
-const summaryArea = document.getElementById("summaryArea");
-const controlsArea = document.getElementById("controlsArea");
-const tableArea = document.getElementById("tableArea");
-const targetMonthText = document.getElementById("targetMonthText");
-const staffCountText = document.getElementById("staffCountText");
-const totalPayText = document.getElementById("totalPayText");
-const searchInput = document.getElementById("searchInput");
-const bulkHourlyWage = document.getElementById("bulkHourlyWage");
-const applyBulkWageButton = document.getElementById("applyBulkWageButton");
-const payrollBody = document.getElementById("payrollBody");
-const message = document.getElementById("message");
+document.addEventListener("DOMContentLoaded", initPayrollView);
 
-init();
+function initPayrollView() {
+  dom = {
+    adminKeyInput: document.getElementById("adminKeyInput"),
+    loadButton: document.getElementById("loadButton"),
+    summaryArea: document.getElementById("summaryArea"),
+    controlsArea: document.getElementById("controlsArea"),
+    tableArea: document.getElementById("tableArea"),
+    targetMonthText: document.getElementById("targetMonthText"),
+    staffCountText: document.getElementById("staffCountText"),
+    totalPayText: document.getElementById("totalPayText"),
+    searchInput: document.getElementById("searchInput"),
+    bulkHourlyWage: document.getElementById("bulkHourlyWage"),
+    applyBulkWageButton: document.getElementById("applyBulkWageButton"),
+    payrollBody: document.getElementById("payrollBody"),
+    message: document.getElementById("message"),
+  };
 
-function init() {
-  loadButton.addEventListener("click", loadPayrollData);
-  adminKeyInput.addEventListener("keydown", (event) => {
+  const missingIds = Object.keys(dom).filter((key) => !dom[key]);
+
+  if (missingIds.length) {
+    const text = `画面部品が見つかりません：${missingIds.join(", ")}。payroll.htmlを最新版に張り替えてください。`;
+    alert(text);
+    return;
+  }
+
+  dom.loadButton.addEventListener("click", loadPayrollData);
+  dom.adminKeyInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       loadPayrollData();
     }
   });
 
-  searchInput.addEventListener("input", renderPayrollTable);
-  applyBulkWageButton.addEventListener("click", applyBulkWageToVisibleRows);
+  dom.searchInput.addEventListener("input", renderPayrollTable);
+  dom.applyBulkWageButton.addEventListener("click", applyBulkWageToVisibleRows);
 
-  showMessage("合言葉を入力して給与計算データを表示してください。", "neutral");
+  showMessage(`準備OK。合言葉を入力して表示してください。版：${APP_VERSION}`, "neutral");
 }
 
 async function loadPayrollData() {
   if (isLoading) return;
 
-  const adminKey = adminKeyInput.value.trim();
+  const adminKey = dom.adminKeyInput.value.trim();
 
   if (!adminKey) {
     showMessage("合言葉を入力してください。", "error");
@@ -61,11 +72,11 @@ async function loadPayrollData() {
     }
 
     payrollRows = Array.isArray(result.rows) ? result.rows : [];
-    targetMonthText.textContent = result.targetKey || "-";
+    dom.targetMonthText.textContent = result.targetKey || "-";
 
-    summaryArea.hidden = false;
-    controlsArea.hidden = false;
-    tableArea.hidden = false;
+    dom.summaryArea.hidden = false;
+    dom.controlsArea.hidden = false;
+    dom.tableArea.hidden = false;
 
     renderPayrollTable();
     showMessage(result.message || "給与計算データを取得しました。", "ok");
@@ -78,14 +89,14 @@ async function loadPayrollData() {
 }
 
 function renderPayrollTable() {
-  const query = normalizeName(searchInput.value).toLowerCase();
+  const query = normalizeName(dom.searchInput.value).toLowerCase();
 
   filteredRows = payrollRows.filter((row) => {
     const staffName = normalizeName(row.staffName).toLowerCase();
     return !query || staffName.includes(query);
   });
 
-  payrollBody.innerHTML = "";
+  dom.payrollBody.innerHTML = "";
 
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
@@ -94,7 +105,7 @@ function renderPayrollTable() {
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
-    payrollBody.appendChild(tr);
+    dom.payrollBody.appendChild(tr);
     updateSummary();
     return;
   }
@@ -118,7 +129,7 @@ function renderPayrollTable() {
     tr.appendChild(makeMoneyCell(calc.overtimePay));
     tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
 
-    payrollBody.appendChild(tr);
+    dom.payrollBody.appendChild(tr);
   });
 
   updateSummary();
@@ -197,12 +208,12 @@ function updateSummary() {
     totalPay += calculatePay(row, wage).totalPay;
   });
 
-  staffCountText.textContent = `${filteredRows.length}名`;
-  totalPayText.textContent = formatYen(totalPay);
+  dom.staffCountText.textContent = `${filteredRows.length}名`;
+  dom.totalPayText.textContent = formatYen(totalPay);
 }
 
 function applyBulkWageToVisibleRows() {
-  const wage = normalizeMoneyInput(bulkHourlyWage.value);
+  const wage = normalizeMoneyInput(dom.bulkHourlyWage.value);
 
   if (wage === null) {
     showMessage("共通時給を入力してください。", "error");
@@ -223,11 +234,16 @@ function applyBulkWageToVisibleRows() {
 
 function postToScript(payload) {
   return new Promise((resolve, reject) => {
+    if (!ENDPOINT_URL || ENDPOINT_URL.includes("ここに")) {
+      reject(new Error("Apps Script URLが設定されていません。"));
+      return;
+    }
+
     const callbackName = `payrollCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("Apps Scriptから応答がありませんでした。デプロイURLと公開設定を確認してください。"));
+      reject(new Error("Apps Scriptから応答がありませんでした。デプロイURL・公開設定・新バージョン反映を確認してください。"));
     }, 30000);
 
     function cleanup() {
@@ -260,23 +276,24 @@ function postToScript(payload) {
 
 function startLoading() {
   isLoading = true;
-  loadButton.disabled = true;
-  loadButton.classList.add("is-loading");
+  dom.loadButton.disabled = true;
+  dom.loadButton.classList.add("is-loading");
   showMessage("給与計算データを取得中...", "loading");
 }
 
 function stopLoading() {
   isLoading = false;
-  loadButton.disabled = false;
-  loadButton.classList.remove("is-loading");
+  dom.loadButton.disabled = false;
+  dom.loadButton.classList.remove("is-loading");
 }
 
 function showMessage(text, status) {
-  message.textContent = text;
-  message.className = `message ${status || ""}`.trim();
-  message.classList.remove("flash");
-  void message.offsetWidth;
-  message.classList.add("flash");
+  if (!dom.message) return;
+  dom.message.textContent = text;
+  dom.message.className = `message ${status || ""}`.trim();
+  dom.message.classList.remove("flash");
+  void dom.message.offsetWidth;
+  dom.message.classList.add("flash");
 }
 
 function readWages() {
