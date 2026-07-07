@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-51";
+const APP_VERSION = "payroll-view-20260707-52";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -73,6 +73,11 @@ function initPayrollView() {
     staffEditArea: document.getElementById("staffEditArea"),
     editStaffNameText: document.getElementById("editStaffNameText"),
     editEmploymentTypeText: document.getElementById("editEmploymentTypeText"),
+    detailTotalPayText: document.getElementById("detailTotalPayText"),
+    detailDeductionText: document.getElementById("detailDeductionText"),
+    detailNetPayText: document.getElementById("detailNetPayText"),
+    detailHourlyUnitText: document.getElementById("detailHourlyUnitText"),
+    selectedDetailBody: document.getElementById("selectedDetailBody"),
     monthlySalaryLabel: document.getElementById("monthlySalaryLabel"),
     hourlyWageLabel: document.getElementById("hourlyWageLabel"),
     editMonthlySalary: document.getElementById("editMonthlySalary"),
@@ -184,7 +189,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 26;
+    td.colSpan = 9;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -202,27 +207,10 @@ function renderPayrollTable() {
 
     tr.appendChild(makeStaffNameCell(staffName));
     tr.appendChild(makeTextCell(employmentType || "未設定"));
-    tr.appendChild(makeNumberCell(row.month));
     tr.appendChild(makeNumberCell(row.attendanceDays));
     tr.appendChild(makeNumberCell(row.totalHours));
     tr.appendChild(makeNumberCell(row.overtimeHours));
-    tr.appendChild(makeNumberCell(row.week40Over));
-    tr.appendChild(makeNumberCell(row.nonWorkHours));
-    tr.appendChild(makePaySettingResultCell(setting, employmentType));
-    tr.appendChild(makeNumberCell(getStaffOvertimeMultiplier(setting)));
-    tr.appendChild(makeMonthlyAverageResultCell(setting, employmentType));
-    tr.appendChild(makeMoneyCell(calc.hourlyUnit));
-    tr.appendChild(makeMoneyCell(calc.basePay));
-    tr.appendChild(makeMoneyCell(calc.overtimePay));
-    tr.appendChild(makeMoneyCell(calc.nonWorkDeduction));
     tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
-    tr.appendChild(makeMoneyCell(calc.deductions.healthInsurance));
-    tr.appendChild(makeMoneyCell(calc.deductions.careInsurance));
-    tr.appendChild(makeMoneyCell(calc.deductions.pensionInsurance));
-    tr.appendChild(makeMoneyCell(calc.deductions.employmentInsurance));
-    tr.appendChild(makeMoneyCell(calc.deductions.incomeTax));
-    tr.appendChild(makeMoneyCell(calc.deductions.residentTax));
-    tr.appendChild(makeMoneyCell(calc.deductions.otherDeduction));
     tr.appendChild(makeMoneyCell(calc.deductions.totalDeduction));
     tr.appendChild(makeMoneyCell(calc.netPay, "strong-money"));
     tr.appendChild(makeTextCell(getSettingStatus(setting, employmentType)));
@@ -354,9 +342,46 @@ function renderStaffEditor(staffName) {
     dom.staffEditHelpText.textContent = "雇用形態が未設定です。必要な項目だけ入力できます。残業倍率を0のまま保存すると共通設定を使います。";
   }
 
+  renderSelectedStaffDetail(row, setting, employmentType);
+
   dom.staffEditArea.hidden = false;
   dom.staffEditArea.scrollIntoView({ behavior: "smooth", block: "start" });
   showMessage(`${key} さんの設定フォームを開きました。`, "neutral");
+}
+
+
+function renderSelectedStaffDetail(row, setting, employmentType) {
+  const calc = calculatePay(row, setting, employmentType);
+  dom.detailTotalPayText.textContent = formatYen(calc.totalPay);
+  dom.detailDeductionText.textContent = formatYen(calc.deductions.totalDeduction);
+  dom.detailNetPayText.textContent = formatYen(calc.netPay);
+  dom.detailHourlyUnitText.textContent = formatYen(calc.hourlyUnit);
+
+  const detailRows = [
+    ["月給 / 時給", employmentType === "社員" ? formatYen(setting.monthlySalary || 0) : employmentType === "パート" ? formatYen(setting.hourlyWage || 0) : "-"],
+    ["残業倍率", formatDecimal(getStaffOvertimeMultiplier(setting))],
+    ["月平均所定", employmentType === "社員" ? `${formatDecimal(getStaffMonthlyAverageHours(setting))}時間` : "-"],
+    ["通常分", formatYen(calc.basePay)],
+    ["残業代", formatYen(calc.overtimePay)],
+    ["不就労控除", formatYen(calc.nonWorkDeduction)],
+    ["健康保険", formatYen(calc.deductions.healthInsurance)],
+    ["介護保険", formatYen(calc.deductions.careInsurance)],
+    ["厚生年金", formatYen(calc.deductions.pensionInsurance)],
+    ["雇用保険", formatYen(calc.deductions.employmentInsurance)],
+    ["所得税", formatYen(calc.deductions.incomeTax)],
+    ["住民税", formatYen(calc.deductions.residentTax)],
+    ["その他控除", formatYen(calc.deductions.otherDeduction)],
+  ];
+
+  dom.selectedDetailBody.innerHTML = "";
+  detailRows.forEach(([label, value]) => {
+    const tr = document.createElement("tr");
+    tr.appendChild(makeTextCell(label));
+    const valueCell = makeTextCell(value);
+    valueCell.className = "money-cell";
+    tr.appendChild(valueCell);
+    dom.selectedDetailBody.appendChild(tr);
+  });
 }
 
 async function saveStaffEditor() {
