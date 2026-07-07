@@ -1,0 +1,367 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #30292d;
+  --muted: #7c7076;
+  --line: #efdde5;
+  --paper: rgba(255, 255, 255, .96);
+  --soft: #fff8fb;
+  --pink: #f7b7c9;
+  --pink-dark: #d96d90;
+  --pink-light: #fff0f6;
+  --green: #effaf3;
+  --orange: #fff5e6;
+  --danger: #b00020;
+  --shadow: 0 14px 34px rgba(118, 70, 87, .13);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 213, 227, .75) 0, transparent 32%),
+    radial-gradient(circle at bottom right, rgba(229, 244, 255, .82) 0, transparent 34%),
+    #fffafc;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Yu Gothic", "Yu Gothic UI", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 18px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 1180px;
+  background: var(--paper);
+  border: 1px solid rgba(239, 221, 229, .95);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.hero {
+  text-align: center;
+  padding: 8px 8px 16px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+h1 {
+  margin: 8px 0 5px;
+  font-size: 32px;
+  letter-spacing: .08em;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.card-block {
+  margin-top: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--pink-dark);
+}
+
+.small {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 700;
+}
+
+.key-label,
+.control-grid label {
+  display: grid;
+  gap: 6px;
+  font-weight: 900;
+  color: var(--pink-dark);
+}
+
+input,
+select {
+  min-height: 46px;
+  border: 1px solid #e8ccd7;
+  border-radius: 14px;
+  padding: 8px 10px;
+  background: #fffafd;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--pink-dark);
+  box-shadow: 0 0 0 3px rgba(247, 183, 201, .24);
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.main-button,
+.sub-button {
+  width: 100%;
+  min-height: 54px;
+  margin-top: 13px;
+  border: 1px solid #f0d7e1;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  box-shadow: 0 5px 12px rgba(78, 50, 60, .06);
+}
+
+.main-button {
+  min-height: 60px;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ee91af, #d96d90);
+  color: #fff;
+  box-shadow: 0 12px 22px rgba(217, 109, 144, .24);
+}
+
+.sub-button {
+  background: var(--soft);
+  color: #64283b;
+}
+
+.main-button:active,
+.sub-button:active {
+  transform: translateY(1px) scale(.99);
+}
+
+button.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+button.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  border: 3px solid rgba(255, 255, 255, .55);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+button:disabled,
+input:disabled {
+  opacity: .62;
+  cursor: not-allowed;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-card {
+  min-height: 86px;
+  padding: 13px;
+  border: 1px dashed #eac8d6;
+  border-radius: 18px;
+  background: #fffafd;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  text-align: center;
+}
+
+.summary-card span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.summary-card strong {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: 1.4fr .8fr;
+  gap: 10px;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th,
+td {
+  padding: 10px 9px;
+  border-bottom: 1px solid #f2e3ea;
+  text-align: left;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff3f8;
+  color: #8a3f59;
+  font-weight: 900;
+}
+
+td {
+  font-weight: 800;
+}
+
+.number-cell,
+.money-cell {
+  text-align: right;
+}
+
+.strong-money {
+  color: #146b2f;
+  font-weight: 900;
+}
+
+.wage-input {
+  width: 110px;
+  min-height: 38px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.empty-cell {
+  text-align: center;
+  color: var(--muted);
+  padding: 28px 10px;
+}
+
+.message {
+  min-height: 34px;
+  margin: 15px 0 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  text-align: center;
+  font-weight: 900;
+  line-height: 1.6;
+  background: transparent;
+  color: var(--muted);
+}
+
+.message.neutral {
+  background: #fffafd;
+  color: var(--muted);
+}
+
+.message.ok {
+  background: #eaf8ef;
+  color: #146b2f;
+}
+
+.message.error {
+  background: #fff0f5;
+  color: var(--danger);
+}
+
+.message.loading {
+  background: #fff6e8;
+  color: #8a5b1d;
+}
+
+.message.flash {
+  animation: flash .45s ease;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flash {
+  0% {
+    transform: scale(.985);
+  }
+  55% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 12px;
+  }
+
+  .panel {
+    border-radius: 22px;
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  .summary-grid,
+  .control-grid {
+    grid-template-columns: 1fr;
+  }
+}
