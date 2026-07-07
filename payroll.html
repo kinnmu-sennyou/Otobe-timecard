@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-56">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-transport-public-manual-20260707-58">
 
   <style>
     #selectedStaffDetailArea table {
@@ -352,6 +352,34 @@
         </div>
 
         <div class="control-section calc-setting-section">
+          <div class="sub-section-title">交通費設定</div>
+          <div class="setting-grid">
+            <label>
+              スタッフ別 交通費利率（円/km）
+              <input type="number" id="editStaffTransportRate" min="0" step="0.01" inputmode="decimal" placeholder="共通設定を使う">
+            </label>
+            <label>
+              通勤距離（km）
+              <input type="number" id="editCommuteDistance" min="0" step="0.01" inputmode="decimal" placeholder="例：5.5">
+            </label>
+            <label>
+              通勤手段
+              <select id="editCommuteMethod">
+                <option value="">未設定</option>
+                <option value="車">車</option>
+                <option value="公共交通機関">公共交通機関</option>
+                <option value="徒歩(自転車)">徒歩(自転車)</option>
+              </select>
+            </label>
+            <label>
+              公共交通機関 交通費（手動入力）
+              <input type="number" id="editPublicTransportFare" min="0" step="1" inputmode="numeric" placeholder="例：12000">
+            </label>
+          </div>
+          <p class="small">車は「交通費利率 × 通勤距離 × 出勤日数」で計算します。公共交通機関は手動入力した金額をそのまま通勤手当にします。徒歩(自転車)は0円として扱います。</p>
+        </div>
+
+        <div class="control-section calc-setting-section">
           <div class="sub-section-title">控除設定</div>
           <div class="setting-grid">
             <label>
@@ -435,6 +463,20 @@
             </div>
 
             <div class="control-section calc-setting-section">
+              <div class="sub-section-title">交通費共通設定</div>
+              <div class="setting-grid">
+                <div style="display:grid; gap:6px;">
+                  <label for="transportRate">共通：交通費利率（円/km）</label>
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="number" id="transportRate" min="0" step="0.01" inputmode="decimal" placeholder="例：15" style="min-width:0; flex:1;">
+                    <button type="button" id="updateTransportRateButton" class="main-button" style="width:auto; min-width:64px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">更新</button>
+                  </div>
+                </div>
+              </div>
+              <p class="small">スタッフ別の交通費利率が空欄の時だけ、この共通利率を使います。入力例：1kmあたり15円なら「15」。</p>
+            </div>
+
+            <div class="control-section calc-setting-section">
               <div class="sub-section-title">控除共通料率</div>
               <div class="setting-grid">
                 <label>
@@ -476,7 +518,7 @@
             <p class="small">共通残業割増倍率は、スタッフ別の倍率が空欄の時だけ使います。変更は更新ボタンを押した時だけ反映します。</p>
           </div>
 
-          <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・控除設定・共通設定は給与設定専用スプレッドシートへ保存されます。</p>
+          <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・交通費設定・控除設定・共通設定は給与設定専用スプレッドシートへ保存されます。</p>
         </details>
       </div>
 
@@ -488,6 +530,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-56" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-transport-public-manual-20260707-58" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
