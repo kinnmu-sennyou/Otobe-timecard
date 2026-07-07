@@ -1,0 +1,795 @@
+const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
+const APP_VERSION = "king-spec-staff-search-20260706-24";
+
+const BASE_EMPLOYEES = [
+  { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
+  { name: "中尾　奏可", no: "049", sheetName: "中尾　奏可", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=1481858578#gid=1481858578" },
+  { name: "池田 詩", no: "025", sheetName: "池田 詩", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=291951693#gid=291951693" },
+  { name: "山田 英之", no: "015", sheetName: "山田 英之", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=715259581#gid=715259581" },
+];
+
+const ACTIONS = ["出勤", "退勤", "途中退社", "有給"];
+const BREAK_MODES = ["normal", "half", "none"];
+const STORAGE_KEY = "timecard:selectedEmployeeNo";
+const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
+
+let EMPLOYEES = [];
+let selectedEmployee = null;
+let selectedAction = "出勤";
+let selectedBreakMode = "normal";
+let isSending = false;
+
+const employeeSearchInput = document.getElementById("employeeSearch");
+const employeeSelect = document.getElementById("employeeSelect");
+const actionButtons = document.getElementById("actionButtons");
+const breakButtons = document.getElementById("breakButtons");
+const selectedEmployeeText = document.getElementById("selectedEmployee");
+const updateButton = document.getElementById("updateButton");
+const editUpdateButton = document.getElementById("editUpdateButton");
+const pdfButton = document.getElementById("pdfButton");
+const editDate = document.getElementById("editDate");
+const editTime = document.getElementById("editTime");
+const todayStatus = document.getElementById("todayStatus");
+const yesterdayAlert = document.getElementById("yesterdayAlert");
+const message = document.getElementById("message");
+const pdfLinkArea = document.getElementById("pdfLinkArea");
+
+const addStaffButton = document.getElementById("addStaffButton");
+const newEmploymentType = document.getElementById("newEmploymentType");
+const newStaffName = document.getElementById("newStaffName");
+const newEmployeeNo = document.getElementById("newEmployeeNo");
+const newStartTime = document.getElementById("newStartTime");
+const newEndTime = document.getElementById("newEndTime");
+const newBreakMinutes = document.getElementById("newBreakMinutes");
+const week40OverInput = document.getElementById("week40OverInput");
+
+const retireStaffButton = document.getElementById("retireStaffButton");
+const retireTargetEmployee = document.getElementById("retireTargetEmployee");
+const retireKeyInput = document.getElementById("retireKeyInput");
+
+init();
+
+async function init() {
+  loadEmployees();
+
+  try {
+    await refreshEmployeesFromScript(false);
+  } catch (error) {
+    console.warn("スタッフ一覧の取得に失敗したため、端末内の情報で表示します。", error);
+  }
+
+  setupEmployeeSearchEvents();
+  buildEmployeeSelector("");
+  buildActionEvents();
+  buildBreakEvents();
+  initEditDateTime();
+  setupAddStaffForm();
+  setupRetireStaff();
+
+  updateButton.addEventListener("click", punchNow);
+  editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
+  pdfButton.addEventListener("click", openStaffSheet);
+
+  const savedNo = localStorage.getItem(STORAGE_KEY);
+  const initialEmployee = EMPLOYEES.find((emp) => emp.no === savedNo) || EMPLOYEES[0];
+
+  if (initialEmployee) {
+    selectEmployee(initialEmployee);
+    buildEmployeeSelector("");
+  }
+
+  selectAction(selectedAction);
+  selectBreakMode(selectedBreakMode);
+  todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
+  showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
+}
+
+function loadEmployees() {
+  const extras = readExtraEmployees();
+  const map = new Map();
+
+  [...BASE_EMPLOYEES, ...extras].forEach((emp) => {
+    if (!emp || !emp.no || !emp.name) return;
+    map.set(String(emp.no).padStart(3, "0"), {
+      name: emp.name,
+      no: String(emp.no).padStart(3, "0"),
+      sheetName: emp.sheetName || emp.name,
+      sheetUrl: emp.sheetUrl || "",
+    });
+  });
+
+  EMPLOYEES = Array.from(map.values());
+}
+
+
+async function refreshEmployeesFromScript(showStatus) {
+  const result = await postToScript({
+    mode: "listStaff",
+    appVersion: APP_VERSION,
+  });
+
+  if (!result || !result.ok || !Array.isArray(result.employees)) {
+    throw new Error((result && result.message) || "スタッフ一覧を取得できませんでした。");
+  }
+
+  EMPLOYEES = result.employees.map((emp) => ({
+    name: emp.name,
+    no: normalizeEmployeeNo(emp.no),
+    sheetName: emp.sheetName || emp.name,
+    sheetUrl: emp.sheetUrl || "",
+  }));
+
+  localStorage.setItem(EXTRA_EMPLOYEES_KEY, JSON.stringify(EMPLOYEES));
+
+  if (showStatus) {
+    showMessage(result.message || "スタッフ一覧を更新しました。", "ok");
+  }
+}
+
+function readExtraEmployees() {
+  try {
+    const raw = localStorage.getItem(EXTRA_EMPLOYEES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn("追加スタッフ情報を読み込めませんでした。", error);
+    return [];
+  }
+}
+
+function saveExtraEmployee(emp) {
+  const extras = readExtraEmployees();
+  const exists = extras.some((item) => String(item.no).padStart(3, "0") === emp.no);
+
+  if (!exists) {
+    extras.push(emp);
+    localStorage.setItem(EXTRA_EMPLOYEES_KEY, JSON.stringify(extras));
+  }
+}
+
+function removeExtraEmployee(employeeNo) {
+  const targetNo = normalizeEmployeeNo(employeeNo);
+  const extras = readExtraEmployees().filter((item) => normalizeEmployeeNo(item.no) !== targetNo);
+  localStorage.setItem(EXTRA_EMPLOYEES_KEY, JSON.stringify(extras));
+}
+
+function setupEmployeeSearchEvents() {
+  if (employeeSearchInput) {
+    employeeSearchInput.addEventListener("input", () => {
+      buildEmployeeSelector(employeeSearchInput.value);
+    });
+  }
+
+  if (employeeSelect) {
+    employeeSelect.addEventListener("change", () => {
+      const emp = EMPLOYEES.find((item) => item.no === employeeSelect.value);
+      if (emp) {
+        selectEmployee(emp);
+      }
+    });
+  }
+}
+
+function buildEmployeeSelector(query) {
+  if (!employeeSelect) return;
+
+  const searchText = String(query || "").trim();
+  const normalizedQuery = normalizeName(searchText).toLowerCase();
+  const numericQuery = searchText.replace(/\D/g, "");
+  const currentNo = selectedEmployee ? selectedEmployee.no : normalizeEmployeeNo(localStorage.getItem(STORAGE_KEY));
+
+  let candidates = [];
+
+  if (normalizedQuery || numericQuery) {
+    candidates = EMPLOYEES.filter((emp) => {
+      const nameText = normalizeName(emp.name).toLowerCase();
+      const noText = normalizeEmployeeNo(emp.no);
+      return nameText.includes(normalizedQuery) || (numericQuery && noText.includes(numericQuery));
+    });
+  } else {
+    const current = EMPLOYEES.find((emp) => emp.no === currentNo) || EMPLOYEES[0];
+    candidates = current ? [current] : [];
+  }
+
+  employeeSelect.innerHTML = "";
+
+  if (!candidates.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "該当スタッフがいません";
+    employeeSelect.appendChild(option);
+    employeeSelect.disabled = true;
+    return;
+  }
+
+  employeeSelect.disabled = isSending;
+
+  candidates.forEach((emp) => {
+    const option = document.createElement("option");
+    option.value = emp.no;
+    option.textContent = `${emp.no} ${emp.name}`;
+    employeeSelect.appendChild(option);
+  });
+
+  const selectedNo = selectedEmployee ? selectedEmployee.no : candidates[0].no;
+
+  if (candidates.some((emp) => emp.no === selectedNo)) {
+    employeeSelect.value = selectedNo;
+  } else {
+    employeeSelect.value = candidates[0].no;
+  }
+}
+
+function buildActionEvents() {
+  actionButtons.querySelectorAll("[data-action]").forEach((button) => {
+    button.addEventListener("click", () => selectAction(button.dataset.action));
+  });
+}
+
+function selectEmployee(emp) {
+  selectedEmployee = emp;
+  selectedEmployeeText.textContent = `${emp.no} ${emp.name}`;
+
+  if (retireTargetEmployee) {
+    retireTargetEmployee.textContent = `${emp.no} ${emp.name}`;
+  }
+  localStorage.setItem(STORAGE_KEY, emp.no);
+  pdfLinkArea.innerHTML = "";
+
+  todayStatus.textContent = `${emp.name} を選択中です。`;
+  showMessage(`${emp.name}を選択しました。`, "ok");
+  checkYesterdayPunchAlert(emp);
+}
+
+function selectAction(action) {
+  selectedAction = ACTIONS.includes(action) ? action : "出勤";
+
+  actionButtons.querySelectorAll("[data-action]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.action === selectedAction);
+  });
+
+  if (selectedEmployee) {
+    todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を選択中です。`;
+  }
+}
+
+function buildBreakEvents() {
+  if (!breakButtons) return;
+
+  breakButtons.querySelectorAll("[data-break-mode]").forEach((button) => {
+    button.addEventListener("click", () => selectBreakMode(button.dataset.breakMode));
+  });
+}
+
+function selectBreakMode(mode) {
+  selectedBreakMode = BREAK_MODES.includes(mode) ? mode : "normal";
+
+  if (!breakButtons) return;
+
+  breakButtons.querySelectorAll("[data-break-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.breakMode === selectedBreakMode);
+  });
+}
+
+function getSelectedBreakMode() {
+  return BREAK_MODES.includes(selectedBreakMode) ? selectedBreakMode : "normal";
+}
+
+function getWeek40OverValue() {
+  if (!week40OverInput) return "";
+  return String(week40OverInput.value || "").trim();
+}
+
+function setYesterdayAlertVisible(visible) {
+  if (!yesterdayAlert) return;
+  yesterdayAlert.hidden = !visible;
+}
+
+function getYesterdayDateKey() {
+  const date = new Date();
+  date.setDate(date.getDate() - 1);
+  return formatDateInput(date);
+}
+
+async function checkYesterdayPunchAlert(emp) {
+  if (!emp || !isEndpointSet()) {
+    setYesterdayAlertVisible(false);
+    return;
+  }
+
+  const checkedNo = emp.no;
+
+  try {
+    const result = await postToScript({
+      mode: "yesterdayAlert",
+      name: emp.name,
+      employeeNo: emp.no,
+      sheetName: emp.sheetName,
+      date: getYesterdayDateKey(),
+      appVersion: APP_VERSION,
+    });
+
+    if (!selectedEmployee || selectedEmployee.no !== checkedNo) return;
+
+    if (result && result.ok) {
+      setYesterdayAlertVisible(Boolean(result.showAlert));
+    } else {
+      setYesterdayAlertVisible(false);
+    }
+  } catch (error) {
+    console.warn("昨日の打刻忘れ確認に失敗しました。", error);
+    if (selectedEmployee && selectedEmployee.no === checkedNo) {
+      setYesterdayAlertVisible(false);
+    }
+  }
+}
+
+function initEditDateTime() {
+  const now = new Date();
+  editDate.value = formatDateInput(now);
+  editTime.value = formatTimeInput(roundDownToQuarter(now));
+}
+
+async function punchNow() {
+  if (!canSend()) return;
+
+  startSending(updateButton, `${selectedAction}を更新中...`);
+  pdfLinkArea.innerHTML = "";
+
+  try {
+    const result = await postToScript({
+      mode: "punch",
+      action: selectedAction,
+      name: selectedEmployee.name,
+      employeeNo: selectedEmployee.no,
+      sheetName: selectedEmployee.sheetName,
+      breakMode: getSelectedBreakMode(),
+      week40Over: getWeek40OverValue(),
+      timestamp: new Date().toISOString(),
+      appVersion: APP_VERSION,
+      userAgent: navigator.userAgent,
+    });
+
+    handleResult(result, `${selectedEmployee.name}：${selectedAction}を更新しました。`);
+    todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
+    initEditDateTime();
+    checkYesterdayPunchAlert(selectedEmployee);
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(updateButton);
+  }
+}
+
+async function punchBySpecifiedDateTime() {
+  if (!canSend()) return;
+
+  if (!editDate.value) {
+    showMessage("日付を指定してね。", "error");
+    return;
+  }
+
+  if (selectedAction !== "有給" && !editTime.value) {
+    showMessage("時刻を指定してね。", "error");
+    return;
+  }
+
+  startSending(editUpdateButton, "修正更新中...");
+  pdfLinkArea.innerHTML = "";
+
+  try {
+    const result = await postToScript({
+      mode: "correction",
+      action: selectedAction,
+      name: selectedEmployee.name,
+      employeeNo: selectedEmployee.no,
+      sheetName: selectedEmployee.sheetName,
+      date: editDate.value,
+      time: selectedAction === "有給" ? "00:00" : editTime.value,
+      breakMode: getSelectedBreakMode(),
+      week40Over: getWeek40OverValue(),
+      appVersion: APP_VERSION,
+      userAgent: navigator.userAgent,
+    });
+
+    handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新しました。`);
+    todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を反映しました。`;
+    checkYesterdayPunchAlert(selectedEmployee);
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(editUpdateButton);
+  }
+}
+
+async function openStaffSheet() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return;
+  }
+
+  if (!selectedEmployee) {
+    showMessage("先にスタッフを選んでね。", "error");
+    return;
+  }
+
+  const targetDate = editDate.value || formatDateInput(new Date());
+
+  startSending(pdfButton, "シートURLを取得中...");
+
+  try {
+    const result = await postToScript({
+      mode: "openSheet",
+      name: selectedEmployee.name,
+      employeeNo: selectedEmployee.no,
+      sheetName: selectedEmployee.sheetName,
+      date: targetDate,
+      appVersion: APP_VERSION,
+    });
+
+    handleResult(result, `${selectedEmployee.name} のシートを開きます。`);
+
+    if (result.sheetUrl) {
+      window.location.href = result.sheetUrl;
+    }
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(pdfButton);
+  }
+}
+
+function setupAddStaffForm() {
+  if (!addStaffButton) return;
+
+  addStaffButton.addEventListener("click", addStaff);
+}
+
+
+function setupRetireStaff() {
+  if (!retireStaffButton) return;
+
+  retireStaffButton.addEventListener("click", retireSelectedStaff);
+
+  if (retireKeyInput) {
+    retireKeyInput.addEventListener("input", updateRetireButtonState);
+    updateRetireButtonState();
+  }
+}
+
+function updateRetireButtonState() {
+  if (!retireStaffButton || !retireKeyInput) return;
+
+  retireStaffButton.disabled = retireKeyInput.value.trim() !== "otobe" || isSending;
+}
+
+async function retireSelectedStaff() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return;
+  }
+
+  if (!selectedEmployee) {
+    showMessage("退職処理するスタッフを選んでね。", "error");
+    return;
+  }
+
+  const retireKey = retireKeyInput ? retireKeyInput.value.trim() : "";
+
+  if (retireKey !== "otobe") {
+    showMessage("退職処理をするには、合言葉 otobe を入力してね。", "error");
+    updateRetireButtonState();
+    return;
+  }
+
+  const ok = window.confirm(`${selectedEmployee.name} を退職扱いにします。過去データは消さず、スタッフボタンから非表示にします。よろしいですか？`);
+
+  if (!ok) return;
+
+  startSending(retireStaffButton, "退職処理中...");
+
+  try {
+    const result = await postToScript({
+      mode: "retireStaff",
+      name: selectedEmployee.name,
+      employeeNo: selectedEmployee.no,
+      sheetName: selectedEmployee.sheetName,
+      hideSheet: true,
+      retireKey,
+      appVersion: APP_VERSION,
+    });
+
+    handleResult(result, `${selectedEmployee.name}を退職扱いにしました。`);
+
+    removeExtraEmployee(selectedEmployee.no);
+    await refreshEmployeesFromScript(true);
+
+    if (retireKeyInput) {
+      retireKeyInput.value = "";
+      updateRetireButtonState();
+    }
+
+    if (!EMPLOYEES.length) {
+      selectedEmployee = null;
+      selectedEmployeeText.textContent = "未選択";
+      if (retireTargetEmployee) retireTargetEmployee.textContent = "未選択";
+      buildEmployeeSelector("");
+      todayStatus.textContent = "在籍スタッフがいません。";
+      setYesterdayAlertVisible(false);
+      return;
+    }
+
+    buildEmployeeSelector("");
+    selectEmployee(EMPLOYEES[0]);
+    buildEmployeeSelector("");
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(retireStaffButton);
+  }
+}
+
+async function addStaff() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return;
+  }
+
+  const employmentType = newEmploymentType.value;
+  const name = newStaffName.value.trim();
+  const employeeNo = normalizeEmployeeNo(newEmployeeNo.value);
+  const startTime = newStartTime.value;
+  const endTime = newEndTime.value;
+  const breakMinutes = normalizeBreakMinutes(newBreakMinutes ? newBreakMinutes.value : "60");
+
+  if (!employmentType) {
+    showMessage("雇用形態を選んでね。", "error");
+    return;
+  }
+
+  if (!name) {
+    showMessage("スタッフ名を入力してね。", "error");
+    return;
+  }
+
+  if (!employeeNo || employeeNo === "000") {
+    showMessage("社員番号を入力してね。", "error");
+    return;
+  }
+
+  if (!startTime || !endTime) {
+    showMessage("出勤時間と退勤時間を入力してね。", "error");
+    return;
+  }
+
+  if (breakMinutes === null) {
+    showMessage("休憩時間は0以上の分数で入力してね。", "error");
+    return;
+  }
+
+  if (EMPLOYEES.some((emp) => emp.no === employeeNo || normalizeName(emp.name) === normalizeName(name))) {
+    showMessage("同じ社員番号または名前のスタッフが既に画面にあります。", "error");
+    return;
+  }
+
+  startSending(addStaffButton, "新規スタッフ登録中...");
+
+  try {
+    const result = await postToScript({
+      mode: "addStaff",
+      employmentType,
+      name,
+      employeeNo,
+      startTime,
+      endTime,
+      breakMinutes,
+      appVersion: APP_VERSION,
+      userAgent: navigator.userAgent,
+    });
+
+    handleResult(result, `${name}を登録しました。`);
+
+    const newEmp = {
+      name: result.staffName || name,
+      no: result.employeeNo || employeeNo,
+      sheetName: result.sheetName || name,
+      sheetUrl: "",
+    };
+
+    saveExtraEmployee(newEmp);
+
+    try {
+      await refreshEmployeesFromScript(false);
+    } catch (error) {
+      loadEmployees();
+    }
+
+    buildEmployeeSelector("");
+    selectEmployee(EMPLOYEES.find((emp) => emp.no === newEmp.no) || newEmp);
+    buildEmployeeSelector("");
+
+    newStaffName.value = "";
+    newEmployeeNo.value = "";
+    newStartTime.value = "08:00";
+    newEndTime.value = "17:00";
+    if (newBreakMinutes) newBreakMinutes.value = "60";
+
+    todayStatus.textContent = `${newEmp.name} を新規登録しました。`;
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(addStaffButton);
+  }
+}
+
+function canSend() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return false;
+  }
+
+  if (!selectedEmployee) {
+    showMessage("先にスタッフを選んでね。", "error");
+    return false;
+  }
+
+  if (!selectedAction) {
+    showMessage("出勤・退勤・途中退社・有給のどれかを選んでね。", "error");
+    return false;
+  }
+
+  if (!isEndpointSet()) {
+    showMessage("app.jsにApps ScriptのURLを設定してね。", "error");
+    return false;
+  }
+
+  return true;
+}
+
+function startSending(button, text) {
+  isSending = true;
+  setControlsDisabled(true);
+  setButtonLoading(button, true);
+  showMessage(text, "loading");
+}
+
+function stopSending(button) {
+  setButtonLoading(button, false);
+  isSending = false;
+  setControlsDisabled(false);
+  updateRetireButtonState();
+  buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
+}
+
+function setControlsDisabled(disabled) {
+  if (employeeSearchInput) employeeSearchInput.disabled = disabled;
+  if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length || !employeeSelect.value;
+  actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
+  if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
+  updateButton.disabled = disabled;
+  editUpdateButton.disabled = disabled;
+  pdfButton.disabled = disabled;
+  editDate.disabled = disabled;
+  editTime.disabled = disabled;
+
+  if (addStaffButton) addStaffButton.disabled = disabled;
+  if (retireStaffButton) retireStaffButton.disabled = disabled || (retireKeyInput && retireKeyInput.value.trim() !== "otobe");
+  if (retireKeyInput) retireKeyInput.disabled = disabled;
+  if (newEmploymentType) newEmploymentType.disabled = disabled;
+  if (newStaffName) newStaffName.disabled = disabled;
+  if (newEmployeeNo) newEmployeeNo.disabled = disabled;
+  if (newStartTime) newStartTime.disabled = disabled;
+  if (newEndTime) newEndTime.disabled = disabled;
+  if (newBreakMinutes) newBreakMinutes.disabled = disabled;
+  if (week40OverInput) week40OverInput.disabled = disabled;
+}
+
+function setButtonLoading(button, isLoading) {
+  if (!button) return;
+  button.classList.toggle("is-loading", isLoading);
+}
+
+function postToScript(payload) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `timecardCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error("Apps Scriptから応答がありませんでした。デプロイURLと公開設定を確認してね。"));
+    }, 30000);
+
+    function cleanup() {
+      window.clearTimeout(timer);
+      delete window[callbackName];
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    }
+
+    window[callbackName] = (result) => {
+      cleanup();
+      resolve(result);
+    };
+
+    const safePayload = { ...payload };
+    delete safePayload.userAgent;
+
+    const params = new URLSearchParams();
+    params.set("callback", callbackName);
+    params.set("payload", JSON.stringify(safePayload));
+    params.set("_", String(Date.now()));
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("Apps Scriptを読み込めませんでした。ウェブアプリURLか公開設定を確認してね。"));
+    };
+
+    script.src = `${ENDPOINT_URL}?${params.toString()}`;
+    document.body.appendChild(script);
+  });
+}
+
+function handleResult(result, successMessage) {
+  if (!result || !result.ok) {
+    throw new Error((result && result.message) || "更新に失敗しました。");
+  }
+
+  showMessage(result.message || successMessage, "ok");
+}
+
+function handleError(error) {
+  console.error(error);
+  showMessage(`処理できませんでした：${error.message}`, "error");
+}
+
+function isEndpointSet() {
+  return ENDPOINT_URL && !ENDPOINT_URL.includes("ここに");
+}
+
+function showMessage(text, status) {
+  message.textContent = text;
+  message.className = `message ${status || ""}`.trim();
+  message.classList.remove("flash");
+  void message.offsetWidth;
+  message.classList.add("flash");
+}
+
+function roundDownToQuarter(date) {
+  const copied = new Date(date);
+  const minutes = copied.getMinutes();
+  copied.setMinutes(Math.floor(minutes / 15) * 15, 0, 0);
+  return copied;
+}
+
+function formatDateInput(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function formatTimeInput(date) {
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function normalizeEmployeeNo(value) {
+  return String(value || "").replace(/\.0$/, "").padStart(3, "0");
+}
+
+function normalizeBreakMinutes(value) {
+  const text = String(value ?? "").trim();
+
+  if (text === "") return null;
+
+  const num = Number(text);
+
+  if (!Number.isFinite(num) || num < 0) return null;
+
+  return Math.round(num);
+}
+
+function normalizeName(value) {
+  return String(value || "").replace(/\s/g, "");
+}
