@@ -49,37 +49,20 @@
 
       <section class="card-block table-area" id="tableArea" hidden>
         <div class="section-title">給与計算一覧</div>
-        <p class="small">一覧は計算結果だけを表示します。個別設定を変更する時は、スタッフ名だけを押してください。</p>
+        <p class="small">よく見る項目だけに絞っています。スタッフ名を押すと、内訳と個別設定を下に表示します。</p>
         <div class="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>スタッフ名</th>
                 <th>雇用形態</th>
-                <th>月</th>
                 <th>出勤日数</th>
                 <th>総労働時間</th>
                 <th>時間外</th>
-                <th>週40時間超</th>
-                <th>不就労時間</th>
-                <th>月給 / 時給</th>
-                <th>残業倍率</th>
-                <th>月平均所定</th>
-                <th>時間単価</th>
-                <th>通常分</th>
-                <th>残業代</th>
-                <th>不就労控除</th>
                 <th>概算支給額</th>
-                <th>健康保険</th>
-                <th>介護保険</th>
-                <th>厚生年金</th>
-                <th>雇用保険</th>
-                <th>所得税</th>
-                <th>住民税</th>
-                <th>その他控除</th>
                 <th>控除合計</th>
                 <th>差引支給額</th>
-                <th>設定</th>
+                <th>設定状態</th>
               </tr>
             </thead>
             <tbody id="payrollBody"></tbody>
@@ -93,6 +76,28 @@
         <div class="summary-grid">
           <div class="summary-card"><span>スタッフ名</span><strong id="editStaffNameText">-</strong></div>
           <div class="summary-card"><span>雇用形態</span><strong id="editEmploymentTypeText">-</strong></div>
+        </div>
+
+        <div class="control-section calc-setting-section" id="selectedStaffDetailArea">
+          <div class="sub-section-title">このスタッフの計算詳細</div>
+          <div class="summary-grid">
+            <div class="summary-card"><span>概算支給額</span><strong id="detailTotalPayText">0円</strong></div>
+            <div class="summary-card"><span>控除合計</span><strong id="detailDeductionText">0円</strong></div>
+            <div class="summary-card"><span>差引支給額</span><strong id="detailNetPayText">0円</strong></div>
+            <div class="summary-card"><span>時間単価</span><strong id="detailHourlyUnitText">0円</strong></div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>項目</th>
+                  <th>金額</th>
+                </tr>
+              </thead>
+              <tbody id="selectedDetailBody"></tbody>
+            </table>
+          </div>
+          <p class="small">健康保険・介護保険・厚生年金・雇用保険などの内訳は、選択中スタッフだけここに表示します。</p>
         </div>
 
         <div class="control-section calc-setting-section">
@@ -175,8 +180,8 @@
       </section>
 
 
-        <section class="card-block calc-settings-area">
-          <div class="section-title">給与計算設定</div>
+        <details class="card-block calc-settings-area">
+          <summary class="section-title">給与計算設定を開く / 閉じる</summary>
 
           <div class="control-section calc-setting-section">
             <div class="setting-grid">
@@ -234,7 +239,7 @@
           </div>
 
           <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・控除設定・共通設定は給与設定専用スプレッドシートへ保存されます。</p>
-        </section>
+        </details>
       </div>
 
 
@@ -243,6 +248,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-51" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-20260707-52" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
