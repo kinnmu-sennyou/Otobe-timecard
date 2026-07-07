@@ -232,6 +232,37 @@ button {
   background: var(--pink-light);
 }
 
+
+.update-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 15px;
+  text-align: center;
+  font-weight: 900;
+  line-height: 1.55;
+  border: 1px solid #ead5df;
+}
+
+.update-status.neutral {
+  background: #fffafd;
+  color: var(--muted);
+}
+
+.update-status.loading {
+  background: #fff6e8;
+  color: #8a5b1d;
+}
+
+.update-status.ok {
+  background: #eaf8ef;
+  color: #146b2f;
+}
+
+.update-status.error {
+  background: #fff0f5;
+  color: var(--danger);
+}
+
 .break-area,
 .week40-area {
   margin-top: 13px;
