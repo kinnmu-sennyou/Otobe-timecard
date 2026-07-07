@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7b7c9">
+  <title>給与計算ビュー</title>
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-31">
+</head>
+<body>
+  <main class="page">
+    <section class="panel">
+      <div class="hero">
+        <div class="badge">Payroll View</div>
+        <h1>給与計算ビュー</h1>
+        <p class="hint">計算用(閲覧禁止) の内容を見やすく表示します。</p>
+      </div>
+
+      <section class="card-block lock-area" id="lockArea">
+        <div class="section-title">管理者確認</div>
+        <p class="small">給与情報を表示するため、合言葉を入力してください。</p>
+
+        <label class="key-label">
+          合言葉
+          <input type="password" id="adminKeyInput" placeholder="合言葉を入力" autocomplete="off">
+        </label>
+
+        <button type="button" id="loadButton" class="main-button">給与計算データを表示</button>
+      </section>
+
+      <section class="card-block summary-area" id="summaryArea" hidden>
+        <div class="section-title">集計</div>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <span>対象月</span>
+            <strong id="targetMonthText">-</strong>
+          </div>
+          <div class="summary-card">
+            <span>人数</span>
+            <strong id="staffCountText">0</strong>
+          </div>
+          <div class="summary-card">
+            <span>概算支給合計</span>
+            <strong id="totalPayText">0円</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="card-block controls-area" id="controlsArea" hidden>
+        <div class="section-title">表示設定</div>
+        <div class="control-grid">
+          <label>
+            スタッフ検索
+            <input type="search" id="searchInput" placeholder="名前で検索" autocomplete="off">
+          </label>
+          <label>
+            共通時給入力
+            <input type="number" id="bulkHourlyWage" min="0" step="1" inputmode="numeric" placeholder="例：1200">
+          </label>
+        </div>
+        <button type="button" id="applyBulkWageButton" class="sub-button">表示中スタッフへ共通時給を入れる</button>
+        <p class="small">時給はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
+      </section>
+
+      <section class="card-block table-area" id="tableArea" hidden>
+        <div class="section-title">給与計算一覧</div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>スタッフ名</th>
+                <th>月</th>
+                <th>出勤日数</th>
+                <th>総労働時間</th>
+                <th>時間外</th>
+                <th>週40時間超</th>
+                <th>不就労時間</th>
+                <th>時給</th>
+                <th>基本給</th>
+                <th>残業代</th>
+                <th>概算支給額</th>
+              </tr>
+            </thead>
+            <tbody id="payrollBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <p id="message" class="message" aria-live="polite"></p>
+    </section>
+  </main>
+
+  <script src="./payroll.js?v=payroll-view-20260707-31"></script>
+</body>
+</html>
