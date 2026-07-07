@@ -35,34 +35,39 @@
         </div>
       </section>
 
-      <section class="card-block controls-area" id="controlsArea" hidden>
-        <div class="section-title">表示設定</div>
+      <div id="controlsArea" hidden>
+        <section class="card-block controls-area">
+          <div class="section-title">表示設定</div>
 
-        <div class="control-section search-section">
-          <div class="sub-section-title">スタッフ検索</div>
-          <label>
-            スタッフ名で絞り込み
-            <input type="search" id="searchInput" placeholder="名前で検索" autocomplete="off">
-          </label>
-        </div>
-
-        <div class="control-section calc-setting-section">
-          <div class="sub-section-title">給与計算設定</div>
-          <div class="setting-grid">
+          <div class="control-section search-section">
+            <div class="sub-section-title">スタッフ検索</div>
             <label>
-              社員用：月平均所定労働時間
-              <input type="number" id="monthlyAverageHours" min="1" step="0.01" inputmode="decimal" placeholder="例：173.33">
-            </label>
-            <label>
-              残業割増倍率
-              <input type="number" id="overtimeMultiplier" min="1" step="0.01" inputmode="decimal" placeholder="例：1.25">
+              スタッフ名で絞り込み
+              <input type="search" id="searchInput" placeholder="名前で検索" autocomplete="off">
             </label>
           </div>
-          <p class="small">月平均所定労働時間と残業割増倍率は、社員・パートの計算に使う全体設定です。</p>
-        </div>
+        </section>
 
-        <p class="small">月給・時給・月平均所定労働時間・残業割増倍率はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
-      </section>
+        <section class="card-block calc-settings-area">
+          <div class="section-title">給与計算設定</div>
+
+          <div class="control-section calc-setting-section">
+            <div class="setting-grid">
+              <label>
+                社員用：月平均所定労働時間
+                <input type="number" id="monthlyAverageHours" min="1" step="0.01" inputmode="decimal" placeholder="例：173.33">
+              </label>
+              <label>
+                残業割増倍率
+                <input type="number" id="overtimeMultiplier" min="1" step="0.01" inputmode="decimal" placeholder="例：1.25">
+              </label>
+            </div>
+            <p class="small">月平均所定労働時間と残業割増倍率は、社員・パートの計算に使う全体設定です。</p>
+          </div>
+
+          <p class="small">月給・時給・月平均所定労働時間・残業割増倍率はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
+        </section>
+      </div>
 
       <section class="card-block table-area" id="tableArea" hidden>
         <div class="section-title">給与計算一覧</div>
