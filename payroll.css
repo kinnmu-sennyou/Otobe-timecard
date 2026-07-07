@@ -310,7 +310,8 @@ td {
   font-weight: 900;
 }
 
-.wage-input {
+.wage-input,
+.multiplier-input {
   width: 110px;
   min-height: 38px;
   font-size: 14px;
