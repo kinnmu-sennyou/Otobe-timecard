@@ -180,11 +180,12 @@ function buildEmployeeSelector(query) {
   const searchText = String(query || "").trim();
   const normalizedQuery = normalizeName(searchText).toLowerCase();
   const numericQuery = searchText.replace(/\D/g, "");
+  const isSearching = Boolean(normalizedQuery || numericQuery);
   const currentNo = selectedEmployee ? selectedEmployee.no : normalizeEmployeeNo(localStorage.getItem(STORAGE_KEY));
 
   let candidates = [];
 
-  if (normalizedQuery || numericQuery) {
+  if (isSearching) {
     candidates = EMPLOYEES.filter((emp) => {
       const nameText = normalizeName(emp.name).toLowerCase();
       const noText = normalizeEmployeeNo(emp.no);
@@ -216,11 +217,16 @@ function buildEmployeeSelector(query) {
   });
 
   const selectedNo = selectedEmployee ? selectedEmployee.no : candidates[0].no;
+  const nextNo = candidates.some((emp) => emp.no === selectedNo) ? selectedNo : candidates[0].no;
+  employeeSelect.value = nextNo;
 
-  if (candidates.some((emp) => emp.no === selectedNo)) {
-    employeeSelect.value = selectedNo;
-  } else {
-    employeeSelect.value = candidates[0].no;
+  // 検索で候補が絞られた時、selectの候補表示だけ変わってもchangeが発火しない場合があります。
+  // そのため、表示中の候補が現在の選択スタッフと違う場合はここで選択中表示も同期します。
+  if (isSearching) {
+    const displayedEmp = candidates.find((emp) => emp.no === employeeSelect.value);
+    if (displayedEmp && (!selectedEmployee || selectedEmployee.no !== displayedEmp.no)) {
+      selectEmployee(displayedEmp);
+    }
   }
 }
 
