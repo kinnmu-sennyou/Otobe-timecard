@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-49";
+const APP_VERSION = "payroll-view-20260707-51";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -430,7 +430,7 @@ async function saveStaffEditor() {
     await saveStaffSettingToServer(selectedStaffName, current);
   } catch (error) {
     console.error(error);
-    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+    showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
     renderPayrollTable();
     renderStaffEditor(selectedStaffName);
     return;
@@ -438,7 +438,7 @@ async function saveStaffEditor() {
 
   renderPayrollTable();
   renderStaffEditor(selectedStaffName);
-  showMessage(`${selectedStaffName} さんの給与設定を会社スプレッドシートへ保存しました。`, "ok");
+  showMessage(`${selectedStaffName} さんの給与設定を給与設定専用スプレッドシートへ保存しました。`, "ok");
 }
 
 function closeStaffEditor(showClosedMessage) {
@@ -601,7 +601,7 @@ async function applyMonthlyAverageHoursUpdate() {
     await saveCommonSettingsToServer();
   } catch (error) {
     console.error(error);
-    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+    showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
   }
 
   renderPayrollTable();
@@ -627,7 +627,7 @@ async function applyOvertimeMultiplierUpdate() {
     await saveCommonSettingsToServer();
   } catch (error) {
     console.error(error);
-    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+    showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
   }
 
   renderPayrollTable();
@@ -652,10 +652,10 @@ async function applyDeductionRatesUpdate() {
 
   try {
     await saveCommonSettingsToServer();
-    showMessage("控除共通料率を会社スプレッドシートへ保存しました。", "ok");
+    showMessage("控除共通料率を給与設定専用スプレッドシートへ保存しました。", "ok");
   } catch (error) {
     console.error(error);
-    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+    showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
   }
 
   renderPayrollTable();
@@ -672,7 +672,7 @@ async function loadPayrollSettingsFromServer(adminKey) {
     });
 
     if (!result || !result.ok) {
-      throw new Error((result && result.message) || "保存済み給与設定を取得できませんでした。");
+      throw new Error((result && result.message) || "給与設定専用スプレッドシートから保存済み給与設定を取得できませんでした。");
     }
 
     applyRemotePayrollSettings(result.settings || {});
