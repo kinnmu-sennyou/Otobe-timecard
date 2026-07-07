@@ -1,189 +1,568 @@
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7b7c9">
-  <title>打刻</title>
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=king-spec-update-status-visibility-final-20260707-28-userindex">
-</head>
-<body>
-  <main class="page">
-    <section class="panel">
-      <div class="hero">
-        <div class="badge">Time Card</div>
-        <h1>打刻</h1>
-        <div id="yesterdayAlert" class="yesterday-alert" hidden>
-          <div class="yesterday-alert-main">昨日の打刻を忘れていませんか？</div>
-          <div class="yesterday-alert-sub">(お休みの日の場合は無視してください)</div>
-        </div>
-        <p class="hint">スタッフと打刻内容を選んで更新を押してください。</p>
-      </div>
+* {
+  box-sizing: border-box;
+}
 
-      <div class="card-block staff-select-block">
-        <div class="section-title">スタッフ選択</div>
+:root {
+  --ink: #30292d;
+  --muted: #7c7076;
+  --line: #efdde5;
+  --paper: rgba(255, 255, 255, .95);
+  --soft: #fff8fb;
+  --pink: #f7b7c9;
+  --pink-dark: #d96d90;
+  --pink-light: #fff0f6;
+  --blue: #eef6ff;
+  --green: #effaf3;
+  --orange: #fff5e6;
+  --danger: #b00020;
+  --shadow: 0 14px 34px rgba(118, 70, 87, .13);
+}
 
-        <div class="staff-search-area">
-          <label>
-            スタッフ検索
-            <input type="search" id="employeeSearch" placeholder="名前または社員番号で検索" autocomplete="off">
-          </label>
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 213, 227, .75) 0, transparent 32%),
+    radial-gradient(circle at bottom right, rgba(229, 244, 255, .82) 0, transparent 34%),
+    #fffafc;
+  color: var(--ink);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Yu Gothic", "Yu Gothic UI", sans-serif;
+}
 
-          <label>
-            候補から選択
-            <select id="employeeSelect" aria-label="スタッフを選択"></select>
-          </label>
+button,
+input,
+select,
+summary {
+  font: inherit;
+}
 
-          <p class="small">前回選択したスタッフは自動で選択されます</p>
-        </div>
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
 
-        <div class="selected-box">
-          <span>選択中</span>
-          <strong id="selectedEmployee">未選択</strong>
-        </div>
-      </div>
+.panel {
+  width: 100%;
+  max-width: 780px;
+  background: var(--paper);
+  border: 1px solid rgba(239, 221, 229, .95);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
 
-      <div class="card-block">
-        <div class="section-title">打刻内容</div>
-        <div class="punch-grid" id="actionButtons">
-          <button type="button" data-action="出勤">出勤</button>
-          <button type="button" data-action="退勤">退勤</button>
-          <button type="button" data-action="途中退社">途中退社</button>
-          <button type="button" data-action="有給">有給</button>
-        </div>
+.hero {
+  text-align: center;
+  padding: 8px 8px 16px;
+}
 
-        <button type="button" id="updateButton" class="main-button">更新</button>
-        <div id="updateStatus" class="update-status neutral" aria-live="polite">更新状況：待機中</div>
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--pink-light);
+  color: var(--pink-dark);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
 
-        <div class="break-area" id="breakArea">
-          <div class="section-title">休憩設定</div>
-          <div class="break-grid" id="breakButtons" role="group" aria-label="休憩設定">
-            <button type="button" data-break-mode="normal">通常休憩</button>
-            <button type="button" data-break-mode="half">半分休憩</button>
-            <button type="button" data-break-mode="none">休憩なし</button>
-          </div>
-          <p class="small">休憩が半分や取れなかった際に選んでください</p>
-        </div>
+h1 {
+  margin: 8px 0 5px;
+  font-size: 32px;
+  letter-spacing: .08em;
+}
 
-        <div class="week40-area">
-          <label>
-            週40時間超（L列へ反映）
-            <input type="number" id="week40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
-          </label>
-          <p class="small">入力した値を勤務表へ反映します</p>
-        </div>
-      </div>
+.hint {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.6;
+  font-weight: 700;
+}
 
-      <details class="edit-area" open>
-        <summary>日付・時刻を指定して修正</summary>
-        <div class="edit-grid">
-          <label>
-            日付指定
-            <input type="date" id="editDate">
-          </label>
-          <label>
-            時刻指定
-            <input type="time" id="editTime" step="900">
-          </label>
-        </div>
-        <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
-        <p class="small">この更新は上書きとなります</p>
-      </details>
+.yesterday-alert {
+  margin: 8px auto 10px;
+  text-align: center;
+  line-height: 1.45;
+}
 
-      <div class="sheet-area">
-        <button type="button" id="pdfButton" class="sheet-button">スプレッドシートを開く</button>
-        <p class="small">月末の印刷時にご利用ください</p>
-      </div>
+.yesterday-alert[hidden] {
+  display: none;
+}
 
-      <details class="add-staff-area">
-        <summary>新規スタッフ追加</summary>
-        <p class="small">雇用形態を登録し、個人勤務表シートを自動作成します。</p>
+.yesterday-alert-main {
+  font-size: 19px;
+  font-weight: 900;
+  color: #c40024 !important;
+}
 
-        <div class="add-staff-grid">
-          <label>
-            雇用形態
-            <select id="newEmploymentType">
-              <option value="社員">社員</option>
-              <option value="パート">パート</option>
-            </select>
-          </label>
+.yesterday-alert-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #c40024 !important;
+}
 
-          <label>
-            スタッフ名
-            <input type="text" id="newStaffName" placeholder="例：佐藤　花子">
-          </label>
-          <p class="staff-name-note">スタッフ名は苗字と名前の間に【全角スペース】を入れてください。</p>
+.card-block,
+.edit-area,
+.sheet-area,
+.add-staff-area,
+.admin-sheet-area,
+.retire-staff-area {
+  margin-top: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+}
 
-          <label>
-            社員番号
-            <input type="text" id="newEmployeeNo" inputmode="numeric" placeholder="例：052">
-          </label>
+.section-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--pink-dark);
+}
 
-          <label>
-            出勤時間
-            <input type="time" id="newStartTime" value="08:00" step="900">
-          </label>
+.staff-search-area {
+  display: grid;
+  gap: 10px;
+}
 
-          <label>
-            退勤時間
-            <input type="time" id="newEndTime" value="17:00" step="900">
-          </label>
+.staff-search-area label {
+  display: grid;
+  gap: 6px;
+  font-weight: 900;
+  color: var(--pink-dark);
+}
 
-          <label>
-            休憩時間（分）
-            <input type="number" id="newBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
-          </label>
-        </div>
+#employeeSelect {
+  width: 100%;
+}
 
-        <button type="button" id="addStaffButton" class="sub-button add-staff-button">新規スタッフを登録</button>
-        <p class="small">登録後、この端末のスタッフ選択欄にも追加されます。</p>
-      </details>
+.employee-grid,
+.punch-grid,
+.break-grid,
+.edit-grid,
+.add-staff-grid {
+  display: grid;
+  gap: 10px;
+}
 
-      <details class="admin-sheet-area">
-        <summary>管理者用：全シート表示</summary>
-        <p class="small">管理者のみの仕様としてください</p>
+.employee-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
-        <div class="admin-sheet-box">
-          <label class="admin-key-label">
-            合言葉
-            <input type="password" id="adminOpenKeyInput" placeholder="合言葉を入力">
-          </label>
+.punch-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
-          <button type="button" id="showAllSheetsButton" class="sub-button" disabled>全シート表示</button>
-        </div>
+.break-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 
-        <p class="small">スタッフがスプレッドシートを開くと本人シート以外は非表示になります。管理作業時だけここから戻してください。</p>
-      </details>
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.employee-grid button,
+.punch-grid button,
+.break-grid button,
+.main-button,
+.sub-button,
+.sheet-button,
+.danger-button {
+  min-height: 52px;
+  border: 1px solid #f0d7e1;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
+  box-shadow: 0 5px 12px rgba(78, 50, 60, .06);
+}
+
+.employee-grid button:active,
+.punch-grid button:active,
+.break-grid button:active,
+.main-button:active,
+.sub-button:active,
+.sheet-button:active,
+.danger-button:active {
+  transform: translateY(1px) scale(.99);
+}
+
+.employee-grid button,
+.break-grid button,
+.sub-button {
+  background: var(--soft);
+  color: var(--ink);
+}
+
+.employee-grid button.active,
+.punch-grid button.active,
+.break-grid button.active {
+  background: linear-gradient(135deg, #ffe0eb, #fff5fa);
+  border-color: var(--pink-dark);
+  color: #64283b;
+  box-shadow: 0 8px 18px rgba(217, 109, 144, .18);
+  transform: translateY(-1px);
+}
+
+.punch-grid button[data-action="出勤"] {
+  background: var(--green);
+}
+
+.punch-grid button[data-action="退勤"] {
+  background: var(--blue);
+}
+
+.punch-grid button[data-action="途中退社"] {
+  background: var(--orange);
+}
+
+.punch-grid button[data-action="有給"] {
+  background: var(--pink-light);
+}
 
 
+.update-status {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 15px;
+  text-align: center;
+  font-weight: 900;
+  line-height: 1.55;
+  border: 1px solid #ead5df;
+}
 
-      <p id="message" class="message" aria-live="polite"></p>
-      <div id="pdfLinkArea" class="pdf-link-area"></div>
+.update-status.neutral {
+  background: #fffafd;
+  color: var(--muted);
+}
 
-      <details class="retire-staff-area">
-        <summary>退職スタッフ処理</summary>
-        <p class="small">危険操作です。選択中スタッフを退職にします</p>
+.update-status.loading {
+  background: #fff6e8;
+  color: #8a5b1d;
+}
 
-        <div class="retire-box">
-          <div>
-            <span>退職処理対象</span>
-            <strong id="retireTargetEmployee">未選択</strong>
-          </div>
+.update-status.ok {
+  background: #eaf8ef;
+  color: #146b2f;
+}
 
-          <label class="retire-key-label">
-            合言葉
-            <input type="password" id="retireKeyInput" placeholder="otobe と入力">
-          </label>
+.update-status.error {
+  background: #fff0f5;
+  color: var(--danger);
+}
 
-          <button type="button" id="retireStaffButton" class="danger-button" disabled>選択中スタッフを退職にする</button>
-        </div>
+.break-area,
+.week40-area {
+  margin-top: 13px;
+  padding: 13px;
+  border: 1px dashed #eac8d6;
+  border-radius: 18px;
+  background: #fffafd;
+}
 
-        <p class="small">必要に応じてスプレッドシートで可能</p>
-      </details>
-    </section>
-  </main>
+.week40-area label,
+.edit-grid label,
+.add-staff-grid label,
+.retire-key-label,
+.admin-key-label {
+  display: grid;
+  gap: 6px;
+  font-weight: 900;
+}
 
-<script src="./app.js?v=king-spec-update-status-visibility-final-20260707-28-userindex"></script>
-</body>
-</html>
+.week40-area label {
+  color: var(--pink-dark);
+}
+
+input,
+select {
+  min-height: 46px;
+  border: 1px solid #e8ccd7;
+  border-radius: 14px;
+  padding: 8px 10px;
+  background: #fffafd;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 800;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--pink-dark);
+  box-shadow: 0 0 0 3px rgba(247, 183, 201, .24);
+}
+
+.selected-box {
+  margin: 13px 0 0;
+  padding: 12px 14px;
+  border: 1px dashed #eac8d6;
+  border-radius: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  background: #fffafd;
+}
+
+.selected-box span,
+.retire-box span {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.selected-box strong {
+  font-size: 21px;
+}
+
+.main-button,
+.sub-button,
+.sheet-button {
+  width: 100%;
+  margin-top: 13px;
+}
+
+.main-button {
+  min-height: 60px;
+  border-color: transparent;
+  background: linear-gradient(135deg, #ee91af, #d96d90);
+  color: #fff;
+  box-shadow: 0 12px 22px rgba(217, 109, 144, .24);
+}
+
+.sub-button {
+  color: #64283b;
+}
+
+.sheet-button {
+  background: #443940;
+  color: #fff;
+  border-color: transparent;
+}
+
+button.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+button.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 22px;
+  height: 22px;
+  margin: auto;
+  border: 3px solid rgba(255, 255, 255, .55);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+.sub-button.is-loading::after,
+.sheet-button.is-loading::after,
+.danger-button.is-loading::after {
+  border-color: rgba(217, 109, 144, .25);
+  border-top-color: var(--pink-dark);
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+.danger-button:disabled {
+  opacity: .62;
+  cursor: not-allowed;
+}
+
+.status-box {
+  margin-top: 13px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #fff6e8;
+  color: #735124;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.edit-area summary,
+.add-staff-area summary,
+.admin-sheet-area summary,
+.retire-staff-area summary {
+  font-weight: 900;
+  cursor: pointer;
+  color: var(--pink-dark);
+}
+
+.edit-grid,
+.add-staff-grid {
+  margin-top: 12px;
+}
+
+.edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.add-staff-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.staff-name-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 2px;
+  padding: 9px 11px;
+  border-radius: 14px;
+  background: #fff5fa;
+  color: #8a3f59;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.small {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.message {
+  min-height: 34px;
+  margin: 15px 0 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  text-align: center;
+  font-weight: 900;
+  line-height: 1.6;
+  background: transparent;
+  color: var(--muted);
+}
+
+.message.ok {
+  background: #eaf8ef;
+  color: #146b2f;
+}
+
+.message.error {
+  background: #fff0f5;
+  color: var(--danger);
+}
+
+.message.loading {
+  background: #fff6e8;
+  color: #8a5b1d;
+}
+
+.message.flash {
+  animation: flash .45s ease;
+}
+
+.pdf-link-area {
+  margin-top: 13px;
+  text-align: center;
+}
+
+.pdf-link-area a {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #443940;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.admin-sheet-box,
+.retire-box {
+  margin-top: 12px;
+  padding: 13px 14px;
+  border: 1px dashed #eac8d6;
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  background: #fffafd;
+}
+
+.retire-box strong {
+  font-size: 20px;
+}
+
+.danger-button {
+  width: 100%;
+  background: #fff0f5;
+  color: var(--danger);
+}
+
+.danger-button:disabled {
+  background: #f8eef2;
+  color: #9b7a85;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes flash {
+  0% {
+    transform: scale(.985);
+  }
+  55% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .panel {
+    border-radius: 22px;
+    padding: 15px;
+  }
+
+  .employee-grid,
+  .punch-grid,
+  .break-grid,
+  .edit-grid,
+  .add-staff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  h1 {
+    font-size: 29px;
+  }
+}
+
+@media (max-width: 420px) {
+  .employee-grid,
+  .punch-grid,
+  .break-grid,
+  .edit-grid,
+  .add-staff-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-box {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
