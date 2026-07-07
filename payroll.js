@@ -485,40 +485,42 @@ function buildPayslipPage(row) {
   appendTotalCard(totalBox, "差引支給額", formatYen(calc.netPay));
   page.appendChild(totalBox);
 
-  appendPayslipSection(page, "勤怠", [
-    ["出勤日数", formatNumber(row.attendanceDays)],
-    ["総労働時間", `${formatNumber(row.totalHours)}時間`],
-    ["時間外", `${formatNumber(row.overtimeHours)}時間`],
-    ["週40時間超", `${formatNumber(row.week40Over)}時間`],
-    ["不就労時間", `${formatNumber(row.nonWorkHours)}時間`],
+  appendPayslipSection(page, "1. 勤怠項目（計算の根拠）", [
+    ["出勤日数", `${formatNumber(row.attendanceDays)}日`],
+    ["労働時間数", `${formatNumber(row.totalHours)}時間`],
+    ["残業時間数", `${formatNumber(row.overtimeHours)}時間`],
+    ["有給消化数", "-"],
   ]);
 
-  const payLabel = employmentType === "社員" ? "月給" : employmentType === "パート" ? "時給" : "月給 / 時給";
-  appendPayslipSection(page, "支給", [
-    [payLabel, employmentType === "社員" ? formatYen(setting.monthlySalary || 0) : employmentType === "パート" ? formatYen(setting.hourlyWage || 0) : "-"],
-    ["残業倍率", formatDecimal(getStaffOvertimeMultiplier(setting))],
-    ["月平均所定", employmentType === "社員" ? `${formatDecimal(getStaffMonthlyAverageHours(setting))}時間` : "-"],
-    ["時間単価", formatYen(calc.hourlyUnit)],
-    ["通常分", formatYen(calc.basePay)],
-    ["残業代", formatYen(calc.overtimePay)],
-    ["不就労控除", formatYen(calc.nonWorkDeduction)],
-    ["支給合計", formatYen(calc.totalPay)],
+  appendPayslipSection(page, "2. 支給項目（給与等の金額）", [
+    ["基本給", formatYen(calc.basePay)],
+    ["各種手当", formatYen(0)],
+    ["通勤手当", formatYen(0)],
+    ["時間外手当", formatYen(calc.overtimePay)],
+    ["総支給額", formatYen(calc.totalPay)],
   ], true);
 
-  appendPayslipSection(page, "控除", [
-    ["健康保険", formatYen(calc.deductions.healthInsurance)],
-    ["介護保険", formatYen(calc.deductions.careInsurance)],
-    ["厚生年金", formatYen(calc.deductions.pensionInsurance)],
-    ["雇用保険", formatYen(calc.deductions.employmentInsurance)],
-    ["所得税", formatYen(calc.deductions.incomeTax)],
+  const socialInsuranceTotal =
+    calc.deductions.healthInsurance +
+    calc.deductions.careInsurance +
+    calc.deductions.pensionInsurance +
+    calc.deductions.employmentInsurance;
+
+  appendPayslipSection(page, "3. 控除項目（天引きされる税金・保険料）", [
+    ["社会保険料", formatYen(socialInsuranceTotal)],
+    ["源泉所得税", formatYen(calc.deductions.incomeTax)],
     ["住民税", formatYen(calc.deductions.residentTax)],
-    ["その他控除", formatYen(calc.deductions.otherDeduction)],
-    ["控除合計", formatYen(calc.deductions.totalDeduction)],
+    ["その他", formatYen(calc.deductions.otherDeduction)],
+    ["控除計", formatYen(calc.deductions.totalDeduction)],
+  ], true);
+
+  appendPayslipSection(page, "4. 差引支給額（手取り額）", [
+    ["差引支給額", formatYen(calc.netPay)],
   ], true);
 
   const note = document.createElement("p");
   note.className = "payslip-note";
-  note.textContent = "この明細は給与計算ビューの設定内容をもとに作成した確認用明細です。";
+  note.textContent = "この明細は給与計算ビューの設定内容をもとに作成しています。各種手当・通勤手当・有給消化数は現在の入力項目がないため、必要に応じて別途確認してください。";
   page.appendChild(note);
 
   return page;
