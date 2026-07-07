@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-20260707-47";
+const APP_VERSION = "payroll-view-20260707-49";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -18,6 +18,7 @@ const DEFAULT_EMPLOYMENT_INSURANCE_RATE = 0.5;
 let payrollRows = [];
 let filteredRows = [];
 let isLoading = false;
+let currentAdminKey = "";
 let selectedStaffName = "";
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
@@ -151,7 +152,9 @@ async function loadPayrollData() {
       throw new Error((result && result.message) || "給与計算データを取得できませんでした。");
     }
 
+    currentAdminKey = adminKey;
     payrollRows = Array.isArray(result.rows) ? result.rows : [];
+    await loadPayrollSettingsFromServer(adminKey);
     selectedStaffName = "";
     dom.staffEditArea.hidden = true;
     dom.targetMonthText.textContent = result.targetKey || "-";
@@ -159,7 +162,7 @@ async function loadPayrollData() {
     dom.controlsArea.hidden = false;
     dom.tableArea.hidden = false;
     renderPayrollTable();
-    showMessage(result.message || "給与計算データを取得しました。", "ok");
+    showMessage(result.message || "給与計算データと保存済み設定を取得しました。", "ok");
   } catch (error) {
     console.error(error);
     showMessage(`取得できませんでした：${error.message}`, "error");
@@ -356,7 +359,7 @@ function renderStaffEditor(staffName) {
   showMessage(`${key} さんの設定フォームを開きました。`, "neutral");
 }
 
-function saveStaffEditor() {
+async function saveStaffEditor() {
   if (!selectedStaffName) {
     showMessage("保存するスタッフを選んでください。", "error");
     return;
@@ -422,9 +425,20 @@ function saveStaffEditor() {
 
   paySettings[selectedStaffName] = current;
   savePaySettings();
+
+  try {
+    await saveStaffSettingToServer(selectedStaffName, current);
+  } catch (error) {
+    console.error(error);
+    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+    renderPayrollTable();
+    renderStaffEditor(selectedStaffName);
+    return;
+  }
+
   renderPayrollTable();
   renderStaffEditor(selectedStaffName);
-  showMessage(`${selectedStaffName} さんの給与設定を保存しました。`, "ok");
+  showMessage(`${selectedStaffName} さんの給与設定を会社スプレッドシートへ保存しました。`, "ok");
 }
 
 function closeStaffEditor(showClosedMessage) {
@@ -536,13 +550,13 @@ function requestCommonSettingUpdate(type) {
   dom.confirmCommonSettingYesButton.focus();
 }
 
-function confirmCommonSettingUpdate() {
+async function confirmCommonSettingUpdate() {
   if (pendingCommonSettingType === "monthlyAverageHours") {
-    applyMonthlyAverageHoursUpdate();
+    await applyMonthlyAverageHoursUpdate();
   } else if (pendingCommonSettingType === "overtimeMultiplier") {
-    applyOvertimeMultiplierUpdate();
+    await applyOvertimeMultiplierUpdate();
   } else if (pendingCommonSettingType === "deductionRates") {
-    applyDeductionRatesUpdate();
+    await applyDeductionRatesUpdate();
   }
 
   closeCommonSettingConfirm();
@@ -568,7 +582,7 @@ function restoreCommonSettingInputs() {
   dom.employmentInsuranceRate.value = formatDecimal(employmentInsuranceRate);
 }
 
-function applyMonthlyAverageHoursUpdate() {
+async function applyMonthlyAverageHoursUpdate() {
   const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
 
   if (value === null) {
@@ -583,11 +597,18 @@ function applyMonthlyAverageHoursUpdate() {
     showMessage(`共通の月平均所定労働時間を ${formatDecimal(monthlyAverageHours)} 時間にしました。`, "ok");
   }
 
+  try {
+    await saveCommonSettingsToServer();
+  } catch (error) {
+    console.error(error);
+    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+  }
+
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
 
-function applyOvertimeMultiplierUpdate() {
+async function applyOvertimeMultiplierUpdate() {
   const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
 
   if (value === null) {
@@ -602,11 +623,18 @@ function applyOvertimeMultiplierUpdate() {
     showMessage(`共通残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
   }
 
+  try {
+    await saveCommonSettingsToServer();
+  } catch (error) {
+    console.error(error);
+    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+  }
+
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
 }
 
-function applyDeductionRatesUpdate() {
+async function applyDeductionRatesUpdate() {
   healthInsuranceRate = readRateInput(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE);
   careInsuranceRate = readRateInput(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE);
   pensionInsuranceRate = readRateInput(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE);
@@ -622,9 +650,115 @@ function applyDeductionRatesUpdate() {
   localStorage.setItem(PENSION_INSURANCE_RATE_STORAGE_KEY, String(pensionInsuranceRate));
   localStorage.setItem(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, String(employmentInsuranceRate));
 
-  showMessage("控除共通料率を更新しました。", "ok");
+  try {
+    await saveCommonSettingsToServer();
+    showMessage("控除共通料率を会社スプレッドシートへ保存しました。", "ok");
+  } catch (error) {
+    console.error(error);
+    showMessage(`端末には保存しましたが、共有保存に失敗しました：${error.message}`, "error");
+  }
+
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
+}
+
+
+async function loadPayrollSettingsFromServer(adminKey) {
+  try {
+    const result = await postToScript({
+      mode: "getPayrollSettings",
+      adminKey,
+      appVersion: APP_VERSION,
+    });
+
+    if (!result || !result.ok) {
+      throw new Error((result && result.message) || "保存済み給与設定を取得できませんでした。");
+    }
+
+    applyRemotePayrollSettings(result.settings || {});
+    savePaySettings();
+    saveCommonSettingsToLocal();
+  } catch (error) {
+    console.error(error);
+    showMessage(`保存済み設定の取得に失敗しました。端末保存分で表示します：${error.message}`, "error");
+  }
+}
+
+function applyRemotePayrollSettings(settings) {
+  const common = settings && settings.common && typeof settings.common === "object" ? settings.common : {};
+  const staff = settings && settings.staff && typeof settings.staff === "object" ? settings.staff : {};
+
+  paySettings = staff;
+  monthlyAverageHours = normalizeRemoteNumber(common.monthlyAverageHours, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
+  overtimeMultiplier = normalizeRemoteNumber(common.overtimeMultiplier, DEFAULT_OVERTIME_MULTIPLIER, 1);
+  healthInsuranceRate = normalizeRemoteNumber(common.healthInsuranceRate, DEFAULT_HEALTH_INSURANCE_RATE, 0);
+  careInsuranceRate = normalizeRemoteNumber(common.careInsuranceRate, DEFAULT_CARE_INSURANCE_RATE, 0);
+  pensionInsuranceRate = normalizeRemoteNumber(common.pensionInsuranceRate, DEFAULT_PENSION_INSURANCE_RATE, 0);
+  employmentInsuranceRate = normalizeRemoteNumber(common.employmentInsuranceRate, DEFAULT_EMPLOYMENT_INSURANCE_RATE, 0);
+
+  restoreCommonSettingInputs();
+}
+
+function normalizeRemoteNumber(value, fallback, min) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= min ? num : fallback;
+}
+
+function makeCommonSettingsPayload() {
+  return {
+    monthlyAverageHours,
+    overtimeMultiplier,
+    healthInsuranceRate,
+    careInsuranceRate,
+    pensionInsuranceRate,
+    employmentInsuranceRate,
+  };
+}
+
+async function saveStaffSettingToServer(staffName, setting) {
+  if (!currentAdminKey) {
+    throw new Error("合言葉を入れて給与計算データを表示してから保存してください。");
+  }
+
+  const result = await postToScript({
+    mode: "savePayrollStaffSetting",
+    adminKey: currentAdminKey,
+    staffName,
+    setting,
+    appVersion: APP_VERSION,
+  });
+
+  if (!result || !result.ok) {
+    throw new Error((result && result.message) || "スタッフ別設定を共有保存できませんでした。");
+  }
+}
+
+async function saveCommonSettingsToServer() {
+  saveCommonSettingsToLocal();
+
+  if (!currentAdminKey) {
+    throw new Error("合言葉を入れて給与計算データを表示してから保存してください。");
+  }
+
+  const result = await postToScript({
+    mode: "savePayrollCommonSettings",
+    adminKey: currentAdminKey,
+    common: makeCommonSettingsPayload(),
+    appVersion: APP_VERSION,
+  });
+
+  if (!result || !result.ok) {
+    throw new Error((result && result.message) || "共通設定を共有保存できませんでした。");
+  }
+}
+
+function saveCommonSettingsToLocal() {
+  localStorage.setItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, String(monthlyAverageHours));
+  localStorage.setItem(OVERTIME_MULTIPLIER_STORAGE_KEY, String(overtimeMultiplier));
+  localStorage.setItem(HEALTH_INSURANCE_RATE_STORAGE_KEY, String(healthInsuranceRate));
+  localStorage.setItem(CARE_INSURANCE_RATE_STORAGE_KEY, String(careInsuranceRate));
+  localStorage.setItem(PENSION_INSURANCE_RATE_STORAGE_KEY, String(pensionInsuranceRate));
+  localStorage.setItem(EMPLOYMENT_INSURANCE_RATE_STORAGE_KEY, String(employmentInsuranceRate));
 }
 
 function postToScript(payload) {
