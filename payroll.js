@@ -20,6 +20,7 @@ let filteredRows = [];
 let isLoading = false;
 let currentAdminKey = "";
 let selectedStaffName = "";
+let selectedPayslipStaffNames = new Set();
 let paySettings = readPaySettings();
 let overtimeMultiplier = readNumberSetting(OVERTIME_MULTIPLIER_STORAGE_KEY, DEFAULT_OVERTIME_MULTIPLIER, 1);
 let monthlyAverageHours = readNumberSetting(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, DEFAULT_MONTHLY_AVERAGE_HOURS, 1);
@@ -70,6 +71,11 @@ function initPayrollView() {
     confirmCommonSettingYesButton: document.getElementById("confirmCommonSettingYesButton"),
     confirmCommonSettingNoButton: document.getElementById("confirmCommonSettingNoButton"),
     payrollBody: document.getElementById("payrollBody"),
+    selectVisibleStaffButton: document.getElementById("selectVisibleStaffButton"),
+    clearSelectedStaffButton: document.getElementById("clearSelectedStaffButton"),
+    createSelectedPayslipButton: document.getElementById("createSelectedPayslipButton"),
+    selectedPayslipCountText: document.getElementById("selectedPayslipCountText"),
+    payslipPrintArea: document.getElementById("payslipPrintArea"),
     staffEditArea: document.getElementById("staffEditArea"),
     editStaffNameText: document.getElementById("editStaffNameText"),
     editEmploymentTypeText: document.getElementById("editEmploymentTypeText"),
@@ -114,6 +120,9 @@ function initPayrollView() {
     closeStaffEditor(false);
     renderPayrollTable();
   });
+  dom.selectVisibleStaffButton.addEventListener("click", selectVisibleStaffForPayslip);
+  dom.clearSelectedStaffButton.addEventListener("click", clearSelectedStaffForPayslip);
+  dom.createSelectedPayslipButton.addEventListener("click", createSelectedPayslipPdf);
 
   dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
   dom.updateMonthlyAverageHoursButton.addEventListener("click", () => requestCommonSettingUpdate("monthlyAverageHours"));
@@ -159,6 +168,7 @@ async function loadPayrollData() {
 
     currentAdminKey = adminKey;
     payrollRows = Array.isArray(result.rows) ? result.rows : [];
+    selectedPayslipStaffNames = new Set();
     await loadPayrollSettingsFromServer(adminKey);
     selectedStaffName = "";
     dom.staffEditArea.hidden = true;
@@ -189,12 +199,13 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 9;
+    td.colSpan = 10;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
     dom.payrollBody.appendChild(tr);
     updateSummary();
+    updatePayslipSelectionControls();
     return;
   }
 
@@ -205,6 +216,7 @@ function renderPayrollTable() {
     const calc = calculatePay(row, setting, employmentType);
     const tr = document.createElement("tr");
 
+    tr.appendChild(makePayslipSelectionCell(staffName));
     tr.appendChild(makeStaffNameCell(staffName));
     tr.appendChild(makeTextCell(employmentType || "未設定"));
     tr.appendChild(makeNumberCell(row.attendanceDays));
@@ -228,6 +240,26 @@ function renderPayrollTable() {
   }
 
   updateSummary();
+  updatePayslipSelectionControls();
+}
+
+function makePayslipSelectionCell(staffName) {
+  const td = document.createElement("td");
+  td.className = "select-cell";
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = selectedPayslipStaffNames.has(staffName);
+  checkbox.setAttribute("aria-label", `${staffName} さんを給与明細PDFの対象にする`);
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      selectedPayslipStaffNames.add(staffName);
+    } else {
+      selectedPayslipStaffNames.delete(staffName);
+    }
+    updatePayslipSelectionControls();
+  });
+  td.appendChild(checkbox);
+  return td;
 }
 
 function makeStaffNameCell(staffName) {
@@ -382,6 +414,173 @@ function renderSelectedStaffDetail(row, setting, employmentType) {
     tr.appendChild(valueCell);
     dom.selectedDetailBody.appendChild(tr);
   });
+}
+
+
+function selectVisibleStaffForPayslip() {
+  filteredRows.forEach((row) => {
+    const staffName = String(row.staffName || "").trim();
+    if (staffName) selectedPayslipStaffNames.add(staffName);
+  });
+  renderPayrollTable();
+  showMessage(`表示中スタッフ ${filteredRows.length}名を給与明細PDFの対象にしました。`, "ok");
+}
+
+function clearSelectedStaffForPayslip() {
+  selectedPayslipStaffNames = new Set();
+  renderPayrollTable();
+  showMessage("給与明細PDFの選択を解除しました。", "neutral");
+}
+
+function updatePayslipSelectionControls() {
+  if (!dom.selectedPayslipCountText) return;
+  const count = selectedPayslipStaffNames.size;
+  dom.selectedPayslipCountText.textContent = `選択中 ${count}名`;
+  if (dom.createSelectedPayslipButton) dom.createSelectedPayslipButton.disabled = count === 0;
+  if (dom.clearSelectedStaffButton) dom.clearSelectedStaffButton.disabled = count === 0;
+}
+
+function createSelectedPayslipPdf() {
+  const selectedRows = payrollRows.filter((row) => selectedPayslipStaffNames.has(String(row.staffName || "").trim()));
+
+  if (!selectedRows.length) {
+    showMessage("給与明細PDFを作るスタッフを選択してください。", "error");
+    return;
+  }
+
+  dom.payslipPrintArea.innerHTML = "";
+  selectedRows.forEach((row) => {
+    dom.payslipPrintArea.appendChild(buildPayslipPage(row));
+  });
+
+  showMessage(`選択中 ${selectedRows.length}名分の給与明細を作成しました。印刷画面でPDF保存してください。`, "ok");
+  window.setTimeout(() => window.print(), 150);
+}
+
+function buildPayslipPage(row) {
+  const staffName = String(row.staffName || "").trim();
+  const employmentType = normalizeEmploymentType(row.employmentType);
+  const setting = getPaySetting(staffName);
+  const calc = calculatePay(row, setting, employmentType);
+  const page = document.createElement("section");
+  page.className = "payslip-page";
+
+  const title = document.createElement("h1");
+  title.className = "payslip-title";
+  title.textContent = "給与明細書";
+  page.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "payslip-meta";
+  appendMeta(meta, "対象月", dom.targetMonthText.textContent || "-");
+  appendMeta(meta, "氏名", staffName || "-");
+  appendMeta(meta, "雇用形態", employmentType || "未設定");
+  appendMeta(meta, "作成日", formatDateForPayslip(new Date()));
+  page.appendChild(meta);
+
+  const totalBox = document.createElement("div");
+  totalBox.className = "payslip-total-box";
+  appendTotalCard(totalBox, "支給合計", formatYen(calc.totalPay));
+  appendTotalCard(totalBox, "控除合計", formatYen(calc.deductions.totalDeduction));
+  appendTotalCard(totalBox, "差引支給額", formatYen(calc.netPay));
+  page.appendChild(totalBox);
+
+  appendPayslipSection(page, "勤怠", [
+    ["出勤日数", formatNumber(row.attendanceDays)],
+    ["総労働時間", `${formatNumber(row.totalHours)}時間`],
+    ["時間外", `${formatNumber(row.overtimeHours)}時間`],
+    ["週40時間超", `${formatNumber(row.week40Over)}時間`],
+    ["不就労時間", `${formatNumber(row.nonWorkHours)}時間`],
+  ]);
+
+  const payLabel = employmentType === "社員" ? "月給" : employmentType === "パート" ? "時給" : "月給 / 時給";
+  appendPayslipSection(page, "支給", [
+    [payLabel, employmentType === "社員" ? formatYen(setting.monthlySalary || 0) : employmentType === "パート" ? formatYen(setting.hourlyWage || 0) : "-"],
+    ["残業倍率", formatDecimal(getStaffOvertimeMultiplier(setting))],
+    ["月平均所定", employmentType === "社員" ? `${formatDecimal(getStaffMonthlyAverageHours(setting))}時間` : "-"],
+    ["時間単価", formatYen(calc.hourlyUnit)],
+    ["通常分", formatYen(calc.basePay)],
+    ["残業代", formatYen(calc.overtimePay)],
+    ["不就労控除", formatYen(calc.nonWorkDeduction)],
+    ["支給合計", formatYen(calc.totalPay)],
+  ], true);
+
+  appendPayslipSection(page, "控除", [
+    ["健康保険", formatYen(calc.deductions.healthInsurance)],
+    ["介護保険", formatYen(calc.deductions.careInsurance)],
+    ["厚生年金", formatYen(calc.deductions.pensionInsurance)],
+    ["雇用保険", formatYen(calc.deductions.employmentInsurance)],
+    ["所得税", formatYen(calc.deductions.incomeTax)],
+    ["住民税", formatYen(calc.deductions.residentTax)],
+    ["その他控除", formatYen(calc.deductions.otherDeduction)],
+    ["控除合計", formatYen(calc.deductions.totalDeduction)],
+  ], true);
+
+  const note = document.createElement("p");
+  note.className = "payslip-note";
+  note.textContent = "この明細は給与計算ビューの設定内容をもとに作成した確認用明細です。";
+  page.appendChild(note);
+
+  return page;
+}
+
+function appendMeta(parent, label, value) {
+  const item = document.createElement("div");
+  item.textContent = `${label}：${value}`;
+  parent.appendChild(item);
+}
+
+function appendTotalCard(parent, label, value) {
+  const card = document.createElement("div");
+  card.className = "payslip-total-card";
+  const span = document.createElement("span");
+  span.textContent = label;
+  const strong = document.createElement("strong");
+  strong.textContent = value;
+  card.appendChild(span);
+  card.appendChild(strong);
+  parent.appendChild(card);
+}
+
+function appendPayslipSection(parent, titleText, rows, moneySecondColumn) {
+  const title = document.createElement("div");
+  title.className = "payslip-section-title";
+  title.textContent = titleText;
+  parent.appendChild(title);
+
+  const table = document.createElement("table");
+  table.className = "payslip-table";
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["項目", moneySecondColumn ? "金額" : "内容"].forEach((text) => {
+    const th = document.createElement("th");
+    th.textContent = text;
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  rows.forEach(([label, value]) => {
+    const tr = document.createElement("tr");
+    const labelCell = document.createElement("td");
+    labelCell.textContent = label;
+    const valueCell = document.createElement("td");
+    valueCell.textContent = value;
+    if (moneySecondColumn) valueCell.className = "payslip-money";
+    tr.appendChild(labelCell);
+    tr.appendChild(valueCell);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  parent.appendChild(table);
+}
+
+function formatDateForPayslip(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 async function saveStaffEditor() {
