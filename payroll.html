@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-46">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-20260707-47">
 </head>
 <body>
   <main class="page">
@@ -32,6 +32,7 @@
           <div class="summary-card"><span>対象月</span><strong id="targetMonthText">-</strong></div>
           <div class="summary-card"><span>人数</span><strong id="staffCountText">0</strong></div>
           <div class="summary-card"><span>概算支給合計</span><strong id="totalPayText">0円</strong></div>
+          <div class="summary-card"><span>差引支給合計</span><strong id="totalNetPayText">0円</strong></div>
         </div>
       </section>
 
@@ -78,6 +79,57 @@
           <p class="small" id="staffEditHelpText">空欄の項目は共通設定または未設定として扱います。</p>
         </div>
 
+        <div class="control-section calc-setting-section">
+          <div class="sub-section-title">控除設定</div>
+          <div class="setting-grid">
+            <label>
+              標準報酬月額
+              <input type="number" id="editStandardMonthlyRemuneration" min="0" step="1" inputmode="numeric" placeholder="例：200000">
+            </label>
+            <label>
+              健康保険
+              <select id="editHealthInsuranceEnabled">
+                <option value="off">対象外</option>
+                <option value="on">対象</option>
+              </select>
+            </label>
+            <label>
+              介護保険
+              <select id="editCareInsuranceEnabled">
+                <option value="off">対象外</option>
+                <option value="on">対象</option>
+              </select>
+            </label>
+            <label>
+              厚生年金
+              <select id="editPensionInsuranceEnabled">
+                <option value="off">対象外</option>
+                <option value="on">対象</option>
+              </select>
+            </label>
+            <label>
+              雇用保険
+              <select id="editEmploymentInsuranceEnabled">
+                <option value="off">対象外</option>
+                <option value="on">対象</option>
+              </select>
+            </label>
+            <label>
+              所得税
+              <input type="number" id="editIncomeTax" min="0" step="1" inputmode="numeric" placeholder="例：5000">
+            </label>
+            <label>
+              住民税
+              <input type="number" id="editResidentTax" min="0" step="1" inputmode="numeric" placeholder="例：10000">
+            </label>
+            <label>
+              その他控除
+              <input type="number" id="editOtherDeduction" min="0" step="1" inputmode="numeric" placeholder="例：0">
+            </label>
+          </div>
+          <p class="small">料率は下の給与計算設定で共通管理します。標準報酬月額と対象/対象外、所得税・住民税・その他控除はスタッフ別に保存します。</p>
+        </div>
+
         <div class="button-row">
           <button type="button" id="saveStaffSettingButton" class="main-button">このスタッフの設定を保存</button>
           <button type="button" id="closeStaffSettingButton">閉じる</button>
@@ -105,6 +157,32 @@
                 </div>
               </div>
             </div>
+
+            <div class="control-section calc-setting-section">
+              <div class="sub-section-title">控除共通料率</div>
+              <div class="setting-grid">
+                <label>
+                  健康保険料率（%）
+                  <input type="number" id="healthInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：9.85">
+                </label>
+                <label>
+                  介護保険料率（%）
+                  <input type="number" id="careInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：1.62">
+                </label>
+                <label>
+                  厚生年金料率（%）
+                  <input type="number" id="pensionInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：18.3">
+                </label>
+                <label>
+                  雇用保険料率（%）
+                  <input type="number" id="employmentInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：0.5">
+                </label>
+              </div>
+              <div class="button-row" style="margin-top:8px;">
+                <button type="button" id="updateDeductionRatesButton" class="main-button" style="width:auto; min-width:96px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">控除料率を更新</button>
+              </div>
+              <p class="small">料率は全スタッフ共通です。入力は「9.85」のように%の数字をそのまま入れてください。</p>
+            </div>
             <div class="control-section" id="commonSettingConfirmArea" role="alertdialog" aria-modal="true" aria-labelledby="commonSettingConfirmTitle" hidden>
               <div class="sub-section-title" id="commonSettingConfirmTitle">共通設定の更新確認</div>
               <p class="small" id="commonSettingConfirmText">一括で変更いたしますがよろしいですか？</p>
@@ -117,7 +195,7 @@
             <p class="small">共通残業割増倍率は、スタッフ別の倍率が空欄の時だけ使います。変更は更新ボタンを押した時だけ反映します。</p>
           </div>
 
-          <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・共通設定はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
+          <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・控除設定・共通設定はこの端末だけに保存されます。スプレッドシートには書き込みません。</p>
         </section>
       </div>
 
@@ -144,6 +222,15 @@
                 <th>残業代</th>
                 <th>不就労控除</th>
                 <th>概算支給額</th>
+                <th>健康保険</th>
+                <th>介護保険</th>
+                <th>厚生年金</th>
+                <th>雇用保険</th>
+                <th>所得税</th>
+                <th>住民税</th>
+                <th>その他控除</th>
+                <th>控除合計</th>
+                <th>差引支給額</th>
                 <th>設定</th>
               </tr>
             </thead>
@@ -156,6 +243,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-20260707-44" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-20260707-47" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
