@@ -190,7 +190,7 @@ async function loadPayrollData() {
     }
 
     currentAdminKey = adminKey;
-    payrollRows = Array.isArray(result.rows) ? result.rows : [];
+    payrollRows = sortPayrollRowsByEmployeeNo(Array.isArray(result.rows) ? result.rows : []);
     selectedPayslipStaffNames = new Set();
     await loadPayrollSettingsFromServer(adminKey);
     selectedStaffName = "";
@@ -209,13 +209,38 @@ async function loadPayrollData() {
   }
 }
 
+function sortPayrollRowsByEmployeeNo(rows) {
+  return [...(Array.isArray(rows) ? rows : [])].sort(comparePayrollRowsByEmployeeNo);
+}
+
+function comparePayrollRowsByEmployeeNo(a, b) {
+  const noA = normalizeEmployeeNoForSort(a && a.employeeNo);
+  const noB = normalizeEmployeeNoForSort(b && b.employeeNo);
+
+  if (noA.hasNo && noB.hasNo && noA.num !== noB.num) return noA.num - noB.num;
+  if (noA.hasNo && !noB.hasNo) return -1;
+  if (!noA.hasNo && noB.hasNo) return 1;
+
+  const nameA = normalizeName(a && a.staffName).toLowerCase();
+  const nameB = normalizeName(b && b.staffName).toLowerCase();
+  return nameA.localeCompare(nameB, "ja");
+}
+
+function normalizeEmployeeNoForSort(value) {
+  const text = String(value || "").trim();
+  const digits = text.replace(/\D/g, "");
+  if (!digits) return { hasNo: false, num: Number.MAX_SAFE_INTEGER };
+  const num = Number(digits);
+  return Number.isFinite(num) ? { hasNo: true, num } : { hasNo: false, num: Number.MAX_SAFE_INTEGER };
+}
+
 function renderPayrollTable() {
   const query = normalizeName(dom.searchInput.value).toLowerCase();
 
-  filteredRows = payrollRows.filter((row) => {
+  filteredRows = sortPayrollRowsByEmployeeNo(payrollRows.filter((row) => {
     const staffName = normalizeName(row.staffName).toLowerCase();
     return !query || staffName.includes(query);
-  });
+  }));
 
   dom.payrollBody.innerHTML = "";
 
@@ -471,7 +496,7 @@ function updatePayslipSelectionControls() {
 }
 
 function createSelectedPayslipPdf() {
-  const selectedRows = payrollRows.filter((row) => selectedPayslipStaffNames.has(String(row.staffName || "").trim()));
+  const selectedRows = sortPayrollRowsByEmployeeNo(payrollRows.filter((row) => selectedPayslipStaffNames.has(String(row.staffName || "").trim())));
 
   if (!selectedRows.length) {
     showMessage("給与明細PDFを作るスタッフを選択してください。", "error");
