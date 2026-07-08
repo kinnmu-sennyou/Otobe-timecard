@@ -679,3 +679,33 @@ td {
     transform: rotate(90deg);
   }
 }
+
+
+.bulk-scope-label {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 9px 10px;
+  border: 1px dashed #ead3dd;
+  border-radius: 14px;
+  background: #fffafd;
+  color: #8a3f59;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.bulk-scope-label select {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.confirm-target {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #eaf8ef;
+  color: #146b2f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.55;
+}
