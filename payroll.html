@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>給与計算ビュー</title>
-  <link rel="stylesheet" href="./payroll.css?v=payroll-view-transport-public-manual-readable-table-20260708-59">
+  <link rel="stylesheet" href="./payroll.css?v=payroll-view-attendance-columns-20260708-60">
 
   <style>
     #selectedStaffDetailArea table {
@@ -287,11 +287,9 @@
                 <th>雇用形態</th>
                 <th>出勤日数</th>
                 <th>総労働時間</th>
-                <th>時間外</th>
-                <th>概算支給額</th>
-                <th>控除合計</th>
-                <th>差引支給額</th>
-                <th>設定状態</th>
+                <th>総時間外</th>
+                <th>不就労時間</th>
+                <th>週40時間超</th>
               </tr>
             </thead>
             <tbody id="payrollBody"></tbody>
@@ -530,6 +528,6 @@
     </section>
   </main>
 
-  <script defer src="./payroll.js?v=payroll-view-transport-public-manual-readable-table-20260708-59" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
+  <script defer src="./payroll.js?v=payroll-view-attendance-columns-20260708-60" onerror="document.getElementById('message').textContent='payroll.jsを読み込めません。ファイル名が payroll.js になっているか確認してください。';document.getElementById('message').className='message error';"></script>
 </body>
 </html>
