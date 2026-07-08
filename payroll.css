@@ -398,3 +398,62 @@ td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 給与計算一覧：列の区切りを見やすくする ===== */
+.table-scroll {
+  border-color: #e4c3d0;
+  box-shadow: inset 0 0 0 1px rgba(228, 195, 208, .45);
+}
+
+.table-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-scroll th,
+.table-scroll td {
+  border-right: 1px solid #ead1dc;
+  border-bottom: 1px solid #f0dce5;
+}
+
+.table-scroll th:last-child,
+.table-scroll td:last-child {
+  border-right: 0;
+}
+
+.table-scroll thead th {
+  border-bottom: 2px solid #dfb6c7;
+  text-align: center;
+}
+
+.table-scroll tbody tr:nth-child(even) td {
+  background: #fffafd;
+}
+
+.table-scroll tbody tr:nth-child(odd) td {
+  background: #ffffff;
+}
+
+.table-scroll tbody tr:hover td {
+  background: #fff3f8;
+}
+
+#payrollBody td:nth-child(1),
+#payrollBody td:nth-child(3),
+#payrollBody td:nth-child(10) {
+  text-align: center;
+}
+
+#payrollBody td:nth-child(4),
+#payrollBody td:nth-child(5),
+#payrollBody td:nth-child(6),
+#payrollBody td:nth-child(7),
+#payrollBody td:nth-child(8),
+#payrollBody td:nth-child(9) {
+  text-align: right;
+}
+
+#payrollBody td:nth-child(7),
+#payrollBody td:nth-child(9) {
+  font-size: 15px;
+}
