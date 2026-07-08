@@ -72,6 +72,7 @@ function initPayrollView() {
     careInsuranceRate: document.getElementById("careInsuranceRate"),
     pensionInsuranceRate: document.getElementById("pensionInsuranceRate"),
     employmentInsuranceRate: document.getElementById("employmentInsuranceRate"),
+    transportRateScope: document.getElementById("transportRateScope"),
     commonPayslipNote: document.getElementById("commonPayslipNote"),
     transportRate: document.getElementById("transportRate"),
     updateTransportRateButton: document.getElementById("updateTransportRateButton"),
@@ -866,22 +867,28 @@ function requestCommonSettingUpdate(type) {
   } else if (type === "overtimeMultiplier") {
     const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
     const nextValue = value === null ? DEFAULT_OVERTIME_MULTIPLIER : value;
+    const scope = getBulkScope_("overtimeMultiplier");
+    const targetNames = getOvertimeMultiplierTargetStaffNames_(scope);
     detail = {
       label: "共通残業割増倍率",
       currentText: formatDecimal(overtimeMultiplier),
       nextText: formatDecimal(nextValue),
       changed: !isSameDecimal_(overtimeMultiplier, nextValue),
-      note: "スタッフ別の残業割増倍率が未設定の人に使います。",
+      note: getBulkScopeConfirmMessage_(scope),
+      targetText: `${targetNames.length}名`,
     };
   } else if (type === "transportRate") {
     const value = normalizeDecimalInput(dom.transportRate.value, 0);
     const nextValue = value === null ? DEFAULT_TRANSPORT_RATE : value;
+    const scope = getBulkScope_("transportRate");
+    const targetNames = getTransportRateTargetStaffNames_(scope);
     detail = {
       label: "共通：交通費利率",
       currentText: `${formatDecimal(transportRate)} 円/km`,
       nextText: `${formatDecimal(nextValue)} 円/km`,
       changed: !isSameDecimal_(transportRate, nextValue),
-      note: "スタッフ別の交通費利率が未設定で、通勤手段が車の人に使います。",
+      note: getBulkScopeConfirmMessage_(scope),
+      targetText: `${targetNames.length}名`,
     };
   } else if (type === "deductionRates") {
     const nextNote = normalizeNoteInput(dom.commonPayslipNote.value);
@@ -1046,11 +1053,28 @@ async function applyMonthlyAverageHoursUpdate() {
 }
 
 function getMonthlyAverageHoursScope_() {
-  const value = dom.monthlyAverageHoursScope ? String(dom.monthlyAverageHoursScope.value || "").trim() : "unset";
+  return getBulkScope_("monthlyAverageHours");
+}
+
+function getBulkScope_(type) {
+  const idMap = {
+    monthlyAverageHours: "monthlyAverageHoursScope",
+    overtimeMultiplier: "overtimeMultiplierScope",
+    transportRate: "transportRateScope",
+  };
+  const key = idMap[type];
+  const el = key ? dom[key] : null;
+  const value = el ? String(el.value || "").trim() : "unset";
   return value === "all" ? "all" : "unset";
 }
 
-function getMonthlyAverageHoursTargetStaffNames_(scope) {
+function getBulkScopeConfirmMessage_(scope) {
+  return scope === "all"
+    ? "全スタッフを対象に一括編集をしてよろしいですか？(※変更後はブラウザバックで戻せません)"
+    : "未設定のスタッフを対象に一括編集をしてよろしいですか？(※変更後はブラウザバックで戻せません)";
+}
+
+function getUniquePayrollStaffNames_(filterFn) {
   const seen = new Set();
   const target = [];
 
@@ -1058,41 +1082,67 @@ function getMonthlyAverageHoursTargetStaffNames_(scope) {
     const staffName = String(row && row.staffName || "").trim();
     if (!staffName || seen.has(staffName)) return;
     seen.add(staffName);
-
-    const employmentType = normalizeEmploymentType(row && row.employmentType);
-    if (employmentType !== "社員") return;
-
-    const setting = getPaySetting(staffName);
-    const hasStaffMonthlyAverage = Number(setting && setting.monthlyAverageHours) >= 1;
-    if (scope === "unset" && hasStaffMonthlyAverage) return;
-
+    if (typeof filterFn === "function" && !filterFn(row, getPaySetting(staffName))) return;
     target.push(staffName);
   });
 
   return target;
 }
 
+function getMonthlyAverageHoursTargetStaffNames_(scope) {
+  return getUniquePayrollStaffNames_((row, setting) => {
+    const employmentType = normalizeEmploymentType(row && row.employmentType);
+    if (employmentType !== "社員") return false;
+    const hasStaffMonthlyAverage = Number(setting && setting.monthlyAverageHours) >= 1;
+    return scope !== "unset" || !hasStaffMonthlyAverage;
+  });
+}
+
+function getOvertimeMultiplierTargetStaffNames_(scope) {
+  return getUniquePayrollStaffNames_((row, setting) => {
+    const hasStaffOvertimeMultiplier = Number(setting && setting.overtimeMultiplier) >= 1;
+    return scope !== "unset" || !hasStaffOvertimeMultiplier;
+  });
+}
+
+function getTransportRateTargetStaffNames_(scope) {
+  return getUniquePayrollStaffNames_((row, setting) => {
+    const hasStaffTransportRate = setting && setting.transportRate !== undefined && setting.transportRate !== null && String(setting.transportRate).trim() !== "" && Number(setting.transportRate) >= 0;
+    return scope !== "unset" || !hasStaffTransportRate;
+  });
+}
+
 async function applyOvertimeMultiplierUpdate() {
   const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
+  const nextValue = value === null ? DEFAULT_OVERTIME_MULTIPLIER : value;
+  const scope = getBulkScope_("overtimeMultiplier");
+  const targetNames = getOvertimeMultiplierTargetStaffNames_(scope);
 
-  if (value === null) {
-    overtimeMultiplier = DEFAULT_OVERTIME_MULTIPLIER;
-    dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
-    localStorage.removeItem(OVERTIME_MULTIPLIER_STORAGE_KEY);
-    showMessage(`共通残業割増倍率を初期値 ${formatDecimal(overtimeMultiplier)} に戻しました。`, "neutral");
-  } else {
-    overtimeMultiplier = value;
-    dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
-    localStorage.setItem(OVERTIME_MULTIPLIER_STORAGE_KEY, String(overtimeMultiplier));
-    showMessage(`共通残業割増倍率を ${formatDecimal(overtimeMultiplier)} にしました。`, "ok");
-  }
+  overtimeMultiplier = nextValue;
+  dom.overtimeMultiplier.value = formatDecimal(overtimeMultiplier);
+  localStorage.setItem(OVERTIME_MULTIPLIER_STORAGE_KEY, String(overtimeMultiplier));
+
+  targetNames.forEach((staffName) => {
+    const current = getPaySetting(staffName);
+    paySettings[staffName] = { ...current, overtimeMultiplier };
+  });
+  savePaySettings();
 
   try {
     await saveCommonSettingsToServer();
+    for (const staffName of targetNames) {
+      await saveStaffSettingToServer(staffName, paySettings[staffName]);
+    }
   } catch (error) {
     console.error(error);
     showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
+    renderPayrollTable();
+    if (selectedStaffName) renderStaffEditor(selectedStaffName);
+    return;
   }
+
+  const scopeLabel = scope === "all" ? "全スタッフ" : "未設定のスタッフ";
+  showMessage(`${scopeLabel} ${targetNames.length}名へ、残業割増倍率 ${formatDecimal(overtimeMultiplier)} を一括設定しました。`, "ok");
 
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
@@ -1100,25 +1150,35 @@ async function applyOvertimeMultiplierUpdate() {
 
 async function applyTransportRateUpdate() {
   const value = normalizeDecimalInput(dom.transportRate.value, 0);
+  const nextValue = value === null ? DEFAULT_TRANSPORT_RATE : value;
+  const scope = getBulkScope_("transportRate");
+  const targetNames = getTransportRateTargetStaffNames_(scope);
 
-  if (value === null) {
-    transportRate = DEFAULT_TRANSPORT_RATE;
-    dom.transportRate.value = formatDecimal(transportRate);
-    localStorage.removeItem(TRANSPORT_RATE_STORAGE_KEY);
-    showMessage(`共通の交通費利率を初期値 ${formatDecimal(transportRate)} 円/kmに戻しました。`, "neutral");
-  } else {
-    transportRate = value;
-    dom.transportRate.value = formatDecimal(transportRate);
-    localStorage.setItem(TRANSPORT_RATE_STORAGE_KEY, String(transportRate));
-    showMessage(`共通の交通費利率を ${formatDecimal(transportRate)} 円/kmにしました。`, "ok");
-  }
+  transportRate = nextValue;
+  dom.transportRate.value = formatDecimal(transportRate);
+  localStorage.setItem(TRANSPORT_RATE_STORAGE_KEY, String(transportRate));
+
+  targetNames.forEach((staffName) => {
+    const current = getPaySetting(staffName);
+    paySettings[staffName] = { ...current, transportRate };
+  });
+  savePaySettings();
 
   try {
     await saveCommonSettingsToServer();
+    for (const staffName of targetNames) {
+      await saveStaffSettingToServer(staffName, paySettings[staffName]);
+    }
   } catch (error) {
     console.error(error);
     showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
+    renderPayrollTable();
+    if (selectedStaffName) renderStaffEditor(selectedStaffName);
+    return;
   }
+
+  const scopeLabel = scope === "all" ? "全スタッフ" : "未設定のスタッフ";
+  showMessage(`${scopeLabel} ${targetNames.length}名へ、交通費利率 ${formatDecimal(transportRate)} 円/kmを一括設定しました。`, "ok");
 
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
