@@ -845,37 +845,119 @@ function updateSummary() {
 function requestCommonSettingUpdate(type) {
   pendingCommonSettingType = type;
 
-  let label = "";
-  let nextText = "";
-  let currentText = "";
+  let detail = null;
 
   if (type === "monthlyAverageHours") {
     const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
-    label = "共通：社員用 月平均所定労働時間";
-    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_MONTHLY_AVERAGE_HOURS)} 時間` : `${formatDecimal(value)} 時間`;
-    currentText = `${formatDecimal(monthlyAverageHours)} 時間`;
+    const nextValue = value === null ? DEFAULT_MONTHLY_AVERAGE_HOURS : value;
+    detail = {
+      label: "共通：社員用 月平均所定労働時間",
+      currentText: `${formatDecimal(monthlyAverageHours)} 時間`,
+      nextText: `${formatDecimal(nextValue)} 時間`,
+      changed: !isSameDecimal_(monthlyAverageHours, nextValue),
+      note: "スタッフ別の月平均所定労働時間が未設定の社員に使います。",
+    };
   } else if (type === "overtimeMultiplier") {
     const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
-    label = "共通残業割増倍率";
-    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_OVERTIME_MULTIPLIER)}` : formatDecimal(value);
-    currentText = formatDecimal(overtimeMultiplier);
+    const nextValue = value === null ? DEFAULT_OVERTIME_MULTIPLIER : value;
+    detail = {
+      label: "共通残業割増倍率",
+      currentText: formatDecimal(overtimeMultiplier),
+      nextText: formatDecimal(nextValue),
+      changed: !isSameDecimal_(overtimeMultiplier, nextValue),
+      note: "スタッフ別の残業割増倍率が未設定の人に使います。",
+    };
   } else if (type === "transportRate") {
     const value = normalizeDecimalInput(dom.transportRate.value, 0);
-    label = "共通：交通費利率";
-    nextText = value === null ? `初期値 ${formatDecimal(DEFAULT_TRANSPORT_RATE)} 円/km` : `${formatDecimal(value)} 円/km`;
-    currentText = `${formatDecimal(transportRate)} 円/km`;
+    const nextValue = value === null ? DEFAULT_TRANSPORT_RATE : value;
+    detail = {
+      label: "共通：交通費利率",
+      currentText: `${formatDecimal(transportRate)} 円/km`,
+      nextText: `${formatDecimal(nextValue)} 円/km`,
+      changed: !isSameDecimal_(transportRate, nextValue),
+      note: "スタッフ別の交通費利率が未設定で、通勤手段が車の人に使います。",
+    };
   } else if (type === "deductionRates") {
-    label = "控除共通料率・PDF全体備考";
     const nextNote = normalizeNoteInput(dom.commonPayslipNote.value);
-    currentText = `健保 ${formatDecimal(healthInsuranceRate)}% / 介護 ${formatDecimal(careInsuranceRate)}% / 厚年 ${formatDecimal(pensionInsuranceRate)}% / 雇用 ${formatDecimal(employmentInsuranceRate)}% / 備考 ${commonPayslipNote ? "あり" : "なし"}`;
-    nextText = `健保 ${formatDecimalInputOrDefault(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE)}% / 介護 ${formatDecimalInputOrDefault(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE)}% / 厚年 ${formatDecimalInputOrDefault(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE)}% / 雇用 ${formatDecimalInputOrDefault(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE)}% / 備考 ${nextNote ? "あり" : "なし"}`;
-  } else {
-    return;
+    const currentValues = {
+      health: safeNumber(healthInsuranceRate),
+      care: safeNumber(careInsuranceRate),
+      pension: safeNumber(pensionInsuranceRate),
+      employment: safeNumber(employmentInsuranceRate),
+      note: commonPayslipNote || "",
+    };
+    const nextValues = {
+      health: Number(formatDecimalInputOrDefault(dom.healthInsuranceRate.value, DEFAULT_HEALTH_INSURANCE_RATE)),
+      care: Number(formatDecimalInputOrDefault(dom.careInsuranceRate.value, DEFAULT_CARE_INSURANCE_RATE)),
+      pension: Number(formatDecimalInputOrDefault(dom.pensionInsuranceRate.value, DEFAULT_PENSION_INSURANCE_RATE)),
+      employment: Number(formatDecimalInputOrDefault(dom.employmentInsuranceRate.value, DEFAULT_EMPLOYMENT_INSURANCE_RATE)),
+      note: nextNote,
+    };
+    detail = {
+      label: "控除共通料率・PDF全体備考",
+      currentText: `健保 ${formatDecimal(currentValues.health)}% / 介護 ${formatDecimal(currentValues.care)}% / 厚年 ${formatDecimal(currentValues.pension)}% / 雇用 ${formatDecimal(currentValues.employment)}% / 備考 ${currentValues.note ? "あり" : "なし"}`,
+      nextText: `健保 ${formatDecimal(nextValues.health)}% / 介護 ${formatDecimal(nextValues.care)}% / 厚年 ${formatDecimal(nextValues.pension)}% / 雇用 ${formatDecimal(nextValues.employment)}% / 備考 ${nextValues.note ? "あり" : "なし"}`,
+      changed: !isSameDecimal_(currentValues.health, nextValues.health)
+        || !isSameDecimal_(currentValues.care, nextValues.care)
+        || !isSameDecimal_(currentValues.pension, nextValues.pension)
+        || !isSameDecimal_(currentValues.employment, nextValues.employment)
+        || currentValues.note !== nextValues.note,
+      note: "対象スタッフの控除計算と、給与明細PDFの共通備考に使います。",
+    };
   }
 
-  dom.commonSettingConfirmText.textContent = `${label}を ${currentText} から ${nextText} に一括で変更いたしますがよろしいですか？`;
+  if (!detail) return;
+
+
+  renderCommonSettingConfirm(detail);
   dom.commonSettingConfirmArea.hidden = false;
   dom.confirmCommonSettingYesButton.focus();
+}
+
+function renderCommonSettingConfirm(detail) {
+  dom.commonSettingConfirmText.innerHTML = "";
+
+  const lead = document.createElement("p");
+  lead.className = "confirm-lead";
+  lead.textContent = `${detail.label}を更新します。`;
+  dom.commonSettingConfirmText.appendChild(lead);
+
+  const grid = document.createElement("div");
+  grid.className = "confirm-change-grid";
+  grid.appendChild(makeConfirmValueCard_("現在", detail.currentText, "current"));
+  grid.appendChild(makeConfirmArrow_());
+  grid.appendChild(makeConfirmValueCard_("変更後", detail.nextText, "next"));
+  dom.commonSettingConfirmText.appendChild(grid);
+
+  const note = document.createElement("p");
+  note.className = "confirm-note";
+  note.textContent = detail.note || "この変更は共通設定として保存されます。";
+  dom.commonSettingConfirmText.appendChild(note);
+}
+
+function makeConfirmValueCard_(label, value, type) {
+  const card = document.createElement("div");
+  card.className = `confirm-value-card ${type || ""}`.trim();
+
+  const labelEl = document.createElement("span");
+  labelEl.textContent = label;
+  const valueEl = document.createElement("strong");
+  valueEl.textContent = value;
+
+  card.appendChild(labelEl);
+  card.appendChild(valueEl);
+  return card;
+}
+
+function makeConfirmArrow_() {
+  const arrow = document.createElement("div");
+  arrow.className = "confirm-arrow";
+  arrow.textContent = "→";
+  return arrow;
+}
+
+function isSameDecimal_(a, b) {
+  return Math.abs(safeNumber(a) - safeNumber(b)) < 0.000001;
 }
 
 async function confirmCommonSettingUpdate() {
