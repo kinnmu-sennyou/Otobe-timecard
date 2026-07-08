@@ -222,7 +222,7 @@ function renderPayrollTable() {
   if (!filteredRows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 10;
+    td.colSpan = 8;
     td.className = "empty-cell";
     td.textContent = payrollRows.length ? "該当スタッフがいません。" : "給与計算データがありません。";
     tr.appendChild(td);
@@ -235,8 +235,6 @@ function renderPayrollTable() {
   filteredRows.forEach((row) => {
     const staffName = String(row.staffName || "").trim();
     const employmentType = normalizeEmploymentType(row.employmentType);
-    const setting = getPaySetting(staffName);
-    const calc = calculatePay(row, setting, employmentType);
     const tr = document.createElement("tr");
 
     tr.appendChild(makePayslipSelectionCell(staffName));
@@ -245,10 +243,8 @@ function renderPayrollTable() {
     tr.appendChild(makeNumberCell(row.attendanceDays));
     tr.appendChild(makeNumberCell(row.totalHours));
     tr.appendChild(makeNumberCell(row.overtimeHours));
-    tr.appendChild(makeMoneyCell(calc.totalPay, "strong-money"));
-    tr.appendChild(makeMoneyCell(calc.deductions.totalDeduction));
-    tr.appendChild(makeMoneyCell(calc.netPay, "strong-money"));
-    tr.appendChild(makeTextCell(getSettingStatus(setting, employmentType)));
+    tr.appendChild(makeNumberCell(row.nonWorkHours));
+    tr.appendChild(makeNumberCell(row.week40Over));
 
     dom.payrollBody.appendChild(tr);
   });
