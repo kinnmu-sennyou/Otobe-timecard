@@ -709,3 +709,205 @@ td {
   font-weight: 900;
   line-height: 1.55;
 }
+
+/* 給与計算設定エリアを見やすく整理 */
+.payroll-settings-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.payroll-settings-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 16px;
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+  background: linear-gradient(135deg, #fff3f8, #fffdf7);
+  border-bottom: 1px solid var(--line);
+}
+
+.payroll-settings-summary::-webkit-details-marker {
+  display: none;
+}
+
+.payroll-settings-summary::after {
+  content: "開く";
+  flex: 0 0 auto;
+  min-width: 54px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #f0d7e1;
+  color: #8a3f59;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.payroll-settings-panel[open] .payroll-settings-summary::after {
+  content: "閉じる";
+}
+
+.payroll-settings-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 14px;
+  background: #fffdf8;
+}
+
+.settings-card {
+  padding: 14px;
+  border: 1px solid #ead9b6;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(122, 76, 91, .06);
+}
+
+.settings-card-wide {
+  grid-column: 1 / -1;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.settings-card-header .small {
+  margin-top: 3px;
+}
+
+.settings-card-grid,
+.deduction-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.setting-item,
+.deduction-rate-grid label,
+.common-note-label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font-weight: 900;
+  color: var(--pink-dark);
+}
+
+.setting-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.setting-action-row input,
+.deduction-rate-grid input,
+.bulk-scope-label select {
+  width: 100%;
+  min-width: 0;
+}
+
+.mini-update-button {
+  min-height: 42px;
+  width: auto;
+  min-width: 74px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ee91af, #d96d90);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(217, 109, 144, .18);
+}
+
+.deduction-update-button {
+  flex: 0 0 auto;
+  min-width: 118px;
+}
+
+.bulk-scope-label {
+  display: grid;
+  gap: 6px;
+  color: #8a3f59;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.bulk-scope-label select {
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.common-confirm-card {
+  border-color: #e6c778;
+  background: #fff9e8;
+}
+
+.common-confirm-body {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.confirm-button-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.confirm-update-button {
+  width: 88px;
+  min-width: 88px;
+  min-height: 42px;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.confirm-cancel-button {
+  width: 100px;
+  min-width: 100px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #ead3a5;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #7a4c5b;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.settings-save-note {
+  margin: 0;
+  padding: 0 14px 14px;
+  background: #fffdf8;
+}
+
+@media (max-width: 860px) {
+  .payroll-settings-layout,
+  .settings-card-grid,
+  .deduction-rate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-card-header {
+    display: grid;
+  }
+
+  .deduction-update-button {
+    width: 100%;
+  }
+}
