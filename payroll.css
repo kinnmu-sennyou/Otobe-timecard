@@ -540,3 +540,41 @@ td {
 #tableArea .table-scroll::-webkit-scrollbar-track {
   background: #fff8fb;
 }
+
+/* ===== 給与計算一覧：さらに行幅を詰める版 ===== */
+#tableArea .table-scroll {
+  max-height: 312px;
+}
+
+#tableArea .table-scroll table {
+  min-width: 820px;
+}
+
+#tableArea .table-scroll th,
+#tableArea .table-scroll td {
+  padding: 3px 6px;
+  line-height: 1.12;
+  font-size: 12px;
+}
+
+#tableArea .table-scroll th {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+#tableArea #payrollBody td {
+  height: 28px;
+}
+
+#tableArea #payrollBody button {
+  min-height: 26px;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1.1;
+  border-radius: 10px;
+}
+
+#tableArea .select-cell input {
+  width: 14px;
+  height: 14px;
+}
