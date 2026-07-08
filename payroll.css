@@ -578,3 +578,104 @@ td {
   width: 14px;
   height: 14px;
 }
+
+
+/* 共通設定の更新確認を見やすくする */
+#commonSettingConfirmArea {
+  border: 2px solid #f0c7d6;
+  background: #fffafd;
+  box-shadow: 0 10px 24px rgba(118, 70, 87, .10);
+}
+
+.common-confirm-body {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.confirm-lead {
+  margin: 0;
+  color: #64283b;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.confirm-change-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.confirm-value-card {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #ead3dd;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.confirm-value-card.next {
+  border-color: #d96d90;
+  background: #fff3f8;
+}
+
+.confirm-value-card span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.confirm-value-card strong {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.confirm-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d96d90;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.confirm-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fff8d9;
+  color: #735124;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+#confirmCommonSettingNoButton {
+  min-height: 40px;
+  border: 1px solid #ead3dd;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64283b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .confirm-change-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-arrow {
+    min-height: 18px;
+    transform: rotate(90deg);
+  }
+}
