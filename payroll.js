@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "payroll-view-transport-public-manual-20260707-58";
+const APP_VERSION = "payroll-view-default-insurance-employee-20260708-59";
 
 const PAY_SETTING_STORAGE_KEY = "otobe-payroll:paySettings:v35";
 const OVERTIME_MULTIPLIER_STORAGE_KEY = "otobe-payroll:overtimeMultiplier";
@@ -403,10 +403,10 @@ function renderStaffEditor(staffName) {
   dom.editStaffMonthlyAverageHours.value = setting.monthlyAverageHours ? formatDecimal(setting.monthlyAverageHours) : "0";
   dom.editStaffMonthlyAverageHours.placeholder = "";
   dom.editStandardMonthlyRemuneration.value = setting.standardMonthlyRemuneration ? String(setting.standardMonthlyRemuneration) : "";
-  dom.editHealthInsuranceEnabled.value = setting.healthInsuranceEnabled ? "on" : "off";
-  dom.editCareInsuranceEnabled.value = setting.careInsuranceEnabled ? "on" : "off";
-  dom.editPensionInsuranceEnabled.value = setting.pensionInsuranceEnabled ? "on" : "off";
-  dom.editEmploymentInsuranceEnabled.value = setting.employmentInsuranceEnabled ? "on" : "off";
+  dom.editHealthInsuranceEnabled.value = getInsuranceEnabledForDisplay(setting, "healthInsuranceEnabled", employmentType) ? "on" : "off";
+  dom.editCareInsuranceEnabled.value = getInsuranceEnabledForDisplay(setting, "careInsuranceEnabled", employmentType) ? "on" : "off";
+  dom.editPensionInsuranceEnabled.value = getInsuranceEnabledForDisplay(setting, "pensionInsuranceEnabled", employmentType) ? "on" : "off";
+  dom.editEmploymentInsuranceEnabled.value = getInsuranceEnabledForDisplay(setting, "employmentInsuranceEnabled", employmentType) ? "on" : "off";
   dom.editIncomeTax.value = setting.incomeTax ? String(setting.incomeTax) : "";
   dom.editResidentTax.value = setting.residentTax ? String(setting.residentTax) : "";
   dom.editOtherDeduction.value = setting.otherDeduction ? String(setting.otherDeduction) : "";
@@ -783,7 +783,7 @@ function calculatePay(row, setting, employmentType) {
     const overtimePay = hourlyUnit * overtimeHours * multiplier;
     const nonWorkDeduction = hourlyUnit * nonWorkHours;
     const totalPay = basePay + overtimePay + transportAllowance - nonWorkDeduction;
-    const deductions = calculateDeductions(setting, totalPay);
+    const deductions = calculateDeductions(setting, totalPay, employmentType);
     const netPay = totalPay - deductions.totalDeduction;
 
     return roundPay({ hourlyUnit, basePay, overtimePay, transportAllowance, nonWorkDeduction, totalPay, deductions, netPay });
@@ -795,7 +795,7 @@ function calculatePay(row, setting, employmentType) {
   const overtimePay = hourlyWage * overtimeHours * multiplier;
   const nonWorkDeduction = 0;
   const totalPay = basePay + overtimePay + transportAllowance;
-  const deductions = calculateDeductions(setting, totalPay);
+  const deductions = calculateDeductions(setting, totalPay, employmentType);
   const netPay = totalPay - deductions.totalDeduction;
 
   return roundPay({ hourlyUnit, basePay, overtimePay, transportAllowance, nonWorkDeduction, totalPay, deductions, netPay });
@@ -1274,12 +1274,20 @@ function calculateTransportAllowance(row, setting) {
   return distance * rate * days;
 }
 
-function calculateDeductions(setting, totalPay) {
+
+function getInsuranceEnabledForDisplay(setting, key, employmentType) {
+  if (setting && typeof setting === "object" && Object.prototype.hasOwnProperty.call(setting, key)) {
+    return Boolean(setting[key]);
+  }
+  return normalizeEmploymentType(employmentType) === "社員";
+}
+
+function calculateDeductions(setting, totalPay, employmentType) {
   const standardMonthlyRemuneration = safeNumber(setting && setting.standardMonthlyRemuneration);
-  const healthInsurance = setting && setting.healthInsuranceEnabled ? standardMonthlyRemuneration * healthInsuranceRate / 100 / 2 : 0;
-  const careInsurance = setting && setting.careInsuranceEnabled ? standardMonthlyRemuneration * careInsuranceRate / 100 / 2 : 0;
-  const pensionInsurance = setting && setting.pensionInsuranceEnabled ? standardMonthlyRemuneration * pensionInsuranceRate / 100 / 2 : 0;
-  const employmentInsurance = setting && setting.employmentInsuranceEnabled ? safeNumber(totalPay) * employmentInsuranceRate / 100 : 0;
+  const healthInsurance = getInsuranceEnabledForDisplay(setting, "healthInsuranceEnabled", employmentType) ? standardMonthlyRemuneration * healthInsuranceRate / 100 / 2 : 0;
+  const careInsurance = getInsuranceEnabledForDisplay(setting, "careInsuranceEnabled", employmentType) ? standardMonthlyRemuneration * careInsuranceRate / 100 / 2 : 0;
+  const pensionInsurance = getInsuranceEnabledForDisplay(setting, "pensionInsuranceEnabled", employmentType) ? standardMonthlyRemuneration * pensionInsuranceRate / 100 / 2 : 0;
+  const employmentInsurance = getInsuranceEnabledForDisplay(setting, "employmentInsuranceEnabled", employmentType) ? safeNumber(totalPay) * employmentInsuranceRate / 100 : 0;
   const incomeTax = safeNumber(setting && setting.incomeTax);
   const residentTax = safeNumber(setting && setting.residentTax);
   const otherDeduction = safeNumber(setting && setting.otherDeduction);
