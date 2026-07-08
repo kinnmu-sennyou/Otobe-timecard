@@ -439,65 +439,82 @@
       </section>
 
 
-        <details class="card-block calc-settings-area">
-          <summary class="section-title">給与計算設定を開く / 閉じる</summary>
+        <details class="card-block calc-settings-area payroll-settings-panel">
+          <summary class="section-title payroll-settings-summary">給与計算設定を開く / 閉じる</summary>
 
-          <div class="control-section calc-setting-section">
-            <div class="setting-grid">
-              <div style="display:grid; gap:6px;">
-                <label for="monthlyAverageHours">共通：社員用 月平均所定労働時間</label>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="number" id="monthlyAverageHours" min="1" step="0.01" inputmode="decimal" placeholder="例：173.33" style="min-width:0; flex:1;">
-                  <button type="button" id="updateMonthlyAverageHoursButton" class="main-button" style="width:auto; min-width:64px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">更新</button>
+          <div class="payroll-settings-layout">
+            <section class="settings-card settings-card-wide">
+              <div class="settings-card-header">
+                <div>
+                  <div class="sub-section-title">基本共通設定</div>
+                  <p class="small">社員の月平均所定労働時間と、全スタッフ共通の残業割増倍率を管理します。</p>
                 </div>
-                <label class="bulk-scope-label" for="monthlyAverageHoursScope">
-                  一括設定の範囲
-                  <select id="monthlyAverageHoursScope">
-                    <option value="unset">未設定スタッフ分のみ</option>
-                    <option value="all">全員</option>
-                  </select>
-                </label>
               </div>
-              <div style="display:grid; gap:6px;">
-                <label for="overtimeMultiplier">共通残業割増倍率</label>
-                <div style="display:flex; align-items:center; gap:8px;">
-                  <input type="number" id="overtimeMultiplier" min="1" step="0.01" inputmode="decimal" placeholder="例：1.25" style="min-width:0; flex:1;">
-                  <button type="button" id="updateOvertimeMultiplierButton" class="main-button" style="width:auto; min-width:64px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">更新</button>
-                </div>
-                <label class="bulk-scope-label" for="overtimeMultiplierScope">
-                  一括設定の範囲
-                  <select id="overtimeMultiplierScope">
-                    <option value="unset">未設定スタッフ分のみ</option>
-                    <option value="all">全員</option>
-                  </select>
-                </label>
-              </div>
-            </div>
 
-            <div class="control-section calc-setting-section">
-              <div class="sub-section-title">交通費共通設定</div>
-              <div class="setting-grid">
-                <div style="display:grid; gap:6px;">
-                  <label for="transportRate">共通：交通費利率（円/km）</label>
-                  <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="number" id="transportRate" min="0" step="0.01" inputmode="decimal" placeholder="例：15" style="min-width:0; flex:1;">
-                    <button type="button" id="updateTransportRateButton" class="main-button" style="width:auto; min-width:64px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">更新</button>
+              <div class="settings-card-grid">
+                <div class="setting-item">
+                  <label for="monthlyAverageHours">共通：社員用 月平均所定労働時間</label>
+                  <div class="setting-action-row">
+                    <input type="number" id="monthlyAverageHours" min="1" step="0.01" inputmode="decimal" placeholder="例：173.33">
+                    <button type="button" id="updateMonthlyAverageHoursButton" class="mini-update-button">更新</button>
                   </div>
-                  <label class="bulk-scope-label" for="transportRateScope">
+                  <label class="bulk-scope-label" for="monthlyAverageHoursScope">
                     一括設定の範囲
-                    <select id="transportRateScope">
+                    <select id="monthlyAverageHoursScope">
                       <option value="unset">未設定スタッフ分のみ</option>
                       <option value="all">全員</option>
                     </select>
                   </label>
+                  <p class="small">選択した範囲の社員スタッフへ一括設定します。パートは対象外です。</p>
+                </div>
+
+                <div class="setting-item">
+                  <label for="overtimeMultiplier">共通残業割増倍率</label>
+                  <div class="setting-action-row">
+                    <input type="number" id="overtimeMultiplier" min="1" step="0.01" inputmode="decimal" placeholder="例：1.25">
+                    <button type="button" id="updateOvertimeMultiplierButton" class="mini-update-button">更新</button>
+                  </div>
+                  <label class="bulk-scope-label" for="overtimeMultiplierScope">
+                    一括設定の範囲
+                    <select id="overtimeMultiplierScope">
+                      <option value="unset">未設定スタッフ分のみ</option>
+                      <option value="all">全員</option>
+                    </select>
+                  </label>
+                  <p class="small">選択した範囲のスタッフへ一括設定します。</p>
                 </div>
               </div>
-              <p class="small">スタッフ別の交通費利率が空欄の時だけ、この共通利率を使います。入力例：1kmあたり15円なら「15」。</p>
-            </div>
+            </section>
 
-            <div class="control-section calc-setting-section">
-              <div class="sub-section-title">控除共通料率</div>
-              <div class="setting-grid">
+            <section class="settings-card">
+              <div class="sub-section-title">交通費共通設定</div>
+              <div class="setting-item">
+                <label for="transportRate">共通：交通費利率（円/km）</label>
+                <div class="setting-action-row">
+                  <input type="number" id="transportRate" min="0" step="0.01" inputmode="decimal" placeholder="例：15">
+                  <button type="button" id="updateTransportRateButton" class="mini-update-button">更新</button>
+                </div>
+                <label class="bulk-scope-label" for="transportRateScope">
+                  一括設定の範囲
+                  <select id="transportRateScope">
+                    <option value="unset">未設定スタッフ分のみ</option>
+                    <option value="all">全員</option>
+                  </select>
+                </label>
+                <p class="small">車通勤の計算に使います。公共交通機関は手動入力、徒歩(自転車)は0円扱いです。</p>
+              </div>
+            </section>
+
+            <section class="settings-card settings-card-wide">
+              <div class="settings-card-header">
+                <div>
+                  <div class="sub-section-title">控除共通料率</div>
+                  <p class="small">料率は全スタッフ共通です。対象外のスタッフには計算上反映されません。</p>
+                </div>
+                <button type="button" id="updateDeductionRatesButton" class="mini-update-button deduction-update-button">控除料率を更新</button>
+              </div>
+
+              <div class="deduction-rate-grid">
                 <label>
                   健康保険料率（%）
                   <input type="number" id="healthInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：9.85">
@@ -515,29 +532,28 @@
                   <input type="number" id="employmentInsuranceRate" min="0" step="0.01" inputmode="decimal" placeholder="例：0.5">
                 </label>
               </div>
-              <div class="button-row" style="margin-top:8px;">
-                <button type="button" id="updateDeductionRatesButton" class="main-button" style="width:auto; min-width:96px; padding:8px 10px; font-size:12px; line-height:1.1; white-space:nowrap;">控除料率を更新</button>
-              </div>
-              <p class="small">料率は全スタッフ共通です。入力は「9.85」のように%の数字をそのまま入れてください。</p>
-              <label style="display:grid; gap:6px; margin-top:10px;">
+            </section>
+
+            <section class="settings-card settings-card-wide">
+              <div class="sub-section-title">給与明細PDF 共通備考</div>
+              <label class="common-note-label">
                 備考欄（全体反映用・記入時のみPDFに反映）
                 <textarea id="commonPayslipNote" class="payslip-note-input" maxlength="500" placeholder="例：全スタッフ共通の支給日、全体への補足など"></textarea>
               </label>
-              <p class="small">ここに記入した内容は、給与明細PDFを作成した時だけ、選択した全スタッフのPDFに反映されます。空欄なら表示しません。</p>
-            </div>
-            <div class="control-section" id="commonSettingConfirmArea" role="alertdialog" aria-modal="true" aria-labelledby="commonSettingConfirmTitle" hidden>
+              <p class="small">給与明細PDFを作成した時だけ、選択した全スタッフのPDFに反映されます。空欄なら表示しません。</p>
+            </section>
+
+            <section class="settings-card settings-card-wide common-confirm-card" id="commonSettingConfirmArea" role="alertdialog" aria-modal="true" aria-labelledby="commonSettingConfirmTitle" hidden>
               <div class="sub-section-title" id="commonSettingConfirmTitle">共通設定の更新確認</div>
               <div class="common-confirm-body" id="commonSettingConfirmText">一括で変更いたしますがよろしいですか？</div>
-              <div class="button-row" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <button type="button" id="confirmCommonSettingYesButton" class="main-button" style="width:64px; min-width:64px; padding:7px 0; font-size:12px; line-height:1.1;">更新</button>
-                <button type="button" id="confirmCommonSettingNoButton" style="width:96px; min-width:96px; padding:9px 12px; font-size:13px; line-height:1.1;">やめる</button>
+              <div class="confirm-button-row">
+                <button type="button" id="confirmCommonSettingYesButton" class="main-button confirm-update-button">更新</button>
+                <button type="button" id="confirmCommonSettingNoButton" class="confirm-cancel-button">やめる</button>
               </div>
-            </div>
-            <p class="small">月平均所定労働時間は、選択した範囲の社員スタッフへ一括設定できます。パートは対象外です。</p>
-            <p class="small">共通残業割増倍率・交通費利率も、選択した範囲のスタッフへ一括設定できます。</p>
+            </section>
           </div>
 
-          <p class="small">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・交通費設定・控除設定・共通設定は給与設定専用スプレッドシートへ保存されます。</p>
+          <p class="small settings-save-note">月給・時給・スタッフ別残業割増倍率・スタッフ別月平均所定労働時間・交通費設定・控除設定・共通設定は給与設定専用スプレッドシートへ保存されます。</p>
         </details>
       </div>
 
