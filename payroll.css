@@ -457,3 +457,86 @@ td {
 #payrollBody td:nth-child(9) {
   font-size: 15px;
 }
+
+
+/* ===== 給与計算一覧：7〜8件表示の固定スクロール窓＋行幅コンパクト ===== */
+#tableArea .table-scroll {
+  max-height: 345px;
+  overflow-x: auto;
+  overflow-y: auto;
+  border-color: #e4c3d0;
+  box-shadow: inset 0 0 0 1px rgba(228, 195, 208, .45);
+}
+
+#tableArea .table-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 900px;
+}
+
+#tableArea .table-scroll th,
+#tableArea .table-scroll td {
+  padding: 6px 8px;
+  min-height: 0;
+  line-height: 1.25;
+  border-right: 1px solid #ead1dc;
+  border-bottom: 1px solid #f0dce5;
+  font-size: 13px;
+}
+
+#tableArea .table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 2px solid #dfb6c7;
+  text-align: center;
+}
+
+#tableArea .table-scroll th:last-child,
+#tableArea .table-scroll td:last-child {
+  border-right: 0;
+}
+
+#tableArea .table-scroll tbody tr:nth-child(even) td {
+  background: #fffafd;
+}
+
+#tableArea .table-scroll tbody tr:nth-child(odd) td {
+  background: #ffffff;
+}
+
+#tableArea .table-scroll tbody tr:hover td {
+  background: #fff3f8;
+}
+
+#tableArea #payrollBody td:nth-child(1),
+#tableArea #payrollBody td:nth-child(3) {
+  text-align: center;
+}
+
+#tableArea #payrollBody td:nth-child(4),
+#tableArea #payrollBody td:nth-child(5),
+#tableArea #payrollBody td:nth-child(6),
+#tableArea #payrollBody td:nth-child(7),
+#tableArea #payrollBody td:nth-child(8) {
+  text-align: right;
+}
+
+#tableArea .select-cell input {
+  width: 16px;
+  height: 16px;
+}
+
+#tableArea .table-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+#tableArea .table-scroll::-webkit-scrollbar-thumb {
+  background: #e4c3d0;
+  border-radius: 999px;
+}
+
+#tableArea .table-scroll::-webkit-scrollbar-track {
+  background: #fff8fb;
+}
