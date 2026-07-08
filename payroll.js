@@ -64,6 +64,7 @@ function initPayrollView() {
     totalNetPayText: document.getElementById("totalNetPayText"),
     searchInput: document.getElementById("searchInput"),
     monthlyAverageHours: document.getElementById("monthlyAverageHours"),
+    monthlyAverageHoursScope: document.getElementById("monthlyAverageHoursScope"),
     overtimeMultiplier: document.getElementById("overtimeMultiplier"),
     updateMonthlyAverageHoursButton: document.getElementById("updateMonthlyAverageHoursButton"),
     updateOvertimeMultiplierButton: document.getElementById("updateOvertimeMultiplierButton"),
@@ -850,12 +851,17 @@ function requestCommonSettingUpdate(type) {
   if (type === "monthlyAverageHours") {
     const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
     const nextValue = value === null ? DEFAULT_MONTHLY_AVERAGE_HOURS : value;
+    const scope = getMonthlyAverageHoursScope_();
+    const targetNames = getMonthlyAverageHoursTargetStaffNames_(scope);
     detail = {
       label: "共通：社員用 月平均所定労働時間",
       currentText: `${formatDecimal(monthlyAverageHours)} 時間`,
       nextText: `${formatDecimal(nextValue)} 時間`,
       changed: !isSameDecimal_(monthlyAverageHours, nextValue),
-      note: "スタッフ別の月平均所定労働時間が未設定の社員に使います。",
+      note: scope === "all"
+        ? "全スタッフを対象に一括編集をしてよろしいですか？(※変更後はブラウザバックで戻せません)"
+        : "未設定のスタッフを対象に一括編集をしてよろしいですか？(※変更後はブラウザバックで戻せません)",
+      targetText: `${targetNames.length}名`,
     };
   } else if (type === "overtimeMultiplier") {
     const value = normalizeDecimalInput(dom.overtimeMultiplier.value, 1);
@@ -929,6 +935,13 @@ function renderCommonSettingConfirm(detail) {
   grid.appendChild(makeConfirmValueCard_("変更後", detail.nextText, "next"));
   dom.commonSettingConfirmText.appendChild(grid);
 
+  if (detail.targetText) {
+    const target = document.createElement("p");
+    target.className = "confirm-target";
+    target.textContent = `対象：${detail.targetText}`;
+    dom.commonSettingConfirmText.appendChild(target);
+  }
+
   const note = document.createElement("p");
   note.className = "confirm-note";
   note.textContent = detail.note || "この変更は共通設定として保存されます。";
@@ -998,28 +1011,65 @@ function restoreCommonSettingInputs() {
 
 async function applyMonthlyAverageHoursUpdate() {
   const value = normalizeDecimalInput(dom.monthlyAverageHours.value, 1);
+  const nextValue = value === null ? DEFAULT_MONTHLY_AVERAGE_HOURS : value;
+  const scope = getMonthlyAverageHoursScope_();
+  const targetNames = getMonthlyAverageHoursTargetStaffNames_(scope);
 
-  if (value === null) {
-    monthlyAverageHours = DEFAULT_MONTHLY_AVERAGE_HOURS;
-    dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
-    localStorage.removeItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY);
-    showMessage(`共通の月平均所定労働時間を初期値 ${formatDecimal(monthlyAverageHours)} に戻しました。`, "neutral");
-  } else {
-    monthlyAverageHours = value;
-    dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
-    localStorage.setItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, String(monthlyAverageHours));
-    showMessage(`共通の月平均所定労働時間を ${formatDecimal(monthlyAverageHours)} 時間にしました。`, "ok");
-  }
+  monthlyAverageHours = nextValue;
+  dom.monthlyAverageHours.value = formatDecimal(monthlyAverageHours);
+  localStorage.setItem(MONTHLY_AVERAGE_HOURS_STORAGE_KEY, String(monthlyAverageHours));
+
+  targetNames.forEach((staffName) => {
+    const current = getPaySetting(staffName);
+    paySettings[staffName] = { ...current, monthlyAverageHours };
+  });
+  savePaySettings();
 
   try {
     await saveCommonSettingsToServer();
+    for (const staffName of targetNames) {
+      await saveStaffSettingToServer(staffName, paySettings[staffName]);
+    }
   } catch (error) {
     console.error(error);
     showMessage(`端末には保存しましたが、給与設定専用スプレッドシートへの共有保存に失敗しました：${error.message}`, "error");
+    renderPayrollTable();
+    if (selectedStaffName) renderStaffEditor(selectedStaffName);
+    return;
   }
+
+  const scopeLabel = scope === "all" ? "全スタッフ" : "未設定のスタッフ";
+  showMessage(`${scopeLabel} ${targetNames.length}名へ、月平均所定労働時間 ${formatDecimal(monthlyAverageHours)} 時間を一括設定しました。`, "ok");
 
   renderPayrollTable();
   if (selectedStaffName) renderStaffEditor(selectedStaffName);
+}
+
+function getMonthlyAverageHoursScope_() {
+  const value = dom.monthlyAverageHoursScope ? String(dom.monthlyAverageHoursScope.value || "").trim() : "unset";
+  return value === "all" ? "all" : "unset";
+}
+
+function getMonthlyAverageHoursTargetStaffNames_(scope) {
+  const seen = new Set();
+  const target = [];
+
+  payrollRows.forEach((row) => {
+    const staffName = String(row && row.staffName || "").trim();
+    if (!staffName || seen.has(staffName)) return;
+    seen.add(staffName);
+
+    const employmentType = normalizeEmploymentType(row && row.employmentType);
+    if (employmentType !== "社員") return;
+
+    const setting = getPaySetting(staffName);
+    const hasStaffMonthlyAverage = Number(setting && setting.monthlyAverageHours) >= 1;
+    if (scope === "unset" && hasStaffMonthlyAverage) return;
+
+    target.push(staffName);
+  });
+
+  return target;
 }
 
 async function applyOvertimeMultiplierUpdate() {
