@@ -35,13 +35,16 @@
             <select id="employeeSelect" aria-label="スタッフを選択"></select>
           </label>
 
-          <p class="small">前回選択したスタッフは自動で選択されます</p>
+          <p class="small">閲覧のために別スタッフを選んでも、初期スタッフは自動では変わりません。</p>
         </div>
 
         <div class="selected-box">
           <span>選択中</span>
           <strong id="selectedEmployee">未選択</strong>
         </div>
+
+        <button type="button" id="setDefaultEmployeeButton" class="default-employee-button">このスタッフをブラウザにデフォルト登録する</button>
+        <p id="defaultEmployeeStatus" class="default-employee-status">このブラウザの初期スタッフは未登録です</p>
       </div>
 
       <section class="weekly-schedule-view-area" aria-label="選択中スタッフの勤務予定">
@@ -103,7 +106,7 @@
 
 
       <details class="weekly-schedule-area">
-        <summary>勤務日時変更フォーム</summary>
+        <summary>勤務時間変更フォーム</summary>
         <p class="small">選択中スタッフ本人が、登録済みの出勤時間と休みをいつでも変更できます。</p>
         <div id="weeklyScheduleEditor">
           <div id="weeklyScheduleGrid" class="weekly-schedule-grid">
