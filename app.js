@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "king-spec-update-status-clean-message-20260707-27";
+const APP_VERSION = "work-schedule-integrated-final-20260713-05";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -42,7 +42,15 @@ const newEmployeeNo = document.getElementById("newEmployeeNo");
 const newStartTime = document.getElementById("newStartTime");
 const newEndTime = document.getElementById("newEndTime");
 const newBreakMinutes = document.getElementById("newBreakMinutes");
+const newStaffWeeklyScheduleGrid = document.getElementById("newStaffWeeklyScheduleGrid");
 const week40OverInput = document.getElementById("week40OverInput");
+const scheduleTargetEmployee = document.getElementById("scheduleTargetEmployee");
+const weeklyScheduleGrid = document.getElementById("weeklyScheduleGrid");
+const showWeeklyScheduleButton = document.getElementById("showWeeklyScheduleButton");
+const weeklyScheduleDisplay = document.getElementById("weeklyScheduleDisplay");
+const saveWeeklyScheduleButton = document.getElementById("saveWeeklyScheduleButton");
+const weeklyScheduleStatus = document.getElementById("weeklyScheduleStatus");
+const weeklyScheduleEditor = document.getElementById("weeklyScheduleEditor");
 
 const retireStaffButton = document.getElementById("retireStaffButton");
 const retireTargetEmployee = document.getElementById("retireTargetEmployee");
@@ -67,6 +75,7 @@ async function init() {
   buildActionEvents();
   buildBreakEvents();
   initEditDateTime();
+  setupWeeklySchedule();
   setupAddStaffForm();
   setupRetireStaff();
   setupAdminSheetOpen();
@@ -252,6 +261,7 @@ function selectEmployee(emp) {
   if (todayStatus) todayStatus.textContent = `${emp.name} を選択中です。`;
   showMessage(`${emp.name}を選択しました。`, "ok");
   checkYesterdayPunchAlert(emp);
+  resetWeeklyScheduleView(emp);
 }
 
 function selectAction(action) {
@@ -523,6 +533,129 @@ async function showAllSheetsForAdmin() {
   }
 }
 
+
+function setupWeeklySchedule() {
+  setupWeeklyScheduleGrid(weeklyScheduleGrid);
+  setupWeeklyScheduleGrid(newStaffWeeklyScheduleGrid);
+  renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
+
+  if (showWeeklyScheduleButton) showWeeklyScheduleButton.addEventListener("click", showSelectedWeeklySchedule);
+  if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.addEventListener("click", saveWeeklySchedule);
+}
+
+function setupWeeklyScheduleGrid(grid) {
+  if (!grid) return;
+  grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    const off = row.querySelector(".schedule-off");
+    const time = row.querySelector(".schedule-time");
+    if (!off || !time) return;
+    off.addEventListener("change", () => {
+      time.disabled = off.checked || isSending;
+      row.classList.toggle("is-off", off.checked);
+    });
+  });
+}
+
+function getDefaultWeeklySchedule() {
+  return {
+    mon: { isOff: false, startTime: "08:00" }, tue: { isOff: false, startTime: "08:00" },
+    wed: { isOff: false, startTime: "08:00" }, thu: { isOff: false, startTime: "08:00" },
+    fri: { isOff: false, startTime: "08:00" }, sat: { isOff: true, startTime: "" },
+    sun: { isOff: true, startTime: "" },
+  };
+}
+
+function renderWeeklySchedule(schedule) { renderScheduleGrid(weeklyScheduleGrid, schedule); }
+
+function renderScheduleGrid(grid, schedule) {
+  if (!grid) return;
+  const merged = { ...getDefaultWeeklySchedule(), ...(schedule || {}) };
+  grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    const item = merged[row.dataset.day] || {};
+    const off = row.querySelector(".schedule-off");
+    const time = row.querySelector(".schedule-time");
+    if (!off || !time) return;
+    off.checked = Boolean(item.isOff);
+    time.value = item.startTime || "08:00";
+    time.disabled = off.checked || isSending;
+    row.classList.toggle("is-off", off.checked);
+  });
+}
+
+function resetWeeklyScheduleView(emp) {
+  if (scheduleTargetEmployee) scheduleTargetEmployee.textContent = emp ? `${emp.no} ${emp.name}` : "未選択";
+  if (weeklyScheduleDisplay) { weeklyScheduleDisplay.hidden = true; weeklyScheduleDisplay.innerHTML = ""; }
+  if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "表示ボタンを押すと、このスタッフの登録済み予定を確認できます。";
+  renderWeeklySchedule(getDefaultWeeklySchedule());
+}
+
+async function fetchWeeklySchedule(emp) {
+  const result = await postToScript({ mode: "getWeeklySchedule", employeeNo: emp.no, name: emp.name, appVersion: APP_VERSION });
+  if (!result || !result.ok) throw new Error((result && result.message) || "勤務予定を取得できませんでした。");
+  return result.schedule || {};
+}
+
+async function showSelectedWeeklySchedule() {
+  if (isSending) return;
+  if (!selectedEmployee) { showMessage("先にスタッフを選んでね。", "error"); return; }
+  const checkedNo = selectedEmployee.no;
+  startSending(showWeeklyScheduleButton, "勤務予定を表示中...");
+  if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "登録済み予定を読み込み中です。";
+  try {
+    const schedule = await fetchWeeklySchedule(selectedEmployee);
+    if (!selectedEmployee || selectedEmployee.no !== checkedNo) return;
+    const displaySchedule = Object.keys(schedule).length ? schedule : getDefaultWeeklySchedule();
+    renderWeeklyScheduleDisplay(displaySchedule);
+    renderWeeklySchedule(displaySchedule);
+    if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = Object.keys(schedule).length ? "登録済み勤務予定を表示し、変更フォームにも読み込みました。" : "勤務予定はまだ未登録です。初期値を変更して保存できます。";
+  } catch (error) {
+    if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = `表示に失敗しました：${error.message}`;
+    handleError(error);
+  } finally { stopSending(showWeeklyScheduleButton); }
+}
+
+function renderWeeklyScheduleDisplay(schedule) {
+  if (!weeklyScheduleDisplay) return;
+  const labels = { mon:"月曜日", tue:"火曜日", wed:"水曜日", thu:"木曜日", fri:"金曜日", sat:"土曜日", sun:"日曜日" };
+  const merged = { ...getDefaultWeeklySchedule(), ...(schedule || {}) };
+  weeklyScheduleDisplay.innerHTML = "";
+  Object.keys(labels).forEach((day) => {
+    const item = merged[day] || {};
+    const row = document.createElement("div"); row.className = "weekly-schedule-display-row";
+    const dayEl = document.createElement("strong"); dayEl.textContent = labels[day];
+    const valueEl = document.createElement("span"); valueEl.textContent = item.isOff ? "休み" : `${item.startTime || "未設定"} 出勤`;
+    if (item.isOff) valueEl.className = "is-off";
+    row.appendChild(dayEl); row.appendChild(valueEl); weeklyScheduleDisplay.appendChild(row);
+  });
+  weeklyScheduleDisplay.hidden = false;
+}
+
+function collectWeeklySchedule(grid = weeklyScheduleGrid) {
+  const schedule = {};
+  if (!grid) return schedule;
+  grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    const off = row.querySelector(".schedule-off"); const time = row.querySelector(".schedule-time");
+    schedule[row.dataset.day] = { isOff: Boolean(off && off.checked), startTime: off && off.checked ? "" : String(time && time.value || "08:00") };
+  });
+  return schedule;
+}
+
+async function saveWeeklySchedule() {
+  if (isSending) return;
+  if (!selectedEmployee) { showMessage("先にスタッフを選んでね。", "error"); return; }
+  const schedule = collectWeeklySchedule();
+  const invalidDay = Object.keys(schedule).find((day) => !schedule[day].isOff && !schedule[day].startTime);
+  if (invalidDay) { showMessage("出勤日にする曜日は出勤時間を入力してね。", "error"); return; }
+  startSending(saveWeeklyScheduleButton, "勤務予定を更新中...");
+  try {
+    const result = await postToScript({ mode: "saveWeeklySchedule", employeeNo: selectedEmployee.no, name: selectedEmployee.name, schedule, appVersion: APP_VERSION });
+    handleResult(result, `${selectedEmployee.name}の勤務予定を更新しました。`);
+    renderWeeklySchedule(result.schedule || schedule); renderWeeklyScheduleDisplay(result.schedule || schedule);
+    if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "更新後の勤務予定を表示しています。";
+  } catch (error) { handleError(error); }
+  finally { stopSending(saveWeeklyScheduleButton); }
+}
+
 function setupAddStaffForm() {
   if (!addStaffButton) return;
 
@@ -625,6 +758,7 @@ async function addStaff() {
   const startTime = newStartTime.value;
   const endTime = newEndTime.value;
   const breakMinutes = normalizeBreakMinutes(newBreakMinutes ? newBreakMinutes.value : "60");
+  const weeklySchedule = collectWeeklySchedule(newStaffWeeklyScheduleGrid);
 
   if (!employmentType) {
     showMessage("雇用形態を選んでね。", "error");
@@ -651,6 +785,12 @@ async function addStaff() {
     return;
   }
 
+  const invalidScheduleDay = Object.keys(weeklySchedule).find((day) => !weeklySchedule[day].isOff && !weeklySchedule[day].startTime);
+  if (invalidScheduleDay) {
+    showMessage("初回の曜日別勤務設定で、出勤日にする曜日の出勤時間を入力してね。", "error");
+    return;
+  }
+
   if (EMPLOYEES.some((emp) => emp.no === employeeNo || normalizeName(emp.name) === normalizeName(name))) {
     showMessage("同じ社員番号または名前のスタッフが既に画面にあります。", "error");
     return;
@@ -667,6 +807,7 @@ async function addStaff() {
       startTime,
       endTime,
       breakMinutes,
+      weeklySchedule,
       appVersion: APP_VERSION,
       userAgent: navigator.userAgent,
     });
@@ -697,6 +838,7 @@ async function addStaff() {
     newStartTime.value = "08:00";
     newEndTime.value = "17:00";
     if (newBreakMinutes) newBreakMinutes.value = "60";
+    renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
     if (todayStatus) todayStatus.textContent = `${newEmp.name} を新規登録しました。`;
   } catch (error) {
@@ -767,6 +909,17 @@ function setControlsDisabled(disabled) {
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (week40OverInput) week40OverInput.disabled = disabled;
+  if (showWeeklyScheduleButton) showWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
+  if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
+  [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
+    if (!grid) return;
+    grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    const off = row.querySelector(".schedule-off");
+    const time = row.querySelector(".schedule-time");
+    if (off) off.disabled = disabled;
+      if (time) time.disabled = disabled || Boolean(off && off.checked);
+    });
+  });
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
   if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
 }
