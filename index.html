@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=king-spec-update-status-visibility-final-20260707-28-userindex">
+  <link rel="stylesheet" href="./style.css?v=work-schedule-integrated-final-20260713-05">
 </head>
 <body>
   <main class="page">
@@ -43,6 +43,18 @@
           <strong id="selectedEmployee">未選択</strong>
         </div>
       </div>
+
+      <section class="weekly-schedule-view-area">
+        <div class="section-title">登録済み勤務予定</div>
+        <p class="small">選択中スタッフの曜日別予定を、ボタン一つで確認できます。</p>
+        <div class="schedule-target-box">
+          <span>確認対象</span>
+          <strong id="scheduleTargetEmployee">未選択</strong>
+        </div>
+        <button type="button" id="showWeeklyScheduleButton" class="sub-button">選択中スタッフの勤務予定を表示</button>
+        <div id="weeklyScheduleDisplay" class="weekly-schedule-display" hidden></div>
+        <p id="weeklyScheduleStatus" class="small">スタッフを選択して、表示ボタンを押してください。</p>
+      </section>
 
       <div class="card-block">
         <div class="section-title">打刻内容</div>
@@ -96,6 +108,24 @@
         <p class="small">月末の印刷時にご利用ください</p>
       </div>
 
+
+      <details class="weekly-schedule-area">
+        <summary>勤務時間変更フォーム</summary>
+        <p class="small">選択中スタッフ本人が、登録済みの出勤時間と休みをいつでも変更できます。</p>
+        <div id="weeklyScheduleEditor">
+          <div id="weeklyScheduleGrid" class="weekly-schedule-grid">
+            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+          </div>
+          <button type="button" id="saveWeeklyScheduleButton" class="sub-button">勤務予定を更新</button>
+        </div>
+      </details>
+
       <details class="add-staff-area">
         <summary>新規スタッフ追加</summary>
         <p class="small">雇用形態を登録し、個人勤務表シートを自動作成します。</p>
@@ -134,6 +164,20 @@
             休憩時間（分）
             <input type="number" id="newBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
           </label>
+        </div>
+
+        <div class="new-staff-schedule-section">
+          <div class="section-title">初回の曜日別勤務設定</div>
+          <p class="small">登録時点の予定を曜日ごとに設定してください。登録後も上の「勤務時間変更フォーム」から変更できます。</p>
+          <div id="newStaffWeeklyScheduleGrid" class="weekly-schedule-grid">
+            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+          </div>
         </div>
 
         <button type="button" id="addStaffButton" class="sub-button add-staff-button">新規スタッフを登録</button>
@@ -184,6 +228,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=king-spec-update-status-visibility-final-20260707-28-userindex"></script>
+<script src="./app.js?v=work-schedule-integrated-final-20260713-05"></script>
 </body>
 </html>
