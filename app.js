@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "default-staff-fixed-browser-20260713-08";
+const APP_VERSION = "default-staff-mistap-guard-20260713-09";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -25,6 +25,9 @@ const actionButtons = document.getElementById("actionButtons");
 const breakButtons = document.getElementById("breakButtons");
 const selectedEmployeeText = document.getElementById("selectedEmployee");
 const setDefaultEmployeeButton = document.getElementById("setDefaultEmployeeButton");
+const changeDefaultEmployeeButton = document.getElementById("changeDefaultEmployeeButton");
+const defaultEmployeeUnregisteredArea = document.getElementById("defaultEmployeeUnregisteredArea");
+const defaultEmployeeRegisteredArea = document.getElementById("defaultEmployeeRegisteredArea");
 const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
 const updateButton = document.getElementById("updateButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
@@ -245,8 +248,12 @@ function buildEmployeeSelector(query) {
 
 
 function setupDefaultEmployeeRegistration() {
-  if (!setDefaultEmployeeButton) return;
-  setDefaultEmployeeButton.addEventListener("click", registerSelectedEmployeeAsDefault);
+  if (setDefaultEmployeeButton) {
+    setDefaultEmployeeButton.addEventListener("click", registerSelectedEmployeeAsDefault);
+  }
+  if (changeDefaultEmployeeButton) {
+    changeDefaultEmployeeButton.addEventListener("click", changeDefaultEmployee);
+  }
   updateDefaultEmployeeRegistrationUi();
 }
 
@@ -261,22 +268,62 @@ function registerSelectedEmployeeAsDefault() {
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに登録しました。`, "ok");
 }
 
+function changeDefaultEmployee() {
+  if (!selectedEmployee) {
+    showMessage("変更先のスタッフを選んでください。", "error");
+    return;
+  }
+
+  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
+
+  if (defaultEmployee && defaultEmployee.no === selectedEmployee.no) {
+    showMessage("現在選択中のスタッフは、すでにデフォルト登録済みです。", "neutral");
+    return;
+  }
+
+  const currentText = defaultEmployee ? `${defaultEmployee.no} ${defaultEmployee.name}` : "未登録";
+  const nextText = `${selectedEmployee.no} ${selectedEmployee.name}`;
+  const ok = window.confirm(`デフォルトスタッフを
+${currentText}
+から
+${nextText}
+へ変更しますか？`);
+  if (!ok) return;
+
+  localStorage.setItem(DEFAULT_EMPLOYEE_KEY, selectedEmployee.no);
+  updateDefaultEmployeeRegistrationUi();
+  showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに変更しました。`, "ok");
+}
+
 function updateDefaultEmployeeRegistrationUi() {
   const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
   const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
   const isSelectedDefault = Boolean(selectedEmployee && defaultEmployee && selectedEmployee.no === defaultEmployee.no);
 
+  if (defaultEmployeeUnregisteredArea) {
+    defaultEmployeeUnregisteredArea.hidden = Boolean(defaultEmployee);
+  }
+
+  if (defaultEmployeeRegisteredArea) {
+    defaultEmployeeRegisteredArea.hidden = !defaultEmployee;
+  }
+
   if (setDefaultEmployeeButton) {
     setDefaultEmployeeButton.disabled = !selectedEmployee || isSending;
-    setDefaultEmployeeButton.textContent = isSelectedDefault
-      ? "このスタッフはデフォルト登録済み"
-      : "このスタッフをブラウザにデフォルト登録する";
   }
 
   if (defaultEmployeeStatus) {
     defaultEmployeeStatus.textContent = defaultEmployee
-      ? `このブラウザの初期スタッフ：${defaultEmployee.no} ${defaultEmployee.name}`
-      : "このブラウザの初期スタッフは未登録です";
+      ? `デフォルト登録済み：${defaultEmployee.no} ${defaultEmployee.name}`
+      : "";
+  }
+
+  if (changeDefaultEmployeeButton) {
+    changeDefaultEmployeeButton.disabled = !selectedEmployee || isSelectedDefault || isSending;
+    changeDefaultEmployeeButton.title = isSelectedDefault
+      ? "現在選択中のスタッフがデフォルト登録されています"
+      : "選択中スタッフへデフォルトを変更します";
   }
 }
 
