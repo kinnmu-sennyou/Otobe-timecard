@@ -681,3 +681,69 @@ select:disabled,
     font-size: 13px;
   }
 }
+
+
+/* ===== 打刻前の勤務予定表示を省スペース化 ===== */
+.weekly-schedule-view-area {
+  margin-top: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.weekly-schedule-view-area #showWeeklyScheduleButton {
+  margin-top: 0;
+  min-height: 46px;
+}
+
+.weekly-schedule-view-area .weekly-schedule-display {
+  margin-top: 8px;
+  padding: 8px 10px;
+}
+
+
+/* ===== 選択中スタッフの勤務予定：常時・極小表示 ===== */
+.weekly-schedule-view-area {
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.weekly-schedule-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px 9px;
+  margin: 0;
+  padding: 5px 8px;
+  min-height: 30px;
+  border: 1px solid #efdde5;
+  border-radius: 10px;
+  background: #fffafd;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.weekly-schedule-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.weekly-schedule-chip strong,
+.weekly-schedule-chip > span {
+  font-size: inherit;
+}
+
+@media (min-width: 720px) {
+  .weekly-schedule-display {
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+}
