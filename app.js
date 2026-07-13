@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "work-schedule-integrated-final-20260713-05";
+const APP_VERSION = "work-schedule-compact-time-fix-20260713-06";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -616,18 +616,45 @@ async function showSelectedWeeklySchedule() {
 
 function renderWeeklyScheduleDisplay(schedule) {
   if (!weeklyScheduleDisplay) return;
-  const labels = { mon:"月曜日", tue:"火曜日", wed:"水曜日", thu:"木曜日", fri:"金曜日", sat:"土曜日", sun:"日曜日" };
+
+  const labels = { mon:"月", tue:"火", wed:"水", thu:"木", fri:"金", sat:"土", sun:"日" };
   const merged = { ...getDefaultWeeklySchedule(), ...(schedule || {}) };
   weeklyScheduleDisplay.innerHTML = "";
+
   Object.keys(labels).forEach((day) => {
     const item = merged[day] || {};
-    const row = document.createElement("div"); row.className = "weekly-schedule-display-row";
-    const dayEl = document.createElement("strong"); dayEl.textContent = labels[day];
-    const valueEl = document.createElement("span"); valueEl.textContent = item.isOff ? "休み" : `${item.startTime || "未設定"} 出勤`;
-    if (item.isOff) valueEl.className = "is-off";
-    row.appendChild(dayEl); row.appendChild(valueEl); weeklyScheduleDisplay.appendChild(row);
+    const chip = document.createElement("span");
+    chip.className = `weekly-schedule-chip${item.isOff ? " is-off" : ""}`;
+
+    const dayEl = document.createElement("strong");
+    dayEl.textContent = labels[day];
+
+    const valueEl = document.createElement("span");
+    valueEl.textContent = item.isOff ? "休み" : `${normalizeScheduleTimeForDisplay(item.startTime) || "未設定"}～`;
+
+    chip.appendChild(dayEl);
+    chip.appendChild(valueEl);
+    weeklyScheduleDisplay.appendChild(chip);
   });
+
   weeklyScheduleDisplay.hidden = false;
+}
+
+function normalizeScheduleTimeForDisplay(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+  }
+
+  const text = String(value === null || value === undefined ? "" : value).trim();
+  if (!text) return "";
+
+  const direct = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (direct) return `${String(Number(direct[1])).padStart(2, "0")}:${direct[2]}`;
+
+  const dateText = text.match(/(?:^|\s)(\d{1,2}):(\d{2}):(\d{2})(?:\s|$)/);
+  if (dateText) return `${String(Number(dateText[1])).padStart(2, "0")}:${dateText[2]}`;
+
+  return text;
 }
 
 function collectWeeklySchedule(grid = weeklyScheduleGrid) {
