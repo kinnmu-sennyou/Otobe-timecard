@@ -630,3 +630,54 @@ select:disabled,
 .schedule-admin-box .sub-button { width:auto; min-width:180px; margin-top:0; }
 #weeklyScheduleEditor { margin-top:12px; }
 @media (max-width:620px) { .schedule-admin-box { grid-template-columns:1fr; } .schedule-admin-box .sub-button { width:100%; } }
+
+
+/* ===== 登録済み勤務予定：1行コンパクト表示 ===== */
+.weekly-schedule-display {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #efdde5;
+  border-radius: 14px;
+  background: #fffafd;
+}
+
+.weekly-schedule-display[hidden] {
+  display: none;
+}
+
+.weekly-schedule-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.weekly-schedule-chip strong {
+  color: #64283b;
+}
+
+.weekly-schedule-chip > span {
+  color: #146b2f;
+}
+
+.weekly-schedule-chip.is-off > span {
+  color: #b00020;
+}
+
+@media (min-width: 720px) {
+  .weekly-schedule-display {
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .weekly-schedule-chip {
+    font-size: 13px;
+  }
+}
