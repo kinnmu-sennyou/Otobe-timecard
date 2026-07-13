@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "default-staff-selection-lock-addstaff-allowed-20260713-11";
+const APP_VERSION = "return-to-default-staff-button-20260713-13";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -29,6 +29,7 @@ const changeDefaultEmployeeButton = document.getElementById("changeDefaultEmploy
 const defaultEmployeeUnregisteredArea = document.getElementById("defaultEmployeeUnregisteredArea");
 const defaultEmployeeRegisteredArea = document.getElementById("defaultEmployeeRegisteredArea");
 const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
+const returnToDefaultEmployeeButton = document.getElementById("returnToDefaultEmployeeButton");
 const updateButton = document.getElementById("updateButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
 const pdfButton = document.getElementById("pdfButton");
@@ -76,6 +77,7 @@ async function init() {
 
   setupEmployeeSearchEvents();
   setupDefaultEmployeeRegistration();
+  setupRestrictedSelectionGuard();
   buildEmployeeSelector("");
   buildActionEvents();
   buildBreakEvents();
@@ -254,6 +256,9 @@ function setupDefaultEmployeeRegistration() {
   if (changeDefaultEmployeeButton) {
     changeDefaultEmployeeButton.addEventListener("click", changeDefaultEmployee);
   }
+  if (returnToDefaultEmployeeButton) {
+    returnToDefaultEmployeeButton.addEventListener("click", returnToDefaultEmployeeSelection);
+  }
   updateDefaultEmployeeRegistrationUi();
 }
 
@@ -298,6 +303,22 @@ ${nextText}
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに変更しました。`, "ok");
 }
 
+function returnToDefaultEmployeeSelection() {
+  const defaultNo = getDefaultEmployeeNo();
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
+
+  if (!defaultEmployee) {
+    showMessage("デフォルト登録スタッフが見つかりません。先にデフォルト登録してください。", "error");
+    updateDefaultEmployeeRegistrationUi();
+    return;
+  }
+
+  if (employeeSearchInput) employeeSearchInput.value = "";
+  selectEmployee(defaultEmployee);
+  buildEmployeeSelector("");
+  showMessage(`${defaultEmployee.name}の選択に戻しました。`, "ok");
+}
+
 function updateDefaultEmployeeRegistrationUi() {
   const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
   const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
@@ -327,63 +348,110 @@ function updateDefaultEmployeeRegistrationUi() {
       ? "現在選択中のスタッフがデフォルト登録されています"
       : "選択中スタッフへデフォルトを変更します";
   }
+
+  if (returnToDefaultEmployeeButton) {
+    returnToDefaultEmployeeButton.hidden = !defaultEmployee;
+    returnToDefaultEmployeeButton.disabled = !defaultEmployee || isSelectedDefault || isSending;
+    returnToDefaultEmployeeButton.title = isSelectedDefault
+      ? "現在、デフォルト登録スタッフを選択中です"
+      : "デフォルト登録スタッフの選択に戻します";
+  }
 }
 
 
+function getDefaultEmployeeNo() {
+  return normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+}
+
 function isSelectedEmployeeDefault() {
-  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const defaultNo = getDefaultEmployeeNo();
   return Boolean(selectedEmployee && defaultNo && selectedEmployee.no === defaultNo);
 }
 
-function updateSelectedEmployeeAccessLock() {
-  const hasDefault = Boolean(normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY)));
-  const locked = hasDefault && !isSelectedEmployeeDefault();
+function isRestrictedSelection() {
+  const defaultNo = getDefaultEmployeeNo();
+  return Boolean(defaultNo && selectedEmployee && selectedEmployee.no !== defaultNo);
+}
 
+function isAllowedWhileRestricted(target) {
+  if (!target || !target.closest) return false;
+  return Boolean(target.closest([
+    "#employeeSearch",
+    "#employeeSelect",
+    "#defaultEmployeeUnregisteredArea",
+    "#defaultEmployeeRegisteredArea",
+    "#returnToDefaultEmployeeButton",
+    "#pdfButton",
+    ".add-staff-area",
+    ".admin-sheet-area",
+    ".retire-staff-area"
+  ].join(",")));
+}
+
+function setupRestrictedSelectionGuard() {
+  const guard = (event) => {
+    if (!isRestrictedSelection() || isAllowedWhileRestricted(event.target)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    showMessage("このスタッフは勤務日時の確認のみです。打刻・修正・勤務時間変更はデフォルト登録スタッフを選択してください。", "error");
+  };
+
+  ["click", "input", "change", "submit"].forEach((type) => {
+    document.addEventListener(type, guard, true);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!isRestrictedSelection() || isAllowedWhileRestricted(event.target)) return;
+    if (["Tab", "Shift", "Escape"].includes(event.key)) return;
+    guard(event);
+  }, true);
+}
+
+function updateSelectedEmployeeAccessLock() {
+  const locked = isRestrictedSelection();
   document.body.classList.toggle("non-default-staff-selected", locked);
 
-  const alwaysAllowedIds = new Set([
-    "employeeSearch",
-    "employeeSelect",
-    "registerDefaultEmployeeButton",
-    "changeDefaultEmployeeButton",
-    "pdfButton",
-    "adminOpenKeyInput",
-    "showAllSheetsButton",
-    "retireKeyInput",
-    "retireStaffButton",
-    "newEmploymentType",
-    "newStaffName",
-    "newEmployeeNo",
-    "newStartTime",
-    "newEndTime",
-    "newBreakMinutes",
-    "addStaffButton",
-  ]);
+  const allowedSelectors = [
+    "#employeeSearch",
+    "#employeeSelect",
+    "#setDefaultEmployeeButton",
+    "#changeDefaultEmployeeButton",
+    "#returnToDefaultEmployeeButton",
+    "#pdfButton",
+    ".add-staff-area button",
+    ".add-staff-area input",
+    ".add-staff-area select",
+    ".admin-sheet-area button",
+    ".admin-sheet-area input",
+    ".retire-staff-area button",
+    ".retire-staff-area input"
+  ];
 
   document.querySelectorAll("button, input, select, textarea").forEach((control) => {
-    const isNewStaffScheduleControl = Boolean(control.closest && control.closest("#newStaffWeeklyScheduleGrid"));
-    if ((control.id && alwaysAllowedIds.has(control.id)) || isNewStaffScheduleControl) return;
-    control.disabled = Boolean(isSending || locked);
+    const allowed = allowedSelectors.some((selector) => control.matches(selector));
+    if (locked && !allowed) {
+      control.disabled = true;
+      control.setAttribute("data-selection-locked", "true");
+    } else if (control.hasAttribute("data-selection-locked")) {
+      control.removeAttribute("data-selection-locked");
+      control.disabled = false;
+    }
   });
 
   if (employeeSearchInput) employeeSearchInput.disabled = Boolean(isSending);
-  if (employeeSelect) {
-    employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length || !employeeSelect.value);
-  }
-
+  if (employeeSelect) employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length || !employeeSelect.value);
   if (pdfButton) pdfButton.disabled = Boolean(isSending || !selectedEmployee);
 
+  updateDefaultEmployeeRegistrationUi();
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = Boolean(isSending);
   updateShowAllSheetsButtonState();
-
   if (retireKeyInput) retireKeyInput.disabled = Boolean(isSending);
   updateRetireButtonState();
 
   if (locked) {
-    if (todayStatus) {
-      todayStatus.textContent = "デフォルト登録スタッフ以外を選択中のため、打刻・修正・勤務予定変更は操作できません。";
-    }
-    setUpdateStatus("操作制限中：デフォルト登録スタッフを選択すると打刻できます。", "error");
+    if (todayStatus) todayStatus.textContent = "デフォルト登録スタッフ以外を選択中です。勤務日時確認・管理機能のみ使用できます。";
+    setUpdateStatus("操作制限中：打刻する場合はデフォルト登録スタッフを選択してください。", "error");
   } else if (selectedEmployee && !isSending) {
     if (todayStatus) todayStatus.textContent = `${selectedEmployee.name} を選択中です。`;
     setUpdateStatus("更新状況：待機中", "neutral");
@@ -412,6 +480,7 @@ function selectEmployee(emp) {
   showMessage(`${emp.name}を選択しました。`, "ok");
   checkYesterdayPunchAlert(emp);
   resetWeeklyScheduleView(emp);
+  updateSelectedEmployeeAccessLock();
 }
 
 function selectAction(action) {
@@ -504,6 +573,10 @@ function initEditDateTime() {
 }
 
 async function punchNow() {
+  if (isRestrictedSelection()) {
+    showMessage("デフォルト登録スタッフ以外は打刻できません。", "error");
+    return;
+  }
   if (!canSend()) {
     setUpdateStatus("反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
@@ -541,6 +614,10 @@ async function punchNow() {
 }
 
 async function punchBySpecifiedDateTime() {
+  if (isRestrictedSelection()) {
+    showMessage("デフォルト登録スタッフ以外は打刻修正できません。", "error");
+    return;
+  }
   if (!canSend()) {
     setUpdateStatus("修正反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
@@ -827,6 +904,10 @@ function collectWeeklySchedule(grid = weeklyScheduleGrid) {
 }
 
 async function saveWeeklySchedule() {
+  if (isRestrictedSelection()) {
+    showMessage("デフォルト登録スタッフ以外の勤務時間は変更できません。", "error");
+    return;
+  }
   if (isSending) return;
   if (!selectedEmployee) { showMessage("先にスタッフを選んでね。", "error"); return; }
   const schedule = collectWeeklySchedule();
@@ -1076,6 +1157,7 @@ function stopSending(button) {
   updateRetireButtonState();
   updateShowAllSheetsButtonState();
   buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
+  updateSelectedEmployeeAccessLock();
 }
 
 function setControlsDisabled(disabled) {
@@ -1217,7 +1299,8 @@ function formatTimeInput(date) {
 }
 
 function normalizeEmployeeNo(value) {
-  return String(value || "").replace(/\.0$/, "").padStart(3, "0");
+  const text = String(value || "").trim().replace(/\.0$/, "");
+  return text ? text.padStart(3, "0") : "";
 }
 
 function normalizeBreakMinutes(value) {
