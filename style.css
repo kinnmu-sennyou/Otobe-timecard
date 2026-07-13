@@ -819,3 +819,33 @@ select:disabled,
   background: #fffafd !important;
   box-shadow: none !important;
 }
+
+
+/* ===== ブラウザ固定の初期スタッフ登録 ===== */
+.default-employee-button {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 8px;
+  border: 1px solid #e4c3d0;
+  border-radius: 13px;
+  background: #fff8fb;
+  color: #64283b;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.default-employee-button:disabled {
+  background: #f3f0f2;
+  color: #766b70;
+  border-color: #e4dde0;
+}
+
+.default-employee-status {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+}
