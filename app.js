@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "default-staff-mistap-guard-20260713-09";
+const APP_VERSION = "default-staff-selection-lock-addstaff-allowed-20260713-11";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -265,6 +265,7 @@ function registerSelectedEmployeeAsDefault() {
 
   localStorage.setItem(DEFAULT_EMPLOYEE_KEY, selectedEmployee.no);
   updateDefaultEmployeeRegistrationUi();
+  updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに登録しました。`, "ok");
 }
 
@@ -293,6 +294,7 @@ ${nextText}
 
   localStorage.setItem(DEFAULT_EMPLOYEE_KEY, selectedEmployee.no);
   updateDefaultEmployeeRegistrationUi();
+  updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに変更しました。`, "ok");
 }
 
@@ -327,6 +329,67 @@ function updateDefaultEmployeeRegistrationUi() {
   }
 }
 
+
+function isSelectedEmployeeDefault() {
+  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  return Boolean(selectedEmployee && defaultNo && selectedEmployee.no === defaultNo);
+}
+
+function updateSelectedEmployeeAccessLock() {
+  const hasDefault = Boolean(normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY)));
+  const locked = hasDefault && !isSelectedEmployeeDefault();
+
+  document.body.classList.toggle("non-default-staff-selected", locked);
+
+  const alwaysAllowedIds = new Set([
+    "employeeSearch",
+    "employeeSelect",
+    "registerDefaultEmployeeButton",
+    "changeDefaultEmployeeButton",
+    "pdfButton",
+    "adminOpenKeyInput",
+    "showAllSheetsButton",
+    "retireKeyInput",
+    "retireStaffButton",
+    "newEmploymentType",
+    "newStaffName",
+    "newEmployeeNo",
+    "newStartTime",
+    "newEndTime",
+    "newBreakMinutes",
+    "addStaffButton",
+  ]);
+
+  document.querySelectorAll("button, input, select, textarea").forEach((control) => {
+    const isNewStaffScheduleControl = Boolean(control.closest && control.closest("#newStaffWeeklyScheduleGrid"));
+    if ((control.id && alwaysAllowedIds.has(control.id)) || isNewStaffScheduleControl) return;
+    control.disabled = Boolean(isSending || locked);
+  });
+
+  if (employeeSearchInput) employeeSearchInput.disabled = Boolean(isSending);
+  if (employeeSelect) {
+    employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length || !employeeSelect.value);
+  }
+
+  if (pdfButton) pdfButton.disabled = Boolean(isSending || !selectedEmployee);
+
+  if (adminOpenKeyInput) adminOpenKeyInput.disabled = Boolean(isSending);
+  updateShowAllSheetsButtonState();
+
+  if (retireKeyInput) retireKeyInput.disabled = Boolean(isSending);
+  updateRetireButtonState();
+
+  if (locked) {
+    if (todayStatus) {
+      todayStatus.textContent = "デフォルト登録スタッフ以外を選択中のため、打刻・修正・勤務予定変更は操作できません。";
+    }
+    setUpdateStatus("操作制限中：デフォルト登録スタッフを選択すると打刻できます。", "error");
+  } else if (selectedEmployee && !isSending) {
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name} を選択中です。`;
+    setUpdateStatus("更新状況：待機中", "neutral");
+  }
+}
+
 function buildActionEvents() {
   actionButtons.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => selectAction(button.dataset.action));
@@ -341,6 +404,7 @@ function selectEmployee(emp) {
     retireTargetEmployee.textContent = `${emp.no} ${emp.name}`;
   }
   updateDefaultEmployeeRegistrationUi();
+  updateSelectedEmployeeAccessLock();
   pdfLinkArea.innerHTML = "";
   setUpdateStatus("更新状況：待機中", "neutral");
 
@@ -1048,6 +1112,7 @@ function setControlsDisabled(disabled) {
   });
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
   if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
+  updateSelectedEmployeeAccessLock();
 }
 
 function setButtonLoading(button, isLoading) {
