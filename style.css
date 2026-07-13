@@ -115,6 +115,8 @@ h1 {
 .edit-area,
 .sheet-area,
 .add-staff-area,
+.weekly-schedule-view-area,
+.weekly-schedule-area,
 .admin-sheet-area,
 .retire-staff-area {
   margin-top: 13px;
@@ -399,6 +401,7 @@ select:disabled,
 
 .edit-area summary,
 .add-staff-area summary,
+.weekly-schedule-area summary,
 .admin-sheet-area summary,
 .retire-staff-area summary {
   font-weight: 900;
@@ -566,3 +569,64 @@ select:disabled,
     gap: 4px;
   }
 }
+
+
+/* ===== 勤務時間変更フォーム ===== */
+.schedule-target-box {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border: 1px dashed #eac8d6;
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fffafd;
+}
+.schedule-target-box span { color: var(--muted); font-weight: 800; }
+.schedule-target-box strong { font-size: 16px; }
+.weekly-schedule-grid { display: grid; gap: 8px; margin-top: 12px; }
+.weekly-schedule-row {
+  display: grid;
+  grid-template-columns: 90px minmax(150px, 1fr) 90px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #efdde5;
+  border-radius: 15px;
+  background: #fff;
+}
+.weekly-schedule-row > strong { color: #64283b; }
+.weekly-schedule-row label { display: grid; gap: 4px; font-size: 12px; font-weight: 900; color: var(--pink-dark); }
+.weekly-schedule-row .schedule-time { min-height: 42px; font-size: 15px; }
+.schedule-off-label { grid-template-columns: 22px 1fr !important; align-items: center; color: var(--ink) !important; font-size: 15px !important; }
+.schedule-off-label input { width: 20px; height: 20px; min-height: 0; padding: 0; accent-color: var(--pink-dark); }
+.weekly-schedule-row.is-off { background: #f7f3f5; opacity: .82; }
+@media (max-width: 620px) {
+  .weekly-schedule-row { grid-template-columns: 72px 1fr; }
+  .schedule-off-label { grid-column: 1 / -1; justify-self: start; }
+}
+
+
+/* ===== 新規スタッフ追加：初回の曜日別勤務設定 ===== */
+.new-staff-schedule-section {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 13px;
+  border: 1px dashed #eac8d6;
+  border-radius: 18px;
+  background: #fffafd;
+}
+.new-staff-schedule-section .section-title { margin-bottom: 0; }
+
+/* ===== 選択中スタッフの勤務予定表示 ===== */
+.weekly-schedule-view-area { margin-top:13px; padding:15px; border:1px solid var(--line); border-radius:20px; background:#fff; }
+.weekly-schedule-display { display:grid; gap:8px; margin-top:12px; }
+.weekly-schedule-display-row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:11px 13px; border:1px solid #efdde5; border-radius:14px; background:#fffafd; }
+.weekly-schedule-display-row strong { color:#64283b; }
+.weekly-schedule-display-row span { font-weight:900; color:#146b2f; }
+.weekly-schedule-display-row span.is-off { color:#b00020; }
+.schedule-admin-box { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; margin-top:12px; padding:12px; border:1px dashed #eac8d6; border-radius:16px; background:#fffafd; }
+.schedule-admin-box label { display:grid; gap:6px; font-weight:900; color:var(--pink-dark); }
+.schedule-admin-box .sub-button { width:auto; min-width:180px; margin-top:0; }
+#weeklyScheduleEditor { margin-top:12px; }
+@media (max-width:620px) { .schedule-admin-box { grid-template-columns:1fr; } .schedule-admin-box .sub-button { width:100%; } }
