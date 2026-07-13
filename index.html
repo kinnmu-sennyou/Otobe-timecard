@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=work-schedule-compact-time-fix-20260713-06">
+  <link rel="stylesheet" href="./style.css?v=work-schedule-always-compact-20260713-07">
 </head>
 <body>
   <main class="page">
@@ -44,16 +44,8 @@
         </div>
       </div>
 
-      <section class="weekly-schedule-view-area">
-        <div class="section-title">登録済み勤務予定</div>
-        <p class="small">選択中スタッフの曜日別予定を、ボタン一つで確認できます。</p>
-        <div class="schedule-target-box">
-          <span>確認対象</span>
-          <strong id="scheduleTargetEmployee">未選択</strong>
-        </div>
-        <button type="button" id="showWeeklyScheduleButton" class="sub-button">選択中スタッフの勤務予定を表示</button>
-        <div id="weeklyScheduleDisplay" class="weekly-schedule-display" hidden></div>
-        <p id="weeklyScheduleStatus" class="small">スタッフを選択して、表示ボタンを押してください。</p>
+      <section class="weekly-schedule-view-area" aria-label="選択中スタッフの勤務予定">
+        <div id="weeklyScheduleDisplay" class="weekly-schedule-display">勤務予定を読み込み中...</div>
       </section>
 
       <div class="card-block">
@@ -228,6 +220,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=work-schedule-compact-time-fix-20260713-06"></script>
+<script src="./app.js?v=work-schedule-always-compact-20260713-07"></script>
 </body>
 </html>
