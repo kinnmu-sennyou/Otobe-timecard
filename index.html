@@ -43,8 +43,14 @@
           <strong id="selectedEmployee">未選択</strong>
         </div>
 
-        <button type="button" id="setDefaultEmployeeButton" class="default-employee-button">このスタッフをブラウザにデフォルト登録する</button>
-        <p id="defaultEmployeeStatus" class="default-employee-status">このブラウザの初期スタッフは未登録です</p>
+        <div id="defaultEmployeeUnregisteredArea" class="default-employee-unregistered-area">
+          <button type="button" id="setDefaultEmployeeButton" class="default-employee-button">このスタッフをブラウザにデフォルト登録する</button>
+        </div>
+
+        <div id="defaultEmployeeRegisteredArea" class="default-employee-registered-area" hidden>
+          <span id="defaultEmployeeStatus" class="default-employee-status">デフォルト登録済み：未登録</span>
+          <button type="button" id="changeDefaultEmployeeButton" class="change-default-employee-button">変更する</button>
+        </div>
       </div>
 
       <section class="weekly-schedule-view-area" aria-label="選択中スタッフの勤務予定">
