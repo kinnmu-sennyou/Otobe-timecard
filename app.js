@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "work-schedule-compact-time-fix-20260713-06";
+const APP_VERSION = "work-schedule-always-compact-20260713-07";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -46,7 +46,6 @@ const newStaffWeeklyScheduleGrid = document.getElementById("newStaffWeeklySchedu
 const week40OverInput = document.getElementById("week40OverInput");
 const scheduleTargetEmployee = document.getElementById("scheduleTargetEmployee");
 const weeklyScheduleGrid = document.getElementById("weeklyScheduleGrid");
-const showWeeklyScheduleButton = document.getElementById("showWeeklyScheduleButton");
 const weeklyScheduleDisplay = document.getElementById("weeklyScheduleDisplay");
 const saveWeeklyScheduleButton = document.getElementById("saveWeeklyScheduleButton");
 const weeklyScheduleStatus = document.getElementById("weeklyScheduleStatus");
@@ -539,7 +538,6 @@ function setupWeeklySchedule() {
   setupWeeklyScheduleGrid(newStaffWeeklyScheduleGrid);
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
-  if (showWeeklyScheduleButton) showWeeklyScheduleButton.addEventListener("click", showSelectedWeeklySchedule);
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.addEventListener("click", saveWeeklySchedule);
 }
 
@@ -584,9 +582,13 @@ function renderScheduleGrid(grid, schedule) {
 
 function resetWeeklyScheduleView(emp) {
   if (scheduleTargetEmployee) scheduleTargetEmployee.textContent = emp ? `${emp.no} ${emp.name}` : "未選択";
-  if (weeklyScheduleDisplay) { weeklyScheduleDisplay.hidden = true; weeklyScheduleDisplay.innerHTML = ""; }
-  if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "表示ボタンを押すと、このスタッフの登録済み予定を確認できます。";
+  if (weeklyScheduleDisplay) {
+    weeklyScheduleDisplay.hidden = false;
+    weeklyScheduleDisplay.textContent = emp ? "勤務予定を読み込み中..." : "スタッフを選択してください";
+  }
+  if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = emp ? "登録済み予定を自動で読み込んでいます。" : "スタッフを選択してください。";
   renderWeeklySchedule(getDefaultWeeklySchedule());
+  if (emp) loadSelectedWeeklySchedule(emp);
 }
 
 async function fetchWeeklySchedule(emp) {
@@ -595,23 +597,29 @@ async function fetchWeeklySchedule(emp) {
   return result.schedule || {};
 }
 
-async function showSelectedWeeklySchedule() {
-  if (isSending) return;
-  if (!selectedEmployee) { showMessage("先にスタッフを選んでね。", "error"); return; }
-  const checkedNo = selectedEmployee.no;
-  startSending(showWeeklyScheduleButton, "勤務予定を表示中...");
-  if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "登録済み予定を読み込み中です。";
+async function loadSelectedWeeklySchedule(emp) {
+  if (!emp) return;
+  const checkedNo = emp.no;
+
   try {
-    const schedule = await fetchWeeklySchedule(selectedEmployee);
+    const schedule = await fetchWeeklySchedule(emp);
     if (!selectedEmployee || selectedEmployee.no !== checkedNo) return;
+
     const displaySchedule = Object.keys(schedule).length ? schedule : getDefaultWeeklySchedule();
     renderWeeklyScheduleDisplay(displaySchedule);
     renderWeeklySchedule(displaySchedule);
-    if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = Object.keys(schedule).length ? "登録済み勤務予定を表示し、変更フォームにも読み込みました。" : "勤務予定はまだ未登録です。初期値を変更して保存できます。";
+
+    if (weeklyScheduleStatus) {
+      weeklyScheduleStatus.textContent = Object.keys(schedule).length
+        ? "登録済み勤務予定を読み込みました。"
+        : "勤務予定はまだ未登録です。初期値を変更して保存できます。";
+    }
   } catch (error) {
+    if (!selectedEmployee || selectedEmployee.no !== checkedNo) return;
+    if (weeklyScheduleDisplay) weeklyScheduleDisplay.textContent = "勤務予定を取得できませんでした";
     if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = `表示に失敗しました：${error.message}`;
-    handleError(error);
-  } finally { stopSending(showWeeklyScheduleButton); }
+    console.error(error);
+  }
 }
 
 function renderWeeklyScheduleDisplay(schedule) {
@@ -936,7 +944,6 @@ function setControlsDisabled(disabled) {
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (week40OverInput) week40OverInput.disabled = disabled;
-  if (showWeeklyScheduleButton) showWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
   [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
     if (!grid) return;
