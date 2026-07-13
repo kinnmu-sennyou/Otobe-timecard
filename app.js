@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "work-schedule-always-compact-20260713-07";
+const APP_VERSION = "default-staff-fixed-browser-20260713-08";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -10,7 +10,7 @@ const BASE_EMPLOYEES = [
 
 const ACTIONS = ["出勤", "退勤", "途中退社", "有給"];
 const BREAK_MODES = ["normal", "half", "none"];
-const STORAGE_KEY = "timecard:selectedEmployeeNo";
+const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
 
 let EMPLOYEES = [];
@@ -24,6 +24,8 @@ const employeeSelect = document.getElementById("employeeSelect");
 const actionButtons = document.getElementById("actionButtons");
 const breakButtons = document.getElementById("breakButtons");
 const selectedEmployeeText = document.getElementById("selectedEmployee");
+const setDefaultEmployeeButton = document.getElementById("setDefaultEmployeeButton");
+const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
 const updateButton = document.getElementById("updateButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
 const pdfButton = document.getElementById("pdfButton");
@@ -70,6 +72,7 @@ async function init() {
   }
 
   setupEmployeeSearchEvents();
+  setupDefaultEmployeeRegistration();
   buildEmployeeSelector("");
   buildActionEvents();
   buildBreakEvents();
@@ -83,8 +86,8 @@ async function init() {
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
   pdfButton.addEventListener("click", openStaffSheet);
 
-  const savedNo = localStorage.getItem(STORAGE_KEY);
-  const initialEmployee = EMPLOYEES.find((emp) => emp.no === savedNo) || EMPLOYEES[0];
+  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || EMPLOYEES[0];
 
   if (initialEmployee) {
     selectEmployee(initialEmployee);
@@ -191,7 +194,7 @@ function buildEmployeeSelector(query) {
   const normalizedQuery = normalizeName(searchText).toLowerCase();
   const numericQuery = searchText.replace(/\D/g, "");
   const isSearching = Boolean(normalizedQuery || numericQuery);
-  const currentNo = selectedEmployee ? selectedEmployee.no : normalizeEmployeeNo(localStorage.getItem(STORAGE_KEY));
+  const currentNo = selectedEmployee ? selectedEmployee.no : normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
 
   let candidates = [];
 
@@ -240,6 +243,43 @@ function buildEmployeeSelector(query) {
   }
 }
 
+
+function setupDefaultEmployeeRegistration() {
+  if (!setDefaultEmployeeButton) return;
+  setDefaultEmployeeButton.addEventListener("click", registerSelectedEmployeeAsDefault);
+  updateDefaultEmployeeRegistrationUi();
+}
+
+function registerSelectedEmployeeAsDefault() {
+  if (!selectedEmployee) {
+    showMessage("先にデフォルト登録するスタッフを選んでください。", "error");
+    return;
+  }
+
+  localStorage.setItem(DEFAULT_EMPLOYEE_KEY, selectedEmployee.no);
+  updateDefaultEmployeeRegistrationUi();
+  showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに登録しました。`, "ok");
+}
+
+function updateDefaultEmployeeRegistrationUi() {
+  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
+  const isSelectedDefault = Boolean(selectedEmployee && defaultEmployee && selectedEmployee.no === defaultEmployee.no);
+
+  if (setDefaultEmployeeButton) {
+    setDefaultEmployeeButton.disabled = !selectedEmployee || isSending;
+    setDefaultEmployeeButton.textContent = isSelectedDefault
+      ? "このスタッフはデフォルト登録済み"
+      : "このスタッフをブラウザにデフォルト登録する";
+  }
+
+  if (defaultEmployeeStatus) {
+    defaultEmployeeStatus.textContent = defaultEmployee
+      ? `このブラウザの初期スタッフ：${defaultEmployee.no} ${defaultEmployee.name}`
+      : "このブラウザの初期スタッフは未登録です";
+  }
+}
+
 function buildActionEvents() {
   actionButtons.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", () => selectAction(button.dataset.action));
@@ -253,7 +293,7 @@ function selectEmployee(emp) {
   if (retireTargetEmployee) {
     retireTargetEmployee.textContent = `${emp.no} ${emp.name}`;
   }
-  localStorage.setItem(STORAGE_KEY, emp.no);
+  updateDefaultEmployeeRegistrationUi();
   pdfLinkArea.innerHTML = "";
   setUpdateStatus("更新状況：待機中", "neutral");
 
@@ -753,7 +793,11 @@ async function retireSelectedStaff() {
 
     handleResult(result, `${selectedEmployee.name}を退職扱いにしました。`);
 
-    removeExtraEmployee(selectedEmployee.no);
+    const retiredNo = selectedEmployee.no;
+    removeExtraEmployee(retiredNo);
+    if (normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY)) === retiredNo) {
+      localStorage.removeItem(DEFAULT_EMPLOYEE_KEY);
+    }
     await refreshEmployeesFromScript(true);
 
     if (retireKeyInput) {
@@ -945,6 +989,7 @@ function setControlsDisabled(disabled) {
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (week40OverInput) week40OverInput.disabled = disabled;
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
+  updateDefaultEmployeeRegistrationUi();
   [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
     if (!grid) return;
     grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
