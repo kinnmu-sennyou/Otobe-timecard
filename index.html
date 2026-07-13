@@ -35,7 +35,10 @@
             <select id="employeeSelect" aria-label="スタッフを選択"></select>
           </label>
 
-          <p class="small">閲覧のために別スタッフを選んでも、初期スタッフは自動では変わりません。</p>
+          <div class="default-return-row">
+            <p class="small">閲覧のために別スタッフを選んでも、初期スタッフは自動では変わりません。</p>
+            <button type="button" id="returnToDefaultEmployeeButton" class="return-default-employee-button" hidden>デフォルトのスタッフの選択に戻す</button>
+          </div>
         </div>
 
         <div class="selected-box">
