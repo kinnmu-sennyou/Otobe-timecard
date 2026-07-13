@@ -849,3 +849,52 @@ select:disabled,
   line-height: 1.45;
   text-align: center;
 }
+
+
+/* ===== デフォルトスタッフ：誤タップ防止表示 ===== */
+.default-employee-unregistered-area {
+  margin-top: 8px;
+}
+
+.default-employee-registered-area {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.default-employee-registered-area[hidden],
+.default-employee-unregistered-area[hidden] {
+  display: none !important;
+}
+
+.default-employee-registered-area .default-employee-status {
+  margin: 0;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #effaf3;
+  color: #146b2f;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.change-default-employee-button {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 1px solid #e4c3d0;
+  border-radius: 999px;
+  background: #fff8fb;
+  color: #64283b;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.change-default-employee-button:disabled {
+  opacity: .5;
+  cursor: default;
+}
