@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "keep-update-result-message-20260717-14";
+const APP_VERSION = "multi-sheet-month-select-20260717-15";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -18,6 +18,8 @@ let selectedEmployee = null;
 let selectedAction = "出勤";
 let selectedBreakMode = "normal";
 let isSending = false;
+let selectedSheetEmployeeNos = new Set();
+let hasInitializedSheetSelection = false;
 
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
@@ -40,6 +42,11 @@ const yesterdayAlert = document.getElementById("yesterdayAlert");
 const message = document.getElementById("message");
 const updateStatus = document.getElementById("updateStatus");
 const pdfLinkArea = document.getElementById("pdfLinkArea");
+const sheetTargetMonth = document.getElementById("sheetTargetMonth");
+const sheetStaffChecklist = document.getElementById("sheetStaffChecklist");
+const selectAllSheetStaffButton = document.getElementById("selectAllSheetStaffButton");
+const clearAllSheetStaffButton = document.getElementById("clearAllSheetStaffButton");
+const sheetSelectionCount = document.getElementById("sheetSelectionCount");
 
 const addStaffButton = document.getElementById("addStaffButton");
 const newEmploymentType = document.getElementById("newEmploymentType");
@@ -85,6 +92,7 @@ async function init() {
   setupWeeklySchedule();
   setupAddStaffForm();
   setupRetireStaff();
+  setupSheetOpenSelection();
   setupAdminSheetOpen();
 
   updateButton.addEventListener("click", punchNow);
@@ -99,6 +107,7 @@ async function init() {
     buildEmployeeSelector("");
   }
 
+  renderSheetStaffChecklist();
   selectAction(selectedAction);
   selectBreakMode(selectedBreakMode);
   if (todayStatus) todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
@@ -142,6 +151,7 @@ async function refreshEmployeesFromScript(showStatus) {
   }));
 
   localStorage.setItem(EXTRA_EMPLOYEES_KEY, JSON.stringify(EMPLOYEES));
+  renderSheetStaffChecklist();
 
   if (showStatus) {
     showMessage(result.message || "スタッフ一覧を更新しました。", "ok");
@@ -381,7 +391,7 @@ function isAllowedWhileRestricted(target) {
     "#defaultEmployeeUnregisteredArea",
     "#defaultEmployeeRegisteredArea",
     "#returnToDefaultEmployeeButton",
-    "#pdfButton",
+    ".sheet-area",
     ".add-staff-area",
     ".admin-sheet-area",
     ".retire-staff-area"
@@ -418,7 +428,9 @@ function updateSelectedEmployeeAccessLock() {
     "#setDefaultEmployeeButton",
     "#changeDefaultEmployeeButton",
     "#returnToDefaultEmployeeButton",
-    "#pdfButton",
+    ".sheet-area button",
+    ".sheet-area input",
+    ".sheet-area select",
     ".add-staff-area button",
     ".add-staff-area input",
     ".add-staff-area select",
@@ -441,7 +453,7 @@ function updateSelectedEmployeeAccessLock() {
 
   if (employeeSearchInput) employeeSearchInput.disabled = Boolean(isSending);
   if (employeeSelect) employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length || !employeeSelect.value);
-  if (pdfButton) pdfButton.disabled = Boolean(isSending || !selectedEmployee);
+  updateSheetOpenSelectionState();
 
   updateDefaultEmployeeRegistrationUi();
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = Boolean(isSending);
@@ -667,32 +679,172 @@ async function punchBySpecifiedDateTime() {
   }
 }
 
+function setupSheetOpenSelection() {
+  if (selectAllSheetStaffButton) {
+    selectAllSheetStaffButton.addEventListener("click", selectAllSheetStaff);
+  }
+
+  if (clearAllSheetStaffButton) {
+    clearAllSheetStaffButton.addEventListener("click", clearAllSheetStaff);
+  }
+
+  if (sheetTargetMonth) {
+    sheetTargetMonth.addEventListener("change", updateSheetOpenSelectionState);
+  }
+}
+
+function renderSheetStaffChecklist() {
+  if (!sheetStaffChecklist) return;
+
+  const validEmployeeNos = new Set(EMPLOYEES.map((emp) => emp.no));
+  selectedSheetEmployeeNos = new Set(
+    Array.from(selectedSheetEmployeeNos).filter((employeeNo) => validEmployeeNos.has(employeeNo))
+  );
+
+  if (!hasInitializedSheetSelection && selectedEmployee) {
+    selectedSheetEmployeeNos.add(selectedEmployee.no);
+    hasInitializedSheetSelection = true;
+  }
+
+  sheetStaffChecklist.innerHTML = "";
+
+  if (!EMPLOYEES.length) {
+    const empty = document.createElement("div");
+    empty.className = "sheet-staff-empty";
+    empty.textContent = "対象スタッフがいません";
+    sheetStaffChecklist.appendChild(empty);
+    updateSheetOpenSelectionState();
+    return;
+  }
+
+  [...EMPLOYEES]
+    .sort((a, b) => Number(a.no || 0) - Number(b.no || 0))
+    .forEach((emp) => {
+      const label = document.createElement("label");
+      label.className = "sheet-staff-choice";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = emp.no;
+      checkbox.checked = selectedSheetEmployeeNos.has(emp.no);
+      checkbox.setAttribute("aria-label", `${emp.name}の勤務表を対象にする`);
+
+      const text = document.createElement("span");
+      text.className = "sheet-staff-choice-text";
+      text.textContent = `${emp.no} ${emp.name}`;
+      text.title = `${emp.no} ${emp.name}`;
+
+      label.classList.toggle("is-checked", checkbox.checked);
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          selectedSheetEmployeeNos.add(emp.no);
+        } else {
+          selectedSheetEmployeeNos.delete(emp.no);
+        }
+        label.classList.toggle("is-checked", checkbox.checked);
+        updateSheetOpenSelectionState();
+      });
+
+      label.appendChild(checkbox);
+      label.appendChild(text);
+      sheetStaffChecklist.appendChild(label);
+    });
+
+  updateSheetOpenSelectionState();
+}
+
+function selectAllSheetStaff() {
+  selectedSheetEmployeeNos = new Set(EMPLOYEES.map((emp) => emp.no));
+  renderSheetStaffChecklist();
+}
+
+function clearAllSheetStaff() {
+  selectedSheetEmployeeNos = new Set();
+  hasInitializedSheetSelection = true;
+  renderSheetStaffChecklist();
+}
+
+function updateSheetOpenSelectionState() {
+  const validSelectedCount = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no)).length;
+
+  if (sheetSelectionCount) {
+    sheetSelectionCount.textContent = `選択 ${validSelectedCount}名`;
+  }
+
+  if (pdfButton) {
+    pdfButton.disabled = Boolean(isSending || validSelectedCount === 0);
+  }
+
+  if (selectAllSheetStaffButton) {
+    selectAllSheetStaffButton.disabled = Boolean(
+      isSending || !EMPLOYEES.length || validSelectedCount === EMPLOYEES.length
+    );
+  }
+
+  if (clearAllSheetStaffButton) {
+    clearAllSheetStaffButton.disabled = Boolean(isSending || validSelectedCount === 0);
+  }
+
+  if (sheetTargetMonth) {
+    sheetTargetMonth.disabled = Boolean(isSending);
+  }
+
+  if (sheetStaffChecklist) {
+    sheetStaffChecklist.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+      checkbox.disabled = Boolean(isSending);
+    });
+  }
+}
+
+function getSheetTargetDate() {
+  const date = new Date();
+  date.setDate(1);
+
+  if (sheetTargetMonth && sheetTargetMonth.value === "previous") {
+    date.setMonth(date.getMonth() - 1);
+  }
+
+  return formatDateInput(date);
+}
+
+function getSheetTargetMonthLabel() {
+  return sheetTargetMonth && sheetTargetMonth.value === "previous" ? "先月分" : "当月分";
+}
+
 async function openStaffSheet() {
   if (isSending) {
     showMessage("今処理中だから、少し待ってね。", "loading");
     return;
   }
 
-  if (!selectedEmployee) {
-    showMessage("先にスタッフを選んでね。", "error");
+  const selectedEmployees = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no));
+
+  if (!selectedEmployees.length) {
+    showMessage("スプレッドシートを開くスタッフにチェックを入れてね。", "error");
+    updateSheetOpenSelectionState();
     return;
   }
 
-  const targetDate = editDate.value || formatDateInput(new Date());
+  const targetDate = getSheetTargetDate();
+  const monthLabel = getSheetTargetMonthLabel();
 
-  startSending(pdfButton, "本人シートだけ表示して開きます...");
+  startSending(pdfButton, `${monthLabel}の勤務表を準備中...`);
 
   try {
     const result = await postToScript({
-      mode: "openSheet",
-      name: selectedEmployee.name,
-      employeeNo: selectedEmployee.no,
-      sheetName: selectedEmployee.sheetName,
+      mode: "openSelectedSheets",
+      employeeNos: selectedEmployees.map((emp) => emp.no),
       date: targetDate,
       appVersion: APP_VERSION,
     });
 
-    handleResult(result, `${selectedEmployee.name} のシートだけ表示して開きます。`);
+    const missingCount = Array.isArray(result.missingStaffNames) ? result.missingStaffNames.length : 0;
+    const successText = missingCount
+      ? `${monthLabel}：${result.shownCount}名分を表示します（シートなし ${missingCount}名）`
+      : `${monthLabel}：${result.shownCount}名分のシートだけ表示して開きます。`;
+
+    handleResult(result, successText);
 
     if (result.sheetUrl) {
       window.location.href = result.sheetUrl;
@@ -1158,6 +1310,7 @@ function stopSending(button) {
   updateRetireButtonState();
   updateShowAllSheetsButtonState();
   buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
+  updateSheetOpenSelectionState();
   updateSelectedEmployeeAccessLock();
 }
 
@@ -1168,7 +1321,6 @@ function setControlsDisabled(disabled) {
   if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   updateButton.disabled = disabled;
   editUpdateButton.disabled = disabled;
-  pdfButton.disabled = disabled;
   editDate.disabled = disabled;
   editTime.disabled = disabled;
 
@@ -1195,6 +1347,7 @@ function setControlsDisabled(disabled) {
   });
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
   if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
+  updateSheetOpenSelectionState();
   updateSelectedEmployeeAccessLock();
 }
 

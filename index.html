@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=work-schedule-label-compact-20260713-10">
+  <link rel="stylesheet" href="./style.css?v=multi-sheet-compact-20260717-15">
 </head>
 <body>
   <main class="page">
@@ -109,8 +109,33 @@
       </details>
 
       <div class="sheet-area">
-        <button type="button" id="pdfButton" class="sheet-button">スプレッドシートを開く</button>
-        <p class="small">月末の印刷時にご利用ください</p>
+        <div class="sheet-open-head">
+          <div>
+            <div class="section-title">スプレッドシートを開く</div>
+            <p class="small sheet-open-lead">印刷するスタッフと対象月を選んでください。</p>
+          </div>
+          <span id="sheetSelectionCount" class="sheet-selection-count">選択 0名</span>
+        </div>
+
+        <div class="sheet-open-controls">
+          <label class="sheet-month-label">
+            対象月
+            <select id="sheetTargetMonth">
+              <option value="current">当月分</option>
+              <option value="previous">先月分</option>
+            </select>
+          </label>
+
+          <div class="sheet-selection-actions">
+            <button type="button" id="selectAllSheetStaffButton" class="compact-control-button">全選択</button>
+            <button type="button" id="clearAllSheetStaffButton" class="compact-control-button">全選択解除</button>
+          </div>
+        </div>
+
+        <div id="sheetStaffChecklist" class="sheet-staff-checklist" aria-label="スプレッドシートを開くスタッフを選択"></div>
+
+        <button type="button" id="pdfButton" class="sheet-button">選択したスプレッドシートを開く</button>
+        <p class="small">選択した月・スタッフのシートだけを表示します。</p>
       </div>
 
 
@@ -233,6 +258,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=work-schedule-horizontal-fixed-20260713-08"></script>
+<script src="./app.js?v=multi-sheet-compact-20260717-15"></script>
 </body>
 </html>
