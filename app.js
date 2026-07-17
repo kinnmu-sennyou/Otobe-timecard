@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "return-to-default-staff-button-20260713-13";
+const APP_VERSION = "keep-update-result-message-20260717-14";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -452,10 +452,11 @@ function updateSelectedEmployeeAccessLock() {
   if (locked) {
     if (todayStatus) todayStatus.textContent = "デフォルト登録スタッフ以外を選択中です。勤務日時確認・管理機能のみ使用できます。";
     setUpdateStatus("操作制限中：打刻する場合はデフォルト登録スタッフを選択してください。", "error");
-  } else if (selectedEmployee && !isSending) {
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name} を選択中です。`;
-    setUpdateStatus("更新状況：待機中", "neutral");
   }
+
+  // 通信終了後にこの関数が呼ばれても、打刻の成功・失敗表示を
+  // 「更新状況：待機中」で上書きしないようにします。
+  // スタッフを選び直した時の待機表示は selectEmployee() 側で行います。
 }
 
 function buildActionEvents() {
