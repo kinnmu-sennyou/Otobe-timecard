@@ -1013,6 +1013,25 @@ select:disabled,
   cursor: pointer;
 }
 
+.sheet-staff-search-label {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--pink-dark);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.sheet-staff-search-label input {
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 8px;
+  border-radius: 9px;
+  font-size: 11px;
+}
+
 .sheet-staff-checklist {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1113,5 +1132,12 @@ select:disabled,
 
   .compact-control-button {
     width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .sheet-staff-search-label {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 }

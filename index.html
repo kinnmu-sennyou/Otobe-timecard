@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=multi-sheet-tiny-checks-20260717-16">
+  <link rel="stylesheet" href="./style.css?v=multi-sheet-tiny-search-20260717-17">
 </head>
 <body>
   <main class="page">
@@ -131,6 +131,11 @@
             <button type="button" id="clearAllSheetStaffButton" class="compact-control-button">全選択解除</button>
           </div>
         </div>
+
+        <label class="sheet-staff-search-label">
+          <span>スタッフ検索</span>
+          <input type="search" id="sheetStaffSearch" placeholder="名前・社員番号" autocomplete="off">
+        </label>
 
         <div id="sheetStaffChecklist" class="sheet-staff-checklist" aria-label="スプレッドシートを開くスタッフを選択"></div>
 
@@ -258,6 +263,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=multi-sheet-tiny-checks-20260717-16"></script>
+<script src="./app.js?v=multi-sheet-tiny-search-20260717-17"></script>
 </body>
 </html>

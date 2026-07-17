@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "multi-sheet-tiny-checks-20260717-16";
+const APP_VERSION = "multi-sheet-tiny-search-20260717-17";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -43,6 +43,7 @@ const message = document.getElementById("message");
 const updateStatus = document.getElementById("updateStatus");
 const pdfLinkArea = document.getElementById("pdfLinkArea");
 const sheetTargetMonth = document.getElementById("sheetTargetMonth");
+const sheetStaffSearch = document.getElementById("sheetStaffSearch");
 const sheetStaffChecklist = document.getElementById("sheetStaffChecklist");
 const selectAllSheetStaffButton = document.getElementById("selectAllSheetStaffButton");
 const clearAllSheetStaffButton = document.getElementById("clearAllSheetStaffButton");
@@ -691,6 +692,24 @@ function setupSheetOpenSelection() {
   if (sheetTargetMonth) {
     sheetTargetMonth.addEventListener("change", updateSheetOpenSelectionState);
   }
+
+  if (sheetStaffSearch) {
+    sheetStaffSearch.addEventListener("input", renderSheetStaffChecklist);
+  }
+}
+
+function getFilteredSheetEmployees() {
+  const query = String(sheetStaffSearch && sheetStaffSearch.value || "").trim();
+  if (!query) return [...EMPLOYEES];
+
+  const normalizedNameQuery = normalizeName(query).toLowerCase();
+  const numberQuery = query.replace(/\D/g, "");
+
+  return EMPLOYEES.filter((emp) => {
+    const normalizedName = normalizeName(emp.name).toLowerCase();
+    const employeeNo = normalizeEmployeeNo(emp.no);
+    return normalizedName.includes(normalizedNameQuery) || Boolean(numberQuery && employeeNo.includes(numberQuery));
+  });
 }
 
 function renderSheetStaffChecklist() {
@@ -708,16 +727,18 @@ function renderSheetStaffChecklist() {
 
   sheetStaffChecklist.innerHTML = "";
 
-  if (!EMPLOYEES.length) {
+  const filteredEmployees = getFilteredSheetEmployees();
+
+  if (!filteredEmployees.length) {
     const empty = document.createElement("div");
     empty.className = "sheet-staff-empty";
-    empty.textContent = "対象スタッフがいません";
+    empty.textContent = EMPLOYEES.length ? "検索に該当するスタッフがいません" : "対象スタッフがいません";
     sheetStaffChecklist.appendChild(empty);
     updateSheetOpenSelectionState();
     return;
   }
 
-  [...EMPLOYEES]
+  filteredEmployees
     .sort((a, b) => Number(a.no || 0) - Number(b.no || 0))
     .forEach((emp) => {
       const label = document.createElement("label");
@@ -755,18 +776,22 @@ function renderSheetStaffChecklist() {
 }
 
 function selectAllSheetStaff() {
-  selectedSheetEmployeeNos = new Set(EMPLOYEES.map((emp) => emp.no));
+  getFilteredSheetEmployees().forEach((emp) => selectedSheetEmployeeNos.add(emp.no));
+  hasInitializedSheetSelection = true;
   renderSheetStaffChecklist();
 }
 
 function clearAllSheetStaff() {
-  selectedSheetEmployeeNos = new Set();
+  getFilteredSheetEmployees().forEach((emp) => selectedSheetEmployeeNos.delete(emp.no));
   hasInitializedSheetSelection = true;
   renderSheetStaffChecklist();
 }
 
 function updateSheetOpenSelectionState() {
+  const filteredEmployees = getFilteredSheetEmployees();
   const validSelectedCount = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no)).length;
+  const filteredSelectedCount = filteredEmployees.filter((emp) => selectedSheetEmployeeNos.has(emp.no)).length;
+  const isFiltering = Boolean(String(sheetStaffSearch && sheetStaffSearch.value || "").trim());
 
   if (sheetSelectionCount) {
     sheetSelectionCount.textContent = `選択 ${validSelectedCount}名`;
@@ -777,17 +802,23 @@ function updateSheetOpenSelectionState() {
   }
 
   if (selectAllSheetStaffButton) {
+    selectAllSheetStaffButton.textContent = isFiltering ? "表示中を選択" : "全選択";
     selectAllSheetStaffButton.disabled = Boolean(
-      isSending || !EMPLOYEES.length || validSelectedCount === EMPLOYEES.length
+      isSending || !filteredEmployees.length || filteredSelectedCount === filteredEmployees.length
     );
   }
 
   if (clearAllSheetStaffButton) {
-    clearAllSheetStaffButton.disabled = Boolean(isSending || validSelectedCount === 0);
+    clearAllSheetStaffButton.textContent = isFiltering ? "表示中を解除" : "全選択解除";
+    clearAllSheetStaffButton.disabled = Boolean(isSending || filteredSelectedCount === 0);
   }
 
   if (sheetTargetMonth) {
     sheetTargetMonth.disabled = Boolean(isSending);
+  }
+
+  if (sheetStaffSearch) {
+    sheetStaffSearch.disabled = Boolean(isSending);
   }
 
   if (sheetStaffChecklist) {
