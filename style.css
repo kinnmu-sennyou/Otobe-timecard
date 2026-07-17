@@ -1141,3 +1141,41 @@ select:disabled,
     gap: 3px;
   }
 }
+
+
+/* ===== スプレッドシート欄：ブラウザ保存メモ ===== */
+.sheet-browser-memo-label {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  color: var(--pink-dark);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.sheet-browser-memo-label textarea {
+  width: 100%;
+  min-height: 42px;
+  max-height: 92px;
+  padding: 6px 8px;
+  resize: vertical;
+  border: 1px solid #e8ccd7;
+  border-radius: 9px;
+  background: #fffafd;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+  outline: none;
+}
+
+.sheet-browser-memo-label textarea:focus {
+  border-color: var(--pink-dark);
+  box-shadow: 0 0 0 3px rgba(247, 183, 201, .24);
+}
+
+.sheet-browser-memo-note {
+  margin-top: 3px;
+  font-size: 10px;
+}

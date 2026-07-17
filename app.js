@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "multi-sheet-comma-search-20260717-18";
+const APP_VERSION = "multi-sheet-search-memo-20260717-19";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -12,6 +12,7 @@ const ACTIONS = ["出勤", "退勤", "途中退社", "有給"];
 const BREAK_MODES = ["normal", "half", "none"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
+const SHEET_BROWSER_MEMO_KEY = "timecard:sheetBrowserMemo";
 
 let EMPLOYEES = [];
 let selectedEmployee = null;
@@ -44,6 +45,7 @@ const updateStatus = document.getElementById("updateStatus");
 const pdfLinkArea = document.getElementById("pdfLinkArea");
 const sheetTargetMonth = document.getElementById("sheetTargetMonth");
 const sheetStaffSearch = document.getElementById("sheetStaffSearch");
+const sheetBrowserMemo = document.getElementById("sheetBrowserMemo");
 const sheetStaffChecklist = document.getElementById("sheetStaffChecklist");
 const selectAllSheetStaffButton = document.getElementById("selectAllSheetStaffButton");
 const clearAllSheetStaffButton = document.getElementById("clearAllSheetStaffButton");
@@ -432,6 +434,7 @@ function updateSelectedEmployeeAccessLock() {
     ".sheet-area button",
     ".sheet-area input",
     ".sheet-area select",
+    ".sheet-area textarea",
     ".add-staff-area button",
     ".add-staff-area input",
     ".add-staff-area select",
@@ -696,6 +699,22 @@ function setupSheetOpenSelection() {
   if (sheetStaffSearch) {
     sheetStaffSearch.addEventListener("input", renderSheetStaffChecklist);
   }
+
+  if (sheetBrowserMemo) {
+    try {
+      sheetBrowserMemo.value = localStorage.getItem(SHEET_BROWSER_MEMO_KEY) || "";
+    } catch (error) {
+      console.warn("ブラウザメモを読み込めませんでした。", error);
+    }
+
+    sheetBrowserMemo.addEventListener("input", () => {
+      try {
+        localStorage.setItem(SHEET_BROWSER_MEMO_KEY, sheetBrowserMemo.value);
+      } catch (error) {
+        console.warn("ブラウザメモを保存できませんでした。", error);
+      }
+    });
+  }
 }
 
 function getFilteredSheetEmployees() {
@@ -830,6 +849,10 @@ function updateSheetOpenSelectionState() {
 
   if (sheetStaffSearch) {
     sheetStaffSearch.disabled = Boolean(isSending);
+  }
+
+  if (sheetBrowserMemo) {
+    sheetBrowserMemo.disabled = Boolean(isSending);
   }
 
   if (sheetStaffChecklist) {

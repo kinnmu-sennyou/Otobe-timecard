@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=multi-sheet-tiny-search-20260717-17">
+  <link rel="stylesheet" href="./style.css?v=multi-sheet-search-memo-20260717-19">
 </head>
 <body>
   <main class="page">
@@ -141,6 +141,12 @@
 
         <button type="button" id="pdfButton" class="sheet-button">選択したスプレッドシートを開く</button>
         <p class="small">選択した月・スタッフのシートだけを表示します。</p>
+
+        <label class="sheet-browser-memo-label">
+          <span>このブラウザのメモ</span>
+          <textarea id="sheetBrowserMemo" rows="2" placeholder="例：022,049（このブラウザだけに自動保存）"></textarea>
+        </label>
+        <p class="small sheet-browser-memo-note">固定でまとめて検索する社員番号などを控えておけます。</p>
       </div>
 
 
@@ -263,6 +269,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=multi-sheet-comma-search-20260717-18"></script>
+<script src="./app.js?v=multi-sheet-search-memo-20260717-19"></script>
 </body>
 </html>
