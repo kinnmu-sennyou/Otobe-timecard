@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "multi-sheet-tiny-search-20260717-17";
+const APP_VERSION = "multi-sheet-comma-search-20260717-18";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -702,13 +702,24 @@ function getFilteredSheetEmployees() {
   const query = String(sheetStaffSearch && sheetStaffSearch.value || "").trim();
   if (!query) return [...EMPLOYEES];
 
-  const normalizedNameQuery = normalizeName(query).toLowerCase();
-  const numberQuery = query.replace(/\D/g, "");
+  // カンマ区切りで複数の名前・社員番号を同時検索できます。
+  // 例：022,049 / 手塚,049 / 022、049
+  const searchTerms = query
+    .split(/[,，、\n]+/)
+    .map((term) => String(term || "").trim())
+    .filter(Boolean);
+
+  if (!searchTerms.length) return [...EMPLOYEES];
 
   return EMPLOYEES.filter((emp) => {
     const normalizedName = normalizeName(emp.name).toLowerCase();
     const employeeNo = normalizeEmployeeNo(emp.no);
-    return normalizedName.includes(normalizedNameQuery) || Boolean(numberQuery && employeeNo.includes(numberQuery));
+
+    return searchTerms.some((term) => {
+      const normalizedNameTerm = normalizeName(term).toLowerCase();
+      const numberTerm = term.replace(/\D/g, "");
+      return normalizedName.includes(normalizedNameTerm) || Boolean(numberTerm && employeeNo.includes(numberTerm));
+    });
   });
 }
 
