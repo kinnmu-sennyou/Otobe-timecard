@@ -1179,3 +1179,25 @@ select:disabled,
   margin-top: 3px;
   font-size: 10px;
 }
+
+/* ===== 打刻内容：現時刻打刻を中央1段で表示 ===== */
+#actionButtons.punch-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#actionButtons button[data-action="現時刻打刻"] {
+  grid-column: 1 / -1;
+  background: #f3efff;
+  color: #553f78;
+  border-color: #d9ccef;
+}
+
+#actionButtons button[data-action="現時刻打刻"].active {
+  border-color: #8066a8;
+  box-shadow: 0 8px 18px rgba(98, 76, 135, .18);
+}
+
+.current-time-punch-note {
+  text-align: center;
+}
+

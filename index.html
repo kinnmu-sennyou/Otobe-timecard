@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=multi-sheet-search-memo-20260717-19">
+  <link rel="stylesheet" href="./style.css?v=current-time-punch-20260723-20">
 </head>
 <body>
   <main class="page">
@@ -66,9 +66,11 @@
         <div class="punch-grid" id="actionButtons">
           <button type="button" data-action="出勤">出勤</button>
           <button type="button" data-action="退勤">退勤</button>
+          <button type="button" data-action="現時刻打刻">現時刻打刻</button>
           <button type="button" data-action="途中退社">途中退社</button>
           <button type="button" data-action="有給">有給</button>
         </div>
+        <p class="small current-time-punch-note">通常の「出勤」は登録済みの出勤時刻を反映します。「現時刻打刻」は更新を押した時刻を出勤時刻として反映します。</p>
 
         <button type="button" id="updateButton" class="main-button">更新</button>
         <div id="updateStatus" class="update-status neutral" aria-live="polite">更新状況：待機中</div>
@@ -269,6 +271,6 @@
     </section>
   </main>
 
-<script src="./app.js?v=multi-sheet-search-memo-20260717-19"></script>
+<script src="./app.js?v=current-time-punch-20260723-20"></script>
 </body>
 </html>

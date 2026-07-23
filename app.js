@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "multi-sheet-search-memo-20260717-19";
+const APP_VERSION = "current-time-punch-20260723-20";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -8,7 +8,7 @@ const BASE_EMPLOYEES = [
   { name: "山田 英之", no: "015", sheetName: "山田 英之", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=715259581#gid=715259581" },
 ];
 
-const ACTIONS = ["出勤", "退勤", "途中退社", "有給"];
+const ACTIONS = ["出勤", "退勤", "現時刻打刻", "途中退社", "有給"];
 const BREAK_MODES = ["normal", "half", "none"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
@@ -1349,7 +1349,7 @@ function canSend() {
   }
 
   if (!selectedAction) {
-    showMessage("出勤・退勤・途中退社・有給のどれかを選んでね。", "error");
+    showMessage("出勤・退勤・現時刻打刻・途中退社・有給のどれかを選んでね。", "error");
     return false;
   }
 
