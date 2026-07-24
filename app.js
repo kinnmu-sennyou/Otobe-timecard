@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "clock-picker-bulk-schedule-20260724-22";
+const APP_VERSION = "clock-picker-fixed-footer-newstaff-20260724-23";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -68,6 +68,7 @@ const weeklyScheduleStatus = document.getElementById("weeklyScheduleStatus");
 const weeklyScheduleEditor = document.getElementById("weeklyScheduleEditor");
 const bulkScheduleTimeInput = document.getElementById("bulkScheduleTimeInput");
 const applyBulkScheduleTimeButton = document.getElementById("applyBulkScheduleTimeButton");
+const applyNewStaffStartTimeButton = document.getElementById("applyNewStaffStartTimeButton");
 const timePickerModal = document.getElementById("timePickerModal");
 const timePickerCloseButton = document.getElementById("timePickerCloseButton");
 const timePickerHourButton = document.getElementById("timePickerHourButton");
@@ -1001,10 +1002,15 @@ function setupWeeklySchedule() {
   setupWeeklyScheduleGrid(weeklyScheduleGrid);
   setupWeeklyScheduleGrid(newStaffWeeklyScheduleGrid);
   setupClockTimeInput(bulkScheduleTimeInput);
+  setupClockTimeInput(newStartTime);
+  setupClockTimeInput(newEndTime);
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
   if (applyBulkScheduleTimeButton) {
     applyBulkScheduleTimeButton.addEventListener("click", applyBulkScheduleTimeToMondayThroughSaturday);
+  }
+  if (applyNewStaffStartTimeButton) {
+    applyNewStaffStartTimeButton.addEventListener("click", applyNewStaffStartTimeToMondayThroughSaturday);
   }
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.addEventListener("click", saveWeeklySchedule);
 }
@@ -1243,13 +1249,13 @@ function updateTimePickerHand() {
   timePickerHand.style.setProperty("--time-picker-hand-length", `${lengthPercent}%`);
 }
 
-function applyBulkScheduleTimeToMondayThroughSaturday() {
-  if (!weeklyScheduleGrid || !bulkScheduleTimeInput) return;
-  const parsed = parseClockTime(bulkScheduleTimeInput.value || "08:00");
+function applyTimeToMondayThroughSaturday(grid, rawTime) {
+  if (!grid) return "";
+  const parsed = parseClockTime(rawTime || "08:00");
   const timeValue = `${String(parsed.hour).padStart(2, "0")}:${String(parsed.minute).padStart(2, "0")}`;
   const targetDays = new Set(["mon", "tue", "wed", "thu", "fri", "sat"]);
 
-  weeklyScheduleGrid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+  grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
     if (!targetDays.has(row.dataset.day)) return;
     const off = row.querySelector(".schedule-off");
     const time = row.querySelector(".schedule-time");
@@ -1261,7 +1267,19 @@ function applyBulkScheduleTimeToMondayThroughSaturday() {
     row.classList.remove("is-off");
   });
 
+  return timeValue;
+}
+
+function applyBulkScheduleTimeToMondayThroughSaturday() {
+  if (!weeklyScheduleGrid || !bulkScheduleTimeInput) return;
+  const timeValue = applyTimeToMondayThroughSaturday(weeklyScheduleGrid, bulkScheduleTimeInput.value);
   showMessage(`月曜日〜土曜日へ ${timeValue} を一括反映しました。最後に「勤務予定を更新」を押してください。`, "ok");
+}
+
+function applyNewStaffStartTimeToMondayThroughSaturday() {
+  if (!newStaffWeeklyScheduleGrid || !newStartTime) return;
+  const timeValue = applyTimeToMondayThroughSaturday(newStaffWeeklyScheduleGrid, newStartTime.value);
+  showMessage(`新規スタッフの月曜日〜土曜日へ ${timeValue} を一括反映しました。`, "ok");
 }
 
 function getDefaultWeeklySchedule() {
@@ -1666,6 +1684,7 @@ function setControlsDisabled(disabled) {
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
   if (bulkScheduleTimeInput) bulkScheduleTimeInput.disabled = disabled;
   if (applyBulkScheduleTimeButton) applyBulkScheduleTimeButton.disabled = disabled || !selectedEmployee;
+  if (applyNewStaffStartTimeButton) applyNewStaffStartTimeButton.disabled = disabled;
   updateDefaultEmployeeRegistrationUi();
   [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
     if (!grid) return;

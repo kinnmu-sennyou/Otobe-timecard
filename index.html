@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=clock-picker-bulk-schedule-20260724-22">
+  <link rel="stylesheet" href="./style.css?v=clock-picker-fixed-footer-newstaff-20260724-23">
 </head>
 <body>
   <main class="page">
@@ -206,12 +206,12 @@
 
           <label>
             出勤時間
-            <input type="time" id="newStartTime" value="08:00" step="900">
+            <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から新規スタッフの出勤時間を選択">
           </label>
 
           <label>
             退勤時間
-            <input type="time" id="newEndTime" value="17:00" step="900">
+            <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" aria-label="時計から新規スタッフの退勤時間を選択">
           </label>
 
           <label>
@@ -223,6 +223,10 @@
         <div class="new-staff-schedule-section">
           <div class="section-title">初回の曜日別勤務設定</div>
           <p class="small">登録時点の予定を曜日ごとに設定してください。登録後も上の「勤務時間変更フォーム」から変更できます。</p>
+          <div class="new-staff-time-apply-row">
+            <span>上で選んだ出勤時間を、月曜日から土曜日へまとめて入力します。</span>
+            <button type="button" id="applyNewStaffStartTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に出勤時間を一括反映</button>
+          </div>
           <div id="newStaffWeeklyScheduleGrid" class="weekly-schedule-grid">
             <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
             <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
@@ -291,18 +295,20 @@
         <button type="button" id="timePickerCloseButton" class="time-picker-close-button" aria-label="時間選択を閉じる">×</button>
       </header>
 
-      <div class="time-picker-selected-time" aria-label="選択中の時間">
-        <button type="button" id="timePickerHourButton" class="time-picker-value-button is-active" aria-label="時を選択">08</button>
-        <span>:</span>
-        <button type="button" id="timePickerMinuteButton" class="time-picker-value-button" aria-label="分を選択">00</button>
-      </div>
+      <div class="time-picker-scroll-area">
+        <div class="time-picker-selected-time" aria-label="選択中の時間">
+          <button type="button" id="timePickerHourButton" class="time-picker-value-button is-active" aria-label="時を選択">08</button>
+          <span>:</span>
+          <button type="button" id="timePickerMinuteButton" class="time-picker-value-button" aria-label="分を選択">00</button>
+        </div>
 
-      <p id="timePickerInstruction" class="time-picker-instruction">時を選択してください</p>
+        <p id="timePickerInstruction" class="time-picker-instruction">時を選択してください</p>
 
-      <div id="timePickerClockFace" class="time-picker-clock-face" aria-label="時計盤">
-        <div id="timePickerHand" class="time-picker-hand"></div>
-        <div class="time-picker-center-dot"></div>
-        <div id="timePickerNumberLayer" class="time-picker-number-layer"></div>
+        <div id="timePickerClockFace" class="time-picker-clock-face" aria-label="時計盤">
+          <div id="timePickerHand" class="time-picker-hand"></div>
+          <div class="time-picker-center-dot"></div>
+          <div id="timePickerNumberLayer" class="time-picker-number-layer"></div>
+        </div>
       </div>
 
       <div class="time-picker-actions">
@@ -312,6 +318,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=clock-picker-bulk-schedule-20260724-22"></script>
+<script src="./app.js?v=clock-picker-fixed-footer-newstaff-20260724-23"></script>
 </body>
 </html>
