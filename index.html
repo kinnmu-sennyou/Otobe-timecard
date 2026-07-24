@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=manual-correction-priority-20260723-21">
+  <link rel="stylesheet" href="./style.css?v=clock-picker-bulk-schedule-20260724-22">
 </head>
 <body>
   <main class="page">
@@ -156,14 +156,25 @@
         <summary>勤務時間変更フォーム</summary>
         <p class="small">選択中スタッフ本人が、登録済みの出勤時間と休みをいつでも変更できます。</p>
         <div id="weeklyScheduleEditor">
+          <section class="schedule-bulk-apply" aria-label="月曜日から土曜日への一括時間設定">
+            <div class="schedule-bulk-copy">
+              <strong>月曜〜土曜へ一括反映</strong>
+              <span>時計で時間を1回選び、月曜日から土曜日へまとめて入力します。</span>
+            </div>
+            <label class="schedule-bulk-time-label">
+              一括時間
+              <input type="text" id="bulkScheduleTimeInput" class="clock-time-input schedule-bulk-time-input" value="08:00" readonly inputmode="none" aria-label="月曜から土曜へ一括反映する時間を時計から選択">
+            </label>
+            <button type="button" id="applyBulkScheduleTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に入力した時間を一括反映</button>
+          </section>
           <div id="weeklyScheduleGrid" class="weekly-schedule-grid">
-            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
           </div>
           <button type="button" id="saveWeeklyScheduleButton" class="sub-button">勤務予定を更新</button>
         </div>
@@ -213,13 +224,13 @@
           <div class="section-title">初回の曜日別勤務設定</div>
           <p class="small">登録時点の予定を曜日ごとに設定してください。登録後も上の「勤務時間変更フォーム」から変更できます。</p>
           <div id="newStaffWeeklyScheduleGrid" class="weekly-schedule-grid">
-            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
-            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="time" class="schedule-time" value="08:00" step="900"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
           </div>
         </div>
 
@@ -271,6 +282,36 @@
     </section>
   </main>
 
-<script src="./app.js?v=manual-correction-priority-20260723-21"></script>
+
+  <div id="timePickerModal" class="time-picker-modal" hidden>
+    <div class="time-picker-backdrop" data-time-picker-close="true"></div>
+    <section class="time-picker-dialog" role="dialog" aria-modal="true" aria-labelledby="timePickerTitle">
+      <header class="time-picker-header">
+        <span id="timePickerTitle">出勤時間を選択</span>
+        <button type="button" id="timePickerCloseButton" class="time-picker-close-button" aria-label="時間選択を閉じる">×</button>
+      </header>
+
+      <div class="time-picker-selected-time" aria-label="選択中の時間">
+        <button type="button" id="timePickerHourButton" class="time-picker-value-button is-active" aria-label="時を選択">08</button>
+        <span>:</span>
+        <button type="button" id="timePickerMinuteButton" class="time-picker-value-button" aria-label="分を選択">00</button>
+      </div>
+
+      <p id="timePickerInstruction" class="time-picker-instruction">時を選択してください</p>
+
+      <div id="timePickerClockFace" class="time-picker-clock-face" aria-label="時計盤">
+        <div id="timePickerHand" class="time-picker-hand"></div>
+        <div class="time-picker-center-dot"></div>
+        <div id="timePickerNumberLayer" class="time-picker-number-layer"></div>
+      </div>
+
+      <div class="time-picker-actions">
+        <button type="button" id="timePickerCancelButton" class="time-picker-cancel-button">キャンセル</button>
+        <button type="button" id="timePickerConfirmButton" class="time-picker-confirm-button">この時間にする</button>
+      </div>
+    </section>
+  </div>
+
+<script src="./app.js?v=clock-picker-bulk-schedule-20260724-22"></script>
 </body>
 </html>

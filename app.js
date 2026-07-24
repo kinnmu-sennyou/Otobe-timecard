@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "manual-correction-priority-20260723-21";
+const APP_VERSION = "clock-picker-bulk-schedule-20260724-22";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -66,6 +66,23 @@ const weeklyScheduleDisplay = document.getElementById("weeklyScheduleDisplay");
 const saveWeeklyScheduleButton = document.getElementById("saveWeeklyScheduleButton");
 const weeklyScheduleStatus = document.getElementById("weeklyScheduleStatus");
 const weeklyScheduleEditor = document.getElementById("weeklyScheduleEditor");
+const bulkScheduleTimeInput = document.getElementById("bulkScheduleTimeInput");
+const applyBulkScheduleTimeButton = document.getElementById("applyBulkScheduleTimeButton");
+const timePickerModal = document.getElementById("timePickerModal");
+const timePickerCloseButton = document.getElementById("timePickerCloseButton");
+const timePickerHourButton = document.getElementById("timePickerHourButton");
+const timePickerMinuteButton = document.getElementById("timePickerMinuteButton");
+const timePickerInstruction = document.getElementById("timePickerInstruction");
+const timePickerClockFace = document.getElementById("timePickerClockFace");
+const timePickerHand = document.getElementById("timePickerHand");
+const timePickerNumberLayer = document.getElementById("timePickerNumberLayer");
+const timePickerCancelButton = document.getElementById("timePickerCancelButton");
+const timePickerConfirmButton = document.getElementById("timePickerConfirmButton");
+
+let timePickerTarget = null;
+let timePickerPhase = "hour";
+let timePickerHour = 8;
+let timePickerMinute = 0;
 
 const retireStaffButton = document.getElementById("retireStaffButton");
 const retireTargetEmployee = document.getElementById("retireTargetEmployee");
@@ -980,10 +997,15 @@ async function showAllSheetsForAdmin() {
 
 
 function setupWeeklySchedule() {
+  setupCustomTimePicker();
   setupWeeklyScheduleGrid(weeklyScheduleGrid);
   setupWeeklyScheduleGrid(newStaffWeeklyScheduleGrid);
+  setupClockTimeInput(bulkScheduleTimeInput);
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
+  if (applyBulkScheduleTimeButton) {
+    applyBulkScheduleTimeButton.addEventListener("click", applyBulkScheduleTimeToMondayThroughSaturday);
+  }
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.addEventListener("click", saveWeeklySchedule);
 }
 
@@ -993,11 +1015,253 @@ function setupWeeklyScheduleGrid(grid) {
     const off = row.querySelector(".schedule-off");
     const time = row.querySelector(".schedule-time");
     if (!off || !time) return;
+    setupClockTimeInput(time);
     off.addEventListener("change", () => {
       time.disabled = off.checked || isSending;
       row.classList.toggle("is-off", off.checked);
     });
   });
+}
+
+function setupClockTimeInput(input) {
+  if (!input || input.dataset.clockPickerReady === "true") return;
+  input.dataset.clockPickerReady = "true";
+  input.readOnly = true;
+  input.addEventListener("click", () => openCustomTimePicker(input));
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    openCustomTimePicker(input);
+  });
+}
+
+function setupCustomTimePicker() {
+  if (!timePickerModal || timePickerModal.dataset.ready === "true") return;
+  timePickerModal.dataset.ready = "true";
+
+  if (timePickerCloseButton) timePickerCloseButton.addEventListener("click", closeCustomTimePicker);
+  if (timePickerCancelButton) timePickerCancelButton.addEventListener("click", closeCustomTimePicker);
+  if (timePickerConfirmButton) timePickerConfirmButton.addEventListener("click", confirmCustomTimePicker);
+  if (timePickerHourButton) timePickerHourButton.addEventListener("click", () => setTimePickerPhase("hour"));
+  if (timePickerMinuteButton) timePickerMinuteButton.addEventListener("click", () => setTimePickerPhase("minute"));
+
+  timePickerModal.querySelectorAll("[data-time-picker-close='true']").forEach((element) => {
+    element.addEventListener("click", closeCustomTimePicker);
+  });
+
+  if (timePickerClockFace) {
+    timePickerClockFace.addEventListener("pointerdown", handleTimePickerClockPointer);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && timePickerModal && !timePickerModal.hidden) {
+      closeCustomTimePicker();
+    }
+  });
+}
+
+function openCustomTimePicker(target) {
+  if (!target || target.disabled || !timePickerModal) return;
+  const parsed = parseClockTime(target.value || "08:00");
+  timePickerTarget = target;
+  timePickerHour = parsed.hour;
+  timePickerMinute = parsed.minute;
+  timePickerPhase = "hour";
+  renderCustomTimePicker();
+  timePickerModal.hidden = false;
+  document.body.classList.add("time-picker-open");
+  window.setTimeout(() => {
+    if (timePickerHourButton) timePickerHourButton.focus();
+  }, 0);
+}
+
+function closeCustomTimePicker() {
+  if (!timePickerModal) return;
+  timePickerModal.hidden = true;
+  document.body.classList.remove("time-picker-open");
+  const previousTarget = timePickerTarget;
+  timePickerTarget = null;
+  if (previousTarget && typeof previousTarget.focus === "function") previousTarget.focus();
+}
+
+function confirmCustomTimePicker() {
+  if (!timePickerTarget) {
+    closeCustomTimePicker();
+    return;
+  }
+  const nextValue = `${String(timePickerHour).padStart(2, "0")}:${String(timePickerMinute).padStart(2, "0")}`;
+  timePickerTarget.value = nextValue;
+  timePickerTarget.dispatchEvent(new Event("input", { bubbles: true }));
+  timePickerTarget.dispatchEvent(new Event("change", { bubbles: true }));
+  closeCustomTimePicker();
+}
+
+function parseClockTime(value) {
+  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  let hour = match ? Number(match[1]) : 8;
+  let minute = match ? Number(match[2]) : 0;
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23) hour = 8;
+  if (!Number.isInteger(minute) || minute < 0 || minute > 59) minute = 0;
+  minute = Math.round(minute / 15) * 15;
+  if (minute === 60) {
+    minute = 0;
+    hour = (hour + 1) % 24;
+  }
+  return { hour, minute };
+}
+
+function setTimePickerPhase(phase) {
+  timePickerPhase = phase === "minute" ? "minute" : "hour";
+  renderCustomTimePicker();
+}
+
+function renderCustomTimePicker() {
+  if (timePickerHourButton) {
+    timePickerHourButton.textContent = String(timePickerHour).padStart(2, "0");
+    timePickerHourButton.classList.toggle("is-active", timePickerPhase === "hour");
+  }
+  if (timePickerMinuteButton) {
+    timePickerMinuteButton.textContent = String(timePickerMinute).padStart(2, "0");
+    timePickerMinuteButton.classList.toggle("is-active", timePickerPhase === "minute");
+  }
+  if (timePickerInstruction) {
+    timePickerInstruction.textContent = timePickerPhase === "hour"
+      ? "時を選択してください（内側は13〜00時）"
+      : "分を選択してください";
+  }
+  renderTimePickerClockNumbers();
+  updateTimePickerHand();
+}
+
+function renderTimePickerClockNumbers() {
+  if (!timePickerNumberLayer) return;
+  timePickerNumberLayer.innerHTML = "";
+
+  if (timePickerPhase === "hour") {
+    for (let hour = 1; hour <= 12; hour++) {
+      addTimePickerNumber(hour, String(hour), 42, hour === timePickerHour);
+    }
+    for (let hour = 13; hour <= 23; hour++) {
+      addTimePickerNumber(hour, String(hour), 27, hour === timePickerHour);
+    }
+    addTimePickerNumber(0, "00", 27, timePickerHour === 0);
+    return;
+  }
+
+  [0, 15, 30, 45].forEach((minute) => {
+    addTimePickerNumber(minute, String(minute).padStart(2, "0"), 42, minute === timePickerMinute);
+  });
+
+  for (let index = 0; index < 12; index++) {
+    const minute = index * 5;
+    if ([0, 15, 30, 45].includes(minute)) continue;
+    const tick = document.createElement("span");
+    tick.className = "time-picker-minute-tick";
+    positionTimePickerElement(tick, minute * 6, 42);
+    timePickerNumberLayer.appendChild(tick);
+  }
+}
+
+function addTimePickerNumber(value, label, radiusPercent, selected) {
+  if (!timePickerNumberLayer) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `time-picker-number${selected ? " is-selected" : ""}`;
+  button.textContent = label;
+  button.setAttribute("aria-label", timePickerPhase === "hour" ? `${label}時` : `${label}分`);
+  const angle = timePickerPhase === "hour" ? (value % 12) * 30 : value * 6;
+  positionTimePickerElement(button, angle, radiusPercent);
+  button.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    selectTimePickerValue(value);
+  });
+  timePickerNumberLayer.appendChild(button);
+}
+
+function positionTimePickerElement(element, angleDegrees, radiusPercent) {
+  const radians = angleDegrees * Math.PI / 180;
+  const x = 50 + radiusPercent * Math.sin(radians);
+  const y = 50 - radiusPercent * Math.cos(radians);
+  element.style.left = `${x}%`;
+  element.style.top = `${y}%`;
+}
+
+function selectTimePickerValue(value) {
+  if (timePickerPhase === "hour") {
+    timePickerHour = Number(value);
+    renderCustomTimePicker();
+    window.setTimeout(() => setTimePickerPhase("minute"), 120);
+    return;
+  }
+  timePickerMinute = Number(value);
+  renderCustomTimePicker();
+}
+
+function handleTimePickerClockPointer(event) {
+  if (!timePickerClockFace) return;
+  const rect = timePickerClockFace.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = event.clientX - centerX;
+  const dy = event.clientY - centerY;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 24) return;
+
+  let angle = Math.atan2(dx, -dy);
+  if (angle < 0) angle += Math.PI * 2;
+
+  if (timePickerPhase === "hour") {
+    const hourOnDial = Math.round(angle / (Math.PI * 2) * 12) % 12;
+    const useInnerDial = distance < rect.width * 0.35;
+    timePickerHour = useInnerDial
+      ? (hourOnDial === 0 ? 0 : hourOnDial + 12)
+      : (hourOnDial === 0 ? 12 : hourOnDial);
+    renderCustomTimePicker();
+    window.setTimeout(() => setTimePickerPhase("minute"), 120);
+    return;
+  }
+
+  timePickerMinute = (Math.round(angle / (Math.PI / 2)) * 15) % 60;
+  renderCustomTimePicker();
+}
+
+function updateTimePickerHand() {
+  if (!timePickerHand) return;
+  let angle = 0;
+  let lengthPercent = 42;
+
+  if (timePickerPhase === "hour") {
+    angle = (timePickerHour % 12) * 30;
+    lengthPercent = timePickerHour === 0 || timePickerHour >= 13 ? 27 : 42;
+  } else {
+    angle = timePickerMinute * 6;
+    lengthPercent = 42;
+  }
+
+  timePickerHand.style.setProperty("--time-picker-angle", `${angle}deg`);
+  timePickerHand.style.setProperty("--time-picker-hand-length", `${lengthPercent}%`);
+}
+
+function applyBulkScheduleTimeToMondayThroughSaturday() {
+  if (!weeklyScheduleGrid || !bulkScheduleTimeInput) return;
+  const parsed = parseClockTime(bulkScheduleTimeInput.value || "08:00");
+  const timeValue = `${String(parsed.hour).padStart(2, "0")}:${String(parsed.minute).padStart(2, "0")}`;
+  const targetDays = new Set(["mon", "tue", "wed", "thu", "fri", "sat"]);
+
+  weeklyScheduleGrid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    if (!targetDays.has(row.dataset.day)) return;
+    const off = row.querySelector(".schedule-off");
+    const time = row.querySelector(".schedule-time");
+    if (off) off.checked = false;
+    if (time) {
+      time.value = timeValue;
+      time.disabled = isSending;
+    }
+    row.classList.remove("is-off");
+  });
+
+  showMessage(`月曜日〜土曜日へ ${timeValue} を一括反映しました。最後に「勤務予定を更新」を押してください。`, "ok");
 }
 
 function getDefaultWeeklySchedule() {
@@ -1400,6 +1664,8 @@ function setControlsDisabled(disabled) {
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (week40OverInput) week40OverInput.disabled = disabled;
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
+  if (bulkScheduleTimeInput) bulkScheduleTimeInput.disabled = disabled;
+  if (applyBulkScheduleTimeButton) applyBulkScheduleTimeButton.disabled = disabled || !selectedEmployee;
   updateDefaultEmployeeRegistrationUi();
   [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
     if (!grid) return;
