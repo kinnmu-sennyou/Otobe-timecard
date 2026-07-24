@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=clock-picker-fixed-footer-newstaff-20260724-23">
+  <link rel="stylesheet" href="./style.css?v=clock-picker-all-time-fields-20260724-24">
 </head>
 <body>
   <main class="page">
@@ -103,7 +103,7 @@
           </label>
           <label>
             時刻指定
-            <input type="time" id="editTime" step="900">
+            <input type="text" id="editTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="修正時刻を選択" aria-label="時計から修正時刻を選択">
           </label>
         </div>
         <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
@@ -163,7 +163,7 @@
             </div>
             <label class="schedule-bulk-time-label">
               一括時間
-              <input type="text" id="bulkScheduleTimeInput" class="clock-time-input schedule-bulk-time-input" value="08:00" readonly inputmode="none" aria-label="月曜から土曜へ一括反映する時間を時計から選択">
+              <input type="text" id="bulkScheduleTimeInput" class="clock-time-input schedule-bulk-time-input" value="08:00" readonly inputmode="none" data-clock-title="一括反映する時間を選択" aria-label="月曜から土曜へ一括反映する時間を時計から選択">
             </label>
             <button type="button" id="applyBulkScheduleTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に入力した時間を一括反映</button>
           </section>
@@ -206,12 +206,12 @@
 
           <label>
             出勤時間
-            <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から新規スタッフの出勤時間を選択">
+            <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="出勤時間を選択" aria-label="時計から新規スタッフの出勤時間を選択">
           </label>
 
           <label>
             退勤時間
-            <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" aria-label="時計から新規スタッフの退勤時間を選択">
+            <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" data-clock-title="退勤時間を選択" aria-label="時計から新規スタッフの退勤時間を選択">
           </label>
 
           <label>
@@ -318,6 +318,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=clock-picker-fixed-footer-newstaff-20260724-23"></script>
+<script src="./app.js?v=clock-picker-all-time-fields-20260724-24"></script>
 </body>
 </html>

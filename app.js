@@ -1004,6 +1004,7 @@ function setupWeeklySchedule() {
   setupClockTimeInput(bulkScheduleTimeInput);
   setupClockTimeInput(newStartTime);
   setupClockTimeInput(newEndTime);
+  setupClockTimeInput(editTime);
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
   if (applyBulkScheduleTimeButton) {
@@ -1070,6 +1071,9 @@ function openCustomTimePicker(target) {
   if (!target || target.disabled || !timePickerModal) return;
   const parsed = parseClockTime(target.value || "08:00");
   timePickerTarget = target;
+  if (timePickerTitle) {
+    timePickerTitle.textContent = String(target.dataset.clockTitle || "時間を選択").trim() || "時間を選択";
+  }
   timePickerHour = parsed.hour;
   timePickerMinute = parsed.minute;
   timePickerPhase = "hour";
