@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=instant-punch-correction-actions-20260727-29">
+  <link rel="stylesheet" href="./style.css?v=instant-punch-final-layout-20260727-32">
 </head>
 <body>
   <main class="page">
@@ -18,7 +18,7 @@
           <div class="yesterday-alert-main">昨日の打刻を忘れていませんか？</div>
           <div class="yesterday-alert-sub">(お休みの日の場合は無視してください)</div>
         </div>
-        <p class="hint">スタッフと打刻内容を選んで更新を押してください。</p>
+        <p class="hint">スタッフを選び、打刻ボタンを押してください。</p>
       </div>
 
       <div class="card-block staff-select-block">
@@ -61,13 +61,15 @@
         <div id="weeklyScheduleDisplay" class="weekly-schedule-display">勤務予定を読み込み中...</div>
       </section>
 
+      <div id="updateStatus" class="update-status punch-update-status neutral" aria-live="polite">更新状況：待機中</div>
+
       <div class="card-block punch-card-block">
-        <div class="section-title">打刻内容</div>
+        <div class="section-title punch-section-title">打刻内容(出勤・退勤・現時刻打刻・途中退社・有給は押下時に即反映致します)</div>
         <div class="punch-grid immediate-punch-grid" id="actionButtons" role="group" aria-label="押すと即時反映する打刻内容">
           <button type="button" data-action="出勤">出勤</button>
           <button type="button" data-action="退勤">退勤</button>
-          <button type="button" data-action="現時刻打刻">現時刻打刻</button>
-          <button type="button" data-action="途中退社">途中退社</button>
+          <button type="button" data-action="現時刻打刻"><span>現時刻<br>打刻</span></button>
+          <button type="button" data-action="途中退社"><span>途中<br>退社</span></button>
           <button type="button" data-action="有給">有給</button>
         </div>
         <p class="small immediate-punch-note">各ボタンは押した時点で即時反映します。通常の「出勤」は登録済みの出勤時刻、「現時刻打刻」は押した時刻を反映します。</p>
@@ -82,17 +84,6 @@
           <p class="small">選択中の休憩設定は、次に押す打刻ボタンへ反映します。</p>
         </div>
 
-        <div class="week40-area">
-          <label>
-            週40時間超
-            <input type="number" id="week40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
-          </label>
-          <p class="small">入力した値は、次に押す打刻ボタンへ反映します。</p>
-        </div>
-
-        <button type="button" id="updateButton" class="main-button">更新</button>
-        <p class="small manual-update-note">更新は、最後に押した打刻内容へ現在の休憩設定・週40時間超を再反映します。</p>
-        <div id="updateStatus" class="update-status neutral" aria-live="polite">更新状況：待機中</div>
       </div>
 
       <details class="edit-area correction-edit-area" open>
@@ -119,6 +110,15 @@
             <input type="text" id="editTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="修正時刻を選択" aria-label="時計から修正時刻を選択">
           </label>
         </div>
+
+        <div class="correction-week40-row">
+          <label for="correctionWeek40OverInput">
+            <span>週40時間超</span>
+            <input type="number" id="correctionWeek40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
+          </label>
+          <span class="correction-week40-note">必要な修正時だけ入力</span>
+        </div>
+
         <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
         <p class="small">上の小さい選択肢で修正内容を選び、指定した日時を最優先で反映します。</p>
       </details>
@@ -332,6 +332,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=instant-punch-correction-actions-20260727-29"></script>
+<script src="./app.js?v=instant-punch-final-layout-20260727-32"></script>
 </body>
 </html>
