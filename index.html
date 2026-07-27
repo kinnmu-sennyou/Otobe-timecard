@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=mobile-edit-sheet-list-20260727-25">
+  <link rel="stylesheet" href="./style.css?v=mobile-add-staff-grid-20260727-27">
 </head>
 <body>
   <main class="page">
@@ -186,7 +186,7 @@
         <p class="small">雇用形態を登録し、個人勤務表シートを自動作成します。</p>
 
         <div class="add-staff-grid">
-          <label>
+          <label class="add-staff-field add-staff-employment-field">
             雇用形態
             <select id="newEmploymentType">
               <option value="社員">社員</option>
@@ -194,28 +194,28 @@
             </select>
           </label>
 
-          <label>
+          <label class="add-staff-field add-staff-name-field">
             スタッフ名
             <input type="text" id="newStaffName" placeholder="例：佐藤　花子">
           </label>
           <p class="staff-name-note">スタッフ名は苗字と名前の間に【全角スペース】を入れてください。</p>
 
-          <label>
+          <label class="add-staff-field add-staff-number-field">
             社員番号
             <input type="text" id="newEmployeeNo" inputmode="numeric" placeholder="例：052">
           </label>
 
-          <label>
+          <label class="add-staff-field add-staff-start-field">
             出勤時間
             <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="出勤時間を選択" aria-label="時計から新規スタッフの出勤時間を選択">
           </label>
 
-          <label>
+          <label class="add-staff-field add-staff-end-field">
             退勤時間
             <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" data-clock-title="退勤時間を選択" aria-label="時計から新規スタッフの退勤時間を選択">
           </label>
 
-          <label>
+          <label class="add-staff-field add-staff-break-field">
             休憩時間（分）
             <input type="number" id="newBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
           </label>
@@ -319,6 +319,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=mobile-edit-sheet-list-20260727-25"></script>
+<script src="./app.js?v=mobile-add-staff-grid-20260727-27"></script>
 </body>
 </html>
