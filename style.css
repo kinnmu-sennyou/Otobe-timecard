@@ -2123,3 +2123,87 @@ body.time-picker-open {
     grid-column: 1;
   }
 }
+
+
+/* ===== 2026-07-27 v13：スマホの日付入力を外枠内へ強制収納 ===== */
+.date-input-shell {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 46px;
+  min-height: 46px;
+  overflow: hidden;
+  border: 1px solid #e8ccd7;
+  border-radius: 14px;
+  background: #fffafd;
+}
+
+.date-input-shell:focus-within {
+  border-color: var(--pink-dark);
+  box-shadow: 0 0 0 3px rgba(247, 183, 201, .24);
+}
+
+.date-input-shell #editDate {
+  position: absolute;
+  inset: 0;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 10px;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.date-input-shell #editDate:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.date-input-shell #editDate::-webkit-date-and-time-value,
+.date-input-shell #editDate::-webkit-datetime-edit,
+.date-input-shell #editDate::-webkit-datetime-edit-fields-wrapper {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+.date-input-shell #editDate::-webkit-calendar-picker-indicator {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 2px;
+}
+
+@media (max-width: 620px) {
+  .correction-edit-area .edit-grid,
+  .correction-edit-area .edit-grid > label,
+  .date-input-shell {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .date-input-shell {
+    contain: inline-size layout paint;
+  }
+
+  .date-input-shell #editDate {
+    font-size: 16px;
+    padding: 8px 8px;
+  }
+}
