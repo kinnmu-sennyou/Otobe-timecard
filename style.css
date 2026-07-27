@@ -2207,3 +2207,84 @@ body.time-picker-open {
     padding: 8px 8px;
   }
 }
+
+
+/* ===== 2026-07-27 v14：勤務時間変更フォームの曜日欄をスマホ幅へ収納 ===== */
+@media (max-width: 620px) {
+  .weekly-schedule-area,
+  #weeklyScheduleEditor,
+  #weeklyScheduleGrid,
+  #weeklyScheduleGrid .weekly-schedule-row,
+  #weeklyScheduleGrid .weekly-schedule-row > label {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .weekly-schedule-area {
+    overflow: hidden;
+  }
+
+  #weeklyScheduleGrid {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #weeklyScheduleGrid .weekly-schedule-row {
+    width: 100%;
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 7px;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  #weeklyScheduleGrid .weekly-schedule-row > strong {
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  #weeklyScheduleGrid .weekly-schedule-row > label:not(.schedule-off-label) {
+    display: grid;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #weeklyScheduleGrid .schedule-time {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 40px;
+    padding-left: 7px;
+    padding-right: 32px;
+    font-size: 14px;
+  }
+
+  #weeklyScheduleGrid .schedule-off-label {
+    grid-column: 1 / -1;
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 360px) {
+  #weeklyScheduleGrid .weekly-schedule-row {
+    grid-template-columns: 50px minmax(0, 1fr);
+    gap: 5px;
+    padding: 7px;
+  }
+
+  #weeklyScheduleGrid .weekly-schedule-row > strong {
+    font-size: 12px;
+  }
+
+  #weeklyScheduleGrid .schedule-time {
+    padding-right: 29px;
+    font-size: 13px;
+  }
+}
