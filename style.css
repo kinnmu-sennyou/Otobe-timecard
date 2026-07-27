@@ -1845,3 +1845,281 @@ body.time-picker-open {
     font-size: 10px;
   }
 }
+
+/* ===== 2026-07-27 v12：打刻ボタン文字最大化・日時修正・新規スタッフ欄のレスポンシブ修正 ===== */
+
+/* ボタン自体の寸法は変えず、文字を枠内ぎりぎりまで大きくする */
+#actionButtons.immediate-punch-grid button {
+  min-width: 0;
+  padding: 3px 2px;
+  font-size: clamp(22px, 3vw, 26px);
+  line-height: 1;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#actionButtons.immediate-punch-grid button[data-action="現時刻打刻"],
+#actionButtons.immediate-punch-grid button[data-action="途中退社"] {
+  padding-inline: 2px;
+  font-size: clamp(20px, 2.75vw, 24px);
+  letter-spacing: -.055em;
+}
+
+/* 日付入力のブラウザ固有の最小幅で、スマホ時に枠を押し広げないようにする */
+.correction-edit-area,
+.correction-edit-area .edit-grid,
+.correction-edit-area .edit-grid > label {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#editDate {
+  box-sizing: border-box;
+  inline-size: 100%;
+  width: 100%;
+  min-inline-size: 0;
+  min-width: 0;
+  max-inline-size: 100%;
+  max-width: 100%;
+  -webkit-min-logical-width: 0;
+}
+
+#editDate::-webkit-date-and-time-value,
+#editDate::-webkit-datetime-edit {
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* 新規スタッフ追加：PCは4項目を4列、各入力を必ず自分の列内に収める */
+.add-staff-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+}
+
+.add-staff-field,
+.add-staff-field input,
+.add-staff-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.add-staff-field {
+  display: grid;
+  gap: 6px;
+  overflow-wrap: anywhere;
+}
+
+.add-staff-employment-field {
+  grid-column: 1;
+}
+
+.add-staff-name-field {
+  grid-column: 2 / -1;
+}
+
+.add-staff-number-field,
+.add-staff-start-field,
+.add-staff-end-field,
+.add-staff-break-field {
+  grid-column: auto;
+}
+
+/* 新規スタッフの曜日別欄：時計入力の固定的な最小幅を解除 */
+.new-staff-schedule-section,
+#newStaffWeeklyScheduleGrid,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row > strong,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row > label,
+#newStaffWeeklyScheduleGrid .schedule-time {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.new-staff-schedule-section {
+  width: 100%;
+  overflow: hidden;
+}
+
+#newStaffWeeklyScheduleGrid .weekly-schedule-row {
+  width: 100%;
+  grid-template-columns: 76px minmax(0, 1fr) 74px;
+}
+
+#newStaffWeeklyScheduleGrid .weekly-schedule-row > label {
+  width: 100%;
+}
+
+#newStaffWeeklyScheduleGrid .schedule-time {
+  display: block;
+  width: 100%;
+  padding-left: 8px;
+  padding-right: 36px;
+}
+
+/* 週40時間超の補足は、スマホでは入力欄の直下に置く */
+.correction-week40-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.correction-week40-row > label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--pink-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+#correctionWeek40OverInput {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.correction-week40-note {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  /* 既存の1列指定より後に上書きし、4項目を2列×2段で安定表示 */
+  .add-staff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .add-staff-employment-field,
+  .add-staff-name-field,
+  .staff-name-note {
+    grid-column: 1 / -1;
+  }
+
+  .add-staff-number-field {
+    grid-column: 1;
+  }
+
+  .add-staff-start-field {
+    grid-column: 2;
+  }
+
+  .add-staff-end-field {
+    grid-column: 1;
+  }
+
+  .add-staff-break-field {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 620px) {
+  #actionButtons.immediate-punch-grid button {
+    font-size: clamp(21px, 6vw, 24px);
+  }
+
+  #actionButtons.immediate-punch-grid button[data-action="現時刻打刻"],
+  #actionButtons.immediate-punch-grid button[data-action="途中退社"] {
+    font-size: clamp(18px, 5.25vw, 22px);
+    letter-spacing: -.065em;
+  }
+
+  .correction-edit-area .edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .correction-edit-area .edit-grid > label {
+    overflow: hidden;
+  }
+
+  #editDate {
+    font-size: 16px;
+    padding-left: 9px;
+    padding-right: 34px;
+    overflow: hidden;
+  }
+
+  .add-staff-field {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .add-staff-field input,
+  .add-staff-field select {
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 16px;
+  }
+
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row > strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row > label:not(.schedule-off-label) {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  #newStaffWeeklyScheduleGrid .schedule-time {
+    min-height: 40px;
+    padding-left: 7px;
+    padding-right: 32px;
+    font-size: 14px;
+  }
+
+  #newStaffWeeklyScheduleGrid .schedule-off-label {
+    grid-column: 1 / -1;
+    width: auto;
+    justify-self: start;
+  }
+
+  .correction-week40-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+
+  .correction-week40-note {
+    grid-column: 1;
+    display: block;
+    margin-top: 0;
+    padding-left: 2px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 340px) {
+  .add-staff-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .add-staff-employment-field,
+  .add-staff-name-field,
+  .add-staff-number-field,
+  .add-staff-start-field,
+  .add-staff-end-field,
+  .add-staff-break-field,
+  .staff-name-note {
+    grid-column: 1;
+  }
+}
