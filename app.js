@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "clock-picker-fixed-footer-newstaff-20260724-23";
+const APP_VERSION = "mobile-edit-sheet-list-20260727-25";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -21,6 +21,7 @@ let selectedBreakMode = "normal";
 let isSending = false;
 let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
+let isSheetStaffListExpanded = false;
 
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
@@ -47,6 +48,7 @@ const sheetTargetMonth = document.getElementById("sheetTargetMonth");
 const sheetStaffSearch = document.getElementById("sheetStaffSearch");
 const sheetBrowserMemo = document.getElementById("sheetBrowserMemo");
 const sheetStaffChecklist = document.getElementById("sheetStaffChecklist");
+const sheetStaffListToggleButton = document.getElementById("sheetStaffListToggleButton");
 const selectAllSheetStaffButton = document.getElementById("selectAllSheetStaffButton");
 const clearAllSheetStaffButton = document.getElementById("clearAllSheetStaffButton");
 const sheetSelectionCount = document.getElementById("sheetSelectionCount");
@@ -715,8 +717,19 @@ function setupSheetOpenSelection() {
   }
 
   if (sheetStaffSearch) {
-    sheetStaffSearch.addEventListener("input", renderSheetStaffChecklist);
+    sheetStaffSearch.addEventListener("input", () => {
+      setSheetStaffListExpanded(false);
+      renderSheetStaffChecklist();
+    });
   }
+
+  if (sheetStaffListToggleButton) {
+    sheetStaffListToggleButton.addEventListener("click", () => {
+      setSheetStaffListExpanded(!isSheetStaffListExpanded);
+    });
+  }
+
+  window.addEventListener("resize", updateSheetStaffListToggleVisibility);
 
   if (sheetBrowserMemo) {
     try {
@@ -760,6 +773,45 @@ function getFilteredSheetEmployees() {
   });
 }
 
+function setSheetStaffListExpanded(expanded) {
+  isSheetStaffListExpanded = Boolean(expanded);
+
+  if (sheetStaffChecklist) {
+    sheetStaffChecklist.classList.toggle("is-expanded", isSheetStaffListExpanded);
+    if (!isSheetStaffListExpanded) sheetStaffChecklist.scrollTop = 0;
+  }
+
+  updateSheetStaffListToggleVisibility();
+}
+
+function getSheetStaffChecklistColumnCount() {
+  if (!sheetStaffChecklist) return 1;
+  const columns = window.getComputedStyle(sheetStaffChecklist).gridTemplateColumns
+    .split(/\s+/)
+    .filter(Boolean);
+  return Math.max(1, columns.length);
+}
+
+function updateSheetStaffListToggleVisibility() {
+  if (!sheetStaffChecklist || !sheetStaffListToggleButton) return;
+
+  const choiceCount = sheetStaffChecklist.querySelectorAll(".sheet-staff-choice").length;
+  const visibleLimit = getSheetStaffChecklistColumnCount() * 4;
+  const needsToggle = choiceCount > visibleLimit;
+
+  if (!needsToggle && isSheetStaffListExpanded) {
+    isSheetStaffListExpanded = false;
+    sheetStaffChecklist.classList.remove("is-expanded");
+    sheetStaffChecklist.scrollTop = 0;
+  }
+
+  sheetStaffListToggleButton.hidden = !needsToggle;
+  sheetStaffListToggleButton.setAttribute("aria-expanded", String(isSheetStaffListExpanded));
+  sheetStaffListToggleButton.textContent = isSheetStaffListExpanded
+    ? "4行表示に戻す"
+    : `全て表示（${choiceCount}名）`;
+}
+
 function renderSheetStaffChecklist() {
   if (!sheetStaffChecklist) return;
 
@@ -782,6 +834,7 @@ function renderSheetStaffChecklist() {
     empty.className = "sheet-staff-empty";
     empty.textContent = EMPLOYEES.length ? "検索に該当するスタッフがいません" : "対象スタッフがいません";
     sheetStaffChecklist.appendChild(empty);
+    updateSheetStaffListToggleVisibility();
     updateSheetOpenSelectionState();
     return;
   }
@@ -820,6 +873,7 @@ function renderSheetStaffChecklist() {
       sheetStaffChecklist.appendChild(label);
     });
 
+  window.requestAnimationFrame(updateSheetStaffListToggleVisibility);
   updateSheetOpenSelectionState();
 }
 
@@ -871,6 +925,10 @@ function updateSheetOpenSelectionState() {
 
   if (sheetBrowserMemo) {
     sheetBrowserMemo.disabled = Boolean(isSending);
+  }
+
+  if (sheetStaffListToggleButton) {
+    sheetStaffListToggleButton.disabled = Boolean(isSending);
   }
 
   if (sheetStaffChecklist) {
