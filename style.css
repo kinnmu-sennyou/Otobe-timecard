@@ -1605,60 +1605,21 @@ body.time-picker-open {
 }
 
 
-/* ===== 2026-07-27 スマホ修正：日付・時刻の両方を枠内へ固定 ===== */
-.edit-area {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.edit-grid {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
+/* ===== 2026-07-27 スマホ修正：日時指定欄の横はみ出し防止 ===== */
+.edit-area,
+.edit-grid,
 .edit-grid > label {
-  width: 100%;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
 }
 
 .edit-grid input,
 #editDate,
 #editTime {
   display: block;
-  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  inline-size: 100%;
-  min-inline-size: 0;
-  max-inline-size: 100%;
-}
-
-/* スマホの標準日付入力が持つ内部最小幅も縮める */
-#editDate {
-  -webkit-appearance: none;
-  appearance: none;
-  overflow: hidden;
-  font-size: 16px;
-}
-
-#editDate::-webkit-date-and-time-value,
-#editDate::-webkit-datetime-edit,
-#editDate::-webkit-datetime-edit-fields-wrapper {
-  min-width: 0;
-  max-width: 100%;
-  padding: 0;
-}
-
-#editDate::-webkit-calendar-picker-indicator {
-  flex: 0 0 auto;
-  margin: 0;
 }
 
 @media (max-width: 620px) {
@@ -1710,81 +1671,73 @@ body.time-picker-open {
   }
 }
 
-
-/* ===== 2026-07-27 スマホ修正：新規スタッフ追加の入力欄を重ねない ===== */
-.add-staff-grid,
-.add-staff-grid > *,
-.add-staff-grid .add-staff-field {
+/* ===== 2026-07-27 スマホ修正：新規スタッフ曜日別勤務欄のはみ出し防止 ===== */
+.new-staff-schedule-section,
+#newStaffWeeklyScheduleGrid,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row > *,
+#newStaffWeeklyScheduleGrid .weekly-schedule-row label {
   min-width: 0;
   max-width: 100%;
 }
 
-.add-staff-grid .add-staff-field {
+.new-staff-schedule-section {
   width: 100%;
   overflow: hidden;
 }
 
-.add-staff-grid .add-staff-field input,
-.add-staff-grid .add-staff-field select,
-#newStaffName,
-#newEmployeeNo,
-#newStartTime,
-#newEndTime,
-#newBreakMinutes,
-#newEmploymentType {
+#newStaffWeeklyScheduleGrid .schedule-time {
   display: block;
-  box-sizing: border-box;
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  inline-size: 100%;
-  min-inline-size: 0;
-  max-inline-size: 100%;
 }
 
-@media (max-width: 720px) {
-  .add-staff-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 10px;
-    row-gap: 10px;
+@media (max-width: 620px) {
+  .new-staff-schedule-section {
+    padding: 10px;
   }
 
-  .add-staff-employment-field,
-  .add-staff-name-field,
-  .add-staff-grid .staff-name-note {
-    grid-column: 1 / -1;
+  #newStaffWeeklyScheduleGrid {
+    width: 100%;
+    gap: 7px;
   }
 
-  .add-staff-number-field { grid-column: 1; }
-  .add-staff-start-field { grid-column: 2; }
-  .add-staff-end-field { grid-column: 1; }
-  .add-staff-break-field { grid-column: 2; }
-
-  .add-staff-grid .add-staff-field {
-    align-self: start;
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row {
+    width: 100%;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px;
   }
 
-  .add-staff-grid .add-staff-field input,
-  .add-staff-grid .add-staff-field select {
-    font-size: 16px;
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row > strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row label:not(.schedule-off-label) {
+    width: 100%;
+  }
+
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row .schedule-time {
+    box-sizing: border-box;
+    min-height: 42px;
     padding-left: 8px;
     padding-right: 8px;
+    font-size: 15px;
+  }
+
+  #newStaffWeeklyScheduleGrid .schedule-off-label {
+    grid-column: 1 / -1;
+    width: max-content;
+    max-width: 100%;
+    justify-self: start;
   }
 }
 
-@media (max-width: 360px) {
-  .add-staff-grid {
-    column-gap: 7px;
-  }
-
-  .add-staff-grid .add-staff-field {
-    font-size: 13px;
-  }
-
-  .add-staff-grid .add-staff-field input,
-  .add-staff-grid .add-staff-field select {
-    font-size: 15px;
-    padding-left: 6px;
-    padding-right: 6px;
+@media (max-width: 380px) {
+  #newStaffWeeklyScheduleGrid .weekly-schedule-row {
+    grid-template-columns: 52px minmax(0, 1fr);
+    padding: 8px;
   }
 }
