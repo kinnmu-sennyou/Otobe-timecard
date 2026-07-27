@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=instant-punch-final-layout-20260727-32">
+  <link rel="stylesheet" href="./style.css?v=staff-collapse-immediate-fixed-20260727-35">
 </head>
 <body>
   <main class="page">
@@ -18,43 +18,45 @@
           <div class="yesterday-alert-main">昨日の打刻を忘れていませんか？</div>
           <div class="yesterday-alert-sub">(お休みの日の場合は無視してください)</div>
         </div>
-        <p class="hint">スタッフを選び、打刻ボタンを押してください。</p>
       </div>
 
-      <div class="card-block staff-select-block">
-        <div class="section-title">スタッフ選択</div>
+      <details class="card-block staff-select-block">
+        <summary class="staff-select-summary">
+          <span class="staff-select-summary-title">スタッフ選択</span>
+          <span class="staff-select-summary-selected">
+            <span>選択中</span>
+            <strong id="selectedEmployee">未選択</strong>
+          </span>
+        </summary>
 
-        <div class="staff-search-area">
-          <label>
-            スタッフ検索
-            <input type="search" id="employeeSearch" placeholder="名前または社員番号で検索" autocomplete="off">
-          </label>
+        <div class="staff-select-content">
+          <div class="staff-search-area">
+            <label>
+              スタッフ検索
+              <input type="search" id="employeeSearch" placeholder="名前または社員番号で検索" autocomplete="off">
+            </label>
 
-          <label>
-            候補から選択
-            <select id="employeeSelect" aria-label="スタッフを選択"></select>
-          </label>
+            <label>
+              候補から選択
+              <select id="employeeSelect" aria-label="スタッフを選択"></select>
+            </label>
 
-          <div class="default-return-row">
-            <p class="small">閲覧のために別スタッフを選んでも、初期スタッフは自動では変わりません。</p>
-            <button type="button" id="returnToDefaultEmployeeButton" class="return-default-employee-button" hidden>デフォルトのスタッフの選択に戻す</button>
+            <div class="default-return-row">
+              <p class="small">閲覧のために別スタッフを選んでも、初期スタッフは自動では変わりません。</p>
+              <button type="button" id="returnToDefaultEmployeeButton" class="return-default-employee-button" hidden>デフォルトのスタッフの選択に戻す</button>
+            </div>
+          </div>
+
+          <div id="defaultEmployeeUnregisteredArea" class="default-employee-unregistered-area">
+            <button type="button" id="setDefaultEmployeeButton" class="default-employee-button">このスタッフをブラウザにデフォルト登録する</button>
+          </div>
+
+          <div id="defaultEmployeeRegisteredArea" class="default-employee-registered-area" hidden>
+            <span id="defaultEmployeeStatus" class="default-employee-status">デフォルト登録済み：未登録</span>
+            <button type="button" id="changeDefaultEmployeeButton" class="change-default-employee-button">変更する</button>
           </div>
         </div>
-
-        <div class="selected-box">
-          <span>選択中</span>
-          <strong id="selectedEmployee">未選択</strong>
-        </div>
-
-        <div id="defaultEmployeeUnregisteredArea" class="default-employee-unregistered-area">
-          <button type="button" id="setDefaultEmployeeButton" class="default-employee-button">このスタッフをブラウザにデフォルト登録する</button>
-        </div>
-
-        <div id="defaultEmployeeRegisteredArea" class="default-employee-registered-area" hidden>
-          <span id="defaultEmployeeStatus" class="default-employee-status">デフォルト登録済み：未登録</span>
-          <button type="button" id="changeDefaultEmployeeButton" class="change-default-employee-button">変更する</button>
-        </div>
-      </div>
+      </details>
 
       <section class="weekly-schedule-view-area" aria-label="選択中スタッフの勤務予定">
         <span class="weekly-schedule-heading">勤務日時</span>
@@ -68,8 +70,8 @@
         <div class="punch-grid immediate-punch-grid" id="actionButtons" role="group" aria-label="押すと即時反映する打刻内容">
           <button type="button" data-action="出勤">出勤</button>
           <button type="button" data-action="退勤">退勤</button>
-          <button type="button" data-action="現時刻打刻"><span>現時刻<br>打刻</span></button>
-          <button type="button" data-action="途中退社"><span>途中<br>退社</span></button>
+          <button type="button" data-action="現時刻打刻">現時刻打刻</button>
+          <button type="button" data-action="途中退社">途中退社</button>
           <button type="button" data-action="有給">有給</button>
         </div>
         <p class="small immediate-punch-note">各ボタンは押した時点で即時反映します。通常の「出勤」は登録済みの出勤時刻、「現時刻打刻」は押した時刻を反映します。</p>
@@ -81,7 +83,7 @@
             <button type="button" data-break-mode="half">半分休憩</button>
             <button type="button" data-break-mode="none">休憩なし</button>
           </div>
-          <p class="small">選択中の休憩設定は、次に押す打刻ボタンへ反映します。</p>
+          <p class="small">休憩設定は、打刻ボタン押下前にご選択ください</p>
         </div>
 
       </div>
@@ -94,8 +96,8 @@
           <div id="correctionActionButtons" class="correction-action-grid" role="group" aria-label="修正する打刻内容を選択">
             <button type="button" data-correction-action="出勤">出勤</button>
             <button type="button" data-correction-action="退勤">退勤</button>
-            <button type="button" data-correction-action="現時刻打刻"><span>現時刻<br>打刻</span></button>
-            <button type="button" data-correction-action="途中退社"><span>途中<br>退社</span></button>
+            <button type="button" data-correction-action="現時刻打刻">現時刻打刻</button>
+            <button type="button" data-correction-action="途中退社">途中退社</button>
             <button type="button" data-correction-action="有給">有給</button>
           </div>
         </div>
@@ -332,6 +334,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=instant-punch-final-layout-20260727-32"></script>
+<script src="./app.js?v=staff-collapse-immediate-fixed-20260727-35"></script>
 </body>
 </html>

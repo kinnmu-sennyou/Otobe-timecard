@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "instant-punch-final-layout-20260727-32";
+const APP_VERSION = "staff-collapse-immediate-correction-20260727-35";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -27,7 +27,6 @@ let isSheetStaffListExpanded = false;
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
 const actionButtons = document.getElementById("actionButtons");
-const correctionActionButtons = document.getElementById("correctionActionButtons");
 const breakButtons = document.getElementById("breakButtons");
 const selectedEmployeeText = document.getElementById("selectedEmployee");
 const setDefaultEmployeeButton = document.getElementById("setDefaultEmployeeButton");
@@ -37,6 +36,8 @@ const defaultEmployeeRegisteredArea = document.getElementById("defaultEmployeeRe
 const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
 const returnToDefaultEmployeeButton = document.getElementById("returnToDefaultEmployeeButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
+const correctionActionButtons = document.getElementById("correctionActionButtons");
+const correctionWeek40OverInput = document.getElementById("correctionWeek40OverInput");
 const pdfButton = document.getElementById("pdfButton");
 const editDate = document.getElementById("editDate");
 const editTime = document.getElementById("editTime");
@@ -62,7 +63,6 @@ const newStartTime = document.getElementById("newStartTime");
 const newEndTime = document.getElementById("newEndTime");
 const newBreakMinutes = document.getElementById("newBreakMinutes");
 const newStaffWeeklyScheduleGrid = document.getElementById("newStaffWeeklyScheduleGrid");
-const correctionWeek40OverInput = document.getElementById("correctionWeek40OverInput");
 const scheduleTargetEmployee = document.getElementById("scheduleTargetEmployee");
 const weeklyScheduleGrid = document.getElementById("weeklyScheduleGrid");
 const weeklyScheduleDisplay = document.getElementById("weeklyScheduleDisplay");
@@ -135,7 +135,6 @@ async function init() {
   selectAction(selectedAction);
   selectCorrectionAction(selectedCorrectionAction);
   selectBreakMode(selectedBreakMode);
-  if (todayStatus) todayStatus.textContent = "出勤・退勤などのボタンを押すと即時反映します。";
   setUpdateStatus("更新状況：待機中", "neutral");
   showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
 }
@@ -502,8 +501,9 @@ function buildActionEvents() {
 
   actionButtons.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", async () => {
-      selectAction(button.dataset.action);
-      await punchNow(button);
+      const action = button.dataset.action;
+      selectAction(action);
+      await punchNow(button, action);
     });
   });
 }
@@ -633,24 +633,25 @@ function initEditDateTime() {
   editTime.value = formatTimeInput(roundDownToQuarter(now));
 }
 
-async function punchNow(triggerButton) {
+async function punchNow(triggerButton, action) {
   if (isRestrictedSelection()) {
     showMessage("デフォルト登録スタッフ以外は打刻できません。", "error");
     return;
   }
-  if (!canSend(selectedAction)) {
+  const punchAction = ACTIONS.includes(action) ? action : selectedAction;
+  if (!canSend(punchAction)) {
     setUpdateStatus("反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
   }
 
-  startSending(triggerButton, `${selectedAction}を更新中...`);
-  setUpdateStatus(`${selectedEmployee.name}：${selectedAction}を更新中...`, "loading");
+  startSending(triggerButton, `${punchAction}を更新中...`);
+  setUpdateStatus(`${selectedEmployee.name}：${punchAction}を更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
     const result = await postToScript({
       mode: "punch",
-      action: selectedAction,
+      action: punchAction,
       name: selectedEmployee.name,
       employeeNo: selectedEmployee.no,
       sheetName: selectedEmployee.sheetName,
@@ -661,9 +662,9 @@ async function punchNow(triggerButton) {
       userAgent: navigator.userAgent,
     });
 
-    handleResult(result, `${selectedEmployee.name}：${selectedAction}を更新しました。`);
-    setUpdateStatus(`反映完了：${selectedEmployee.name}：${selectedAction}`, "ok");
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
+    handleResult(result, `${selectedEmployee.name}：${punchAction}を更新しました。`);
+    setUpdateStatus(`反映完了：${selectedEmployee.name}：${punchAction}`, "ok");
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${punchAction}を反映しました。`;
     initEditDateTime();
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
@@ -679,7 +680,8 @@ async function punchBySpecifiedDateTime() {
     showMessage("デフォルト登録スタッフ以外は打刻修正できません。", "error");
     return;
   }
-  if (!canSend(selectedCorrectionAction)) {
+  const correctionAction = selectedCorrectionAction;
+  if (!canSend(correctionAction)) {
     setUpdateStatus("修正反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
   }
@@ -690,34 +692,34 @@ async function punchBySpecifiedDateTime() {
     return;
   }
 
-  if (selectedCorrectionAction !== "有給" && !editTime.value) {
+  if (correctionAction !== "有給" && !editTime.value) {
     showMessage("時刻を指定してね。", "error");
     setUpdateStatus("修正反映失敗：時刻を指定してください。", "error");
     return;
   }
 
   startSending(editUpdateButton, "修正更新中...");
-  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を修正更新中...`, "loading");
+  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
     const result = await postToScript({
       mode: "correction",
-      action: selectedCorrectionAction,
+      action: correctionAction,
       name: selectedEmployee.name,
       employeeNo: selectedEmployee.no,
       sheetName: selectedEmployee.sheetName,
       date: editDate.value,
-      time: selectedCorrectionAction === "有給" ? "00:00" : editTime.value,
+      time: correctionAction === "有給" ? "00:00" : editTime.value,
       breakMode: getSelectedBreakMode(),
       week40Over: getCorrectionWeek40OverValue(),
       appVersion: APP_VERSION,
       userAgent: navigator.userAgent,
     });
 
-    handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を修正更新しました。`);
-    setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}`, "ok");
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を反映しました。`;
+    handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新しました。`);
+    setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${correctionAction}`, "ok");
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を反映しました。`;
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
     setUpdateStatus(`修正反映失敗：${error.message}`, "error");
@@ -1716,7 +1718,7 @@ function canSend(action) {
     return false;
   }
 
-  if (!action || !ACTIONS.includes(action)) {
+  if (!ACTIONS.includes(action)) {
     showMessage("出勤・退勤・現時刻打刻・途中退社・有給のどれかを選んでね。", "error");
     return false;
   }
@@ -1752,7 +1754,6 @@ function setControlsDisabled(disabled) {
   if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length || !employeeSelect.value;
   actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
-  if (correctionActionButtons) correctionActionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   editUpdateButton.disabled = disabled;
   editDate.disabled = disabled;
   editTime.disabled = disabled;
@@ -1767,6 +1768,7 @@ function setControlsDisabled(disabled) {
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
   if (correctionWeek40OverInput) correctionWeek40OverInput.disabled = disabled;
+  if (correctionActionButtons) correctionActionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
   if (bulkScheduleTimeInput) bulkScheduleTimeInput.disabled = disabled;
   if (applyBulkScheduleTimeButton) applyBulkScheduleTimeButton.disabled = disabled || !selectedEmployee;
