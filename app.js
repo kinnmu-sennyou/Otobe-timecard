@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "mobile-edit-sheet-list-20260727-25";
+const APP_VERSION = "instant-punch-correction-actions-20260727-29";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -17,6 +17,7 @@ const SHEET_BROWSER_MEMO_KEY = "timecard:sheetBrowserMemo";
 let EMPLOYEES = [];
 let selectedEmployee = null;
 let selectedAction = "出勤";
+let selectedCorrectionAction = "出勤";
 let selectedBreakMode = "normal";
 let isSending = false;
 let selectedSheetEmployeeNos = new Set();
@@ -26,6 +27,7 @@ let isSheetStaffListExpanded = false;
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
 const actionButtons = document.getElementById("actionButtons");
+const correctionActionButtons = document.getElementById("correctionActionButtons");
 const breakButtons = document.getElementById("breakButtons");
 const selectedEmployeeText = document.getElementById("selectedEmployee");
 const setDefaultEmployeeButton = document.getElementById("setDefaultEmployeeButton");
@@ -110,6 +112,7 @@ async function init() {
   setupRestrictedSelectionGuard();
   buildEmployeeSelector("");
   buildActionEvents();
+  buildCorrectionActionEvents();
   buildBreakEvents();
   initEditDateTime();
   setupWeeklySchedule();
@@ -118,7 +121,7 @@ async function init() {
   setupSheetOpenSelection();
   setupAdminSheetOpen();
 
-  updateButton.addEventListener("click", punchNow);
+  updateButton.addEventListener("click", () => punchNow(selectedAction, updateButton));
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
   pdfButton.addEventListener("click", openStaffSheet);
 
@@ -132,8 +135,9 @@ async function init() {
 
   renderSheetStaffChecklist();
   selectAction(selectedAction);
+  selectCorrectionAction(selectedCorrectionAction);
   selectBreakMode(selectedBreakMode);
-  if (todayStatus) todayStatus.textContent = "選択後、出勤・退勤などを押して更新してください。";
+  if (todayStatus) todayStatus.textContent = "出勤・退勤などの打刻ボタンを押すと即時反映します。";
   setUpdateStatus("更新状況：待機中", "neutral");
   showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
 }
@@ -496,8 +500,20 @@ function updateSelectedEmployeeAccessLock() {
 }
 
 function buildActionEvents() {
+  if (!actionButtons) return;
+
   actionButtons.querySelectorAll("[data-action]").forEach((button) => {
-    button.addEventListener("click", () => selectAction(button.dataset.action));
+    button.addEventListener("click", () => {
+      punchNow(button.dataset.action, button);
+    });
+  });
+}
+
+function buildCorrectionActionEvents() {
+  if (!correctionActionButtons) return;
+
+  correctionActionButtons.querySelectorAll("[data-correction-action]").forEach((button) => {
+    button.addEventListener("click", () => selectCorrectionAction(button.dataset.correctionAction));
   });
 }
 
@@ -523,13 +539,25 @@ function selectEmployee(emp) {
 function selectAction(action) {
   selectedAction = ACTIONS.includes(action) ? action : "出勤";
 
-  actionButtons.querySelectorAll("[data-action]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.action === selectedAction);
-  });
-
-  if (selectedEmployee) {
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を選択中です。`;
+  if (actionButtons) {
+    actionButtons.querySelectorAll("[data-action]").forEach((button) => {
+      const isActive = button.dataset.action === selectedAction;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
   }
+}
+
+function selectCorrectionAction(action) {
+  selectedCorrectionAction = ACTIONS.includes(action) ? action : "出勤";
+
+  if (!correctionActionButtons) return;
+
+  correctionActionButtons.querySelectorAll("[data-correction-action]").forEach((button) => {
+    const isActive = button.dataset.correctionAction === selectedCorrectionAction;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 function buildBreakEvents() {
@@ -609,24 +637,26 @@ function initEditDateTime() {
   editTime.value = formatTimeInput(roundDownToQuarter(now));
 }
 
-async function punchNow() {
+async function punchNow(action = selectedAction, triggerButton = updateButton) {
   if (isRestrictedSelection()) {
     showMessage("デフォルト登録スタッフ以外は打刻できません。", "error");
     return;
   }
-  if (!canSend()) {
+  const punchAction = ACTIONS.includes(action) ? action : selectedAction;
+  if (!canSend(punchAction)) {
     setUpdateStatus("反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
   }
 
-  startSending(updateButton, `${selectedAction}を更新中...`);
-  setUpdateStatus(`${selectedEmployee.name}：${selectedAction}を更新中...`, "loading");
+  selectAction(punchAction);
+  startSending(triggerButton, `${punchAction}を更新中...`);
+  setUpdateStatus(`${selectedEmployee.name}：${punchAction}を更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
     const result = await postToScript({
       mode: "punch",
-      action: selectedAction,
+      action: punchAction,
       name: selectedEmployee.name,
       employeeNo: selectedEmployee.no,
       sheetName: selectedEmployee.sheetName,
@@ -637,16 +667,16 @@ async function punchNow() {
       userAgent: navigator.userAgent,
     });
 
-    handleResult(result, `${selectedEmployee.name}：${selectedAction}を更新しました。`);
-    setUpdateStatus(`反映完了：${selectedEmployee.name}：${selectedAction}`, "ok");
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${selectedAction}を反映しました。`;
+    handleResult(result, `${selectedEmployee.name}：${punchAction}を更新しました。`);
+    setUpdateStatus(`反映完了：${selectedEmployee.name}：${punchAction}`, "ok");
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${punchAction}を反映しました。`;
     initEditDateTime();
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
     setUpdateStatus(`反映失敗：${error.message}`, "error");
     handleError(error);
   } finally {
-    stopSending(updateButton);
+    stopSending(triggerButton);
   }
 }
 
@@ -655,7 +685,7 @@ async function punchBySpecifiedDateTime() {
     showMessage("デフォルト登録スタッフ以外は打刻修正できません。", "error");
     return;
   }
-  if (!canSend()) {
+  if (!canSend(selectedCorrectionAction)) {
     setUpdateStatus("修正反映失敗：スタッフ選択・打刻内容・接続設定を確認してください。", "error");
     return;
   }
@@ -666,34 +696,34 @@ async function punchBySpecifiedDateTime() {
     return;
   }
 
-  if (selectedAction !== "有給" && !editTime.value) {
+  if (selectedCorrectionAction !== "有給" && !editTime.value) {
     showMessage("時刻を指定してね。", "error");
     setUpdateStatus("修正反映失敗：時刻を指定してください。", "error");
     return;
   }
 
   startSending(editUpdateButton, "修正更新中...");
-  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新中...`, "loading");
+  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を修正更新中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
     const result = await postToScript({
       mode: "correction",
-      action: selectedAction,
+      action: selectedCorrectionAction,
       name: selectedEmployee.name,
       employeeNo: selectedEmployee.no,
       sheetName: selectedEmployee.sheetName,
       date: editDate.value,
-      time: selectedAction === "有給" ? "00:00" : editTime.value,
+      time: selectedCorrectionAction === "有給" ? "00:00" : editTime.value,
       breakMode: getSelectedBreakMode(),
       week40Over: getWeek40OverValue(),
       appVersion: APP_VERSION,
       userAgent: navigator.userAgent,
     });
 
-    handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を修正更新しました。`);
-    setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${selectedAction}`, "ok");
-    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedAction}を反映しました。`;
+    handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を修正更新しました。`);
+    setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}`, "ok");
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${selectedCorrectionAction}を反映しました。`;
     checkYesterdayPunchAlert(selectedEmployee);
   } catch (error) {
     setUpdateStatus(`修正反映失敗：${error.message}`, "error");
@@ -1681,7 +1711,7 @@ async function addStaff() {
   }
 }
 
-function canSend() {
+function canSend(action = selectedAction) {
   if (isSending) {
     showMessage("今処理中だから、少し待ってね。", "loading");
     return false;
@@ -1692,7 +1722,7 @@ function canSend() {
     return false;
   }
 
-  if (!selectedAction) {
+  if (!ACTIONS.includes(action)) {
     showMessage("出勤・退勤・現時刻打刻・途中退社・有給のどれかを選んでね。", "error");
     return false;
   }
@@ -1726,7 +1756,8 @@ function stopSending(button) {
 function setControlsDisabled(disabled) {
   if (employeeSearchInput) employeeSearchInput.disabled = disabled;
   if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length || !employeeSelect.value;
-  actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
+  if (actionButtons) actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
+  if (correctionActionButtons) correctionActionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   updateButton.disabled = disabled;
   editUpdateButton.disabled = disabled;

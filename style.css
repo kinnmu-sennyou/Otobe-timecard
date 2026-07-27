@@ -1741,3 +1741,133 @@ body.time-picker-open {
     padding: 8px;
   }
 }
+
+/* ===== 2026-07-27 即時打刻・休憩横1列・修正専用5択 ===== */
+.immediate-punch-note,
+.manual-update-note {
+  text-align: center;
+}
+
+.compact-break-area {
+  margin-top: 12px;
+  padding: 11px;
+}
+
+#breakButtons.compact-break-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+#breakButtons.compact-break-grid button {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 4px;
+  border-radius: 11px;
+  font-size: 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.correction-action-area {
+  width: 100%;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px dashed #eac8d6;
+  border-radius: 15px;
+  background: #fffafd;
+}
+
+.correction-action-label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--pink-dark);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.correction-action-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.correction-action-grid button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 4px 1px;
+  border: 1px solid #ead5df;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.08;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.correction-action-grid button span {
+  display: block;
+  pointer-events: none;
+}
+
+.correction-action-grid button.active {
+  border-color: var(--pink-dark);
+  background: linear-gradient(135deg, #ffe0eb, #fff5fa);
+  color: #64283b;
+  box-shadow: 0 5px 12px rgba(217, 109, 144, .16);
+}
+
+.correction-action-grid button:active {
+  transform: translateY(1px);
+}
+
+.correction-edit-area,
+.correction-edit-area > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 420px) {
+  #breakButtons.compact-break-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  #breakButtons.compact-break-grid button {
+    min-height: 36px;
+    padding: 5px 2px;
+    font-size: 10.5px;
+  }
+
+  .correction-action-area {
+    padding: 8px 6px;
+  }
+
+  .correction-action-grid {
+    gap: 3px;
+  }
+
+  .correction-action-grid button {
+    min-height: 40px;
+    border-radius: 8px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 340px) {
+  .correction-action-grid button {
+    font-size: 8px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=mobile-new-staff-weekly-grid-20260727-28">
+  <link rel="stylesheet" href="./style.css?v=instant-punch-correction-actions-20260727-29">
 </head>
 <body>
   <main class="page">
@@ -61,28 +61,25 @@
         <div id="weeklyScheduleDisplay" class="weekly-schedule-display">勤務予定を読み込み中...</div>
       </section>
 
-      <div class="card-block">
+      <div class="card-block punch-card-block">
         <div class="section-title">打刻内容</div>
-        <div class="punch-grid" id="actionButtons">
+        <div class="punch-grid immediate-punch-grid" id="actionButtons" role="group" aria-label="押すと即時反映する打刻内容">
           <button type="button" data-action="出勤">出勤</button>
           <button type="button" data-action="退勤">退勤</button>
           <button type="button" data-action="現時刻打刻">現時刻打刻</button>
           <button type="button" data-action="途中退社">途中退社</button>
           <button type="button" data-action="有給">有給</button>
         </div>
-        <p class="small current-time-punch-note">通常の「出勤」は登録済みの出勤時刻を反映します。「現時刻打刻」は更新を押した時刻を出勤時刻として反映します。</p>
+        <p class="small immediate-punch-note">各ボタンは押した時点で即時反映します。通常の「出勤」は登録済みの出勤時刻、「現時刻打刻」は押した時刻を反映します。</p>
 
-        <button type="button" id="updateButton" class="main-button">更新</button>
-        <div id="updateStatus" class="update-status neutral" aria-live="polite">更新状況：待機中</div>
-
-        <div class="break-area" id="breakArea">
+        <div class="break-area compact-break-area" id="breakArea">
           <div class="section-title">休憩設定</div>
-          <div class="break-grid" id="breakButtons" role="group" aria-label="休憩設定">
+          <div class="break-grid compact-break-grid" id="breakButtons" role="group" aria-label="休憩設定">
             <button type="button" data-break-mode="normal">通常休憩</button>
             <button type="button" data-break-mode="half">半分休憩</button>
             <button type="button" data-break-mode="none">休憩なし</button>
           </div>
-          <p class="small">休憩が半分や取れなかった際に選んでください</p>
+          <p class="small">選択中の休憩設定は、次に押す打刻ボタンへ反映します。</p>
         </div>
 
         <div class="week40-area">
@@ -90,12 +87,28 @@
             週40時間超
             <input type="number" id="week40OverInput" min="0" step="0.25" inputmode="decimal" placeholder="例：0.25">
           </label>
-          <p class="small">入力した値を勤務表へ反映します</p>
+          <p class="small">入力した値は、次に押す打刻ボタンへ反映します。</p>
         </div>
+
+        <button type="button" id="updateButton" class="main-button">更新</button>
+        <p class="small manual-update-note">更新は、最後に押した打刻内容へ現在の休憩設定・週40時間超を再反映します。</p>
+        <div id="updateStatus" class="update-status neutral" aria-live="polite">更新状況：待機中</div>
       </div>
 
-      <details class="edit-area" open>
+      <details class="edit-area correction-edit-area" open>
         <summary>日付・時刻を指定して修正</summary>
+
+        <div class="correction-action-area">
+          <span class="correction-action-label">修正する打刻内容</span>
+          <div id="correctionActionButtons" class="correction-action-grid" role="group" aria-label="修正する打刻内容を選択">
+            <button type="button" data-correction-action="出勤">出勤</button>
+            <button type="button" data-correction-action="退勤">退勤</button>
+            <button type="button" data-correction-action="現時刻打刻"><span>現時刻<br>打刻</span></button>
+            <button type="button" data-correction-action="途中退社"><span>途中<br>退社</span></button>
+            <button type="button" data-correction-action="有給">有給</button>
+          </div>
+        </div>
+
         <div class="edit-grid">
           <label>
             日付指定
@@ -107,7 +120,7 @@
           </label>
         </div>
         <button type="button" id="editUpdateButton" class="sub-button">修正更新</button>
-        <p class="small">修正更新で指定した時刻は、通常打刻・現時刻打刻より最優先で保持されます。</p>
+        <p class="small">上の小さい選択肢で修正内容を選び、指定した日時を最優先で反映します。</p>
       </details>
 
       <div class="sheet-area">
@@ -319,6 +332,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=mobile-new-staff-weekly-grid-20260727-28"></script>
+<script src="./app.js?v=instant-punch-correction-actions-20260727-29"></script>
 </body>
 </html>
