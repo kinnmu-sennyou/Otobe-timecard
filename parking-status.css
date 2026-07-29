@@ -329,3 +329,13 @@ input:disabled { opacity: .65; }
   .fixed-page-navigation { right: 10px; bottom: 10px; gap: 6px; }
   .page-navigation-button { min-width: 86px; min-height: 42px; padding: 8px 11px; font-size: 13px; }
 }
+
+
+/* ===== 乙部在庫倉庫下 ===== */
+.warehouse-card { border-left:5px solid #9b7b54; background:#fffaf1; }
+.assignment-warehouse-field { align-content:end; }
+.assignment-check-row { min-height:46px; display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid #d8cbd0; border-radius:13px; background:#fffafd; color:var(--ink); font-size:15px; font-weight:900; }
+.assignment-check-row input { width:21px; height:21px; min-height:0; margin:0; padding:0; accent-color:var(--green-dark); }
+td.is-warehouse-used { background:#f2dfbd; font-weight:900; }
+.warehouse-weekly-row td:first-child { font-size:13px; background:#fff7e8; }
+@media (max-width:720px) { .assignment-warehouse-field { grid-column:1 / -1; } }

@@ -115,6 +115,7 @@ h1 {
 .edit-area,
 .sheet-area,
 .add-staff-area,
+.registration-edit-area,
 .weekly-schedule-view-area,
 .weekly-schedule-area,
 .admin-sheet-area,
@@ -401,6 +402,7 @@ select:disabled,
 
 .edit-area summary,
 .add-staff-area summary,
+.registration-edit-area summary,
 .weekly-schedule-area summary,
 .admin-sheet-area summary,
 .retire-staff-area summary {
@@ -2436,3 +2438,197 @@ body.time-picker-open {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ===== 2026-07-29 v9：登録内容の変更へ勤務時間変更を統合 ===== */
+.registration-edit-area {
+  margin-top: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #fff;
+}
+
+.registration-edit-area summary {
+  color: var(--pink-dark);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.registration-target-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px dashed #eac8d6;
+  border-radius: 16px;
+  background: #fffafd;
+}
+
+.registration-target-box > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.registration-target-box span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.registration-target-box strong {
+  overflow-wrap: anywhere;
+  color: #64283b;
+  font-size: 18px;
+}
+
+.registration-target-box .compact-control-button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.registration-edit-status {
+  margin: 10px 0 0;
+  padding: 9px 11px;
+  border-radius: 13px;
+  background: #fffafd;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.registration-edit-status.loading {
+  background: #fff6e8;
+  color: #8a5b1d;
+}
+
+.registration-edit-status.ok {
+  background: #eaf8ef;
+  color: #146b2f;
+}
+
+.registration-edit-status.error {
+  background: #fff0f5;
+  color: var(--danger);
+}
+
+.registration-edit-grid {
+  margin-top: 12px;
+}
+
+.registration-schedule-section {
+  margin-top: 13px;
+}
+
+.registration-save-button {
+  min-height: 56px;
+  background: linear-gradient(135deg, #fff0f6, #fffafd);
+  border-color: #dfb6c7;
+}
+
+#registrationWeeklyScheduleGrid,
+#registrationWeeklyScheduleGrid .weekly-schedule-row,
+#registrationWeeklyScheduleGrid .weekly-schedule-row > strong,
+#registrationWeeklyScheduleGrid .weekly-schedule-row > label,
+#registrationWeeklyScheduleGrid .schedule-time {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#registrationWeeklyScheduleGrid .weekly-schedule-row {
+  width: 100%;
+  grid-template-columns: 76px minmax(0, 1fr) 74px;
+}
+
+#registrationWeeklyScheduleGrid .weekly-schedule-row > label {
+  width: 100%;
+}
+
+#registrationWeeklyScheduleGrid .schedule-time {
+  display: block;
+  width: 100%;
+  padding-left: 8px;
+  padding-right: 36px;
+}
+
+@media (max-width: 760px) {
+  .registration-target-box {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .registration-target-box .compact-control-button {
+    width: 100%;
+  }
+
+  .registration-schedule-section .schedule-bulk-apply {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-schedule-section .schedule-bulk-apply-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 620px) {
+  .registration-edit-area,
+  .registration-schedule-section,
+  #registrationWeeklyScheduleGrid,
+  #registrationWeeklyScheduleGrid .weekly-schedule-row,
+  #registrationWeeklyScheduleGrid .weekly-schedule-row > label {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .registration-edit-area,
+  .registration-schedule-section,
+  #registrationWeeklyScheduleGrid {
+    overflow: hidden;
+  }
+
+  #registrationWeeklyScheduleGrid .weekly-schedule-row {
+    width: 100%;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+  }
+
+  #registrationWeeklyScheduleGrid .weekly-schedule-row > strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  #registrationWeeklyScheduleGrid .weekly-schedule-row > label:not(.schedule-off-label) {
+    display: grid;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  #registrationWeeklyScheduleGrid .schedule-time {
+    min-height: 40px;
+    padding-left: 7px;
+    padding-right: 32px;
+    font-size: 14px;
+  }
+
+  #registrationWeeklyScheduleGrid .schedule-off-label {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+
+/* ===== 登録内容：乙部在庫倉庫下 ===== */
+.warehouse-under-field { grid-column: 1 / -1; display:flex; align-items:center; gap:10px; min-height:48px; padding:10px 12px; border:1px dashed #d8c0ca; border-radius:14px; background:#fffafd; color:#64283b; font-weight:900; }
+.warehouse-under-checkbox { width:22px; height:22px; min-height:0; margin:0; padding:0; accent-color:var(--pink-dark); }
+.warehouse-under-field:has(.warehouse-under-checkbox:disabled) { opacity:.62; }

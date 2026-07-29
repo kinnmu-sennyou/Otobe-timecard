@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#4f8175">
   <title>駐車場使用状況</title>
-  <link rel="stylesheet" href="./parking-status.css?v=parking-management-20260729-44">
+  <link rel="stylesheet" href="./parking-status.css?v=parking-warehouse-20260729-45">
 </head>
 <body>
   <main class="page">
@@ -13,7 +13,7 @@
       <header class="hero">
         <div class="badge">Parking &amp; Commute</div>
         <h1>駐車場使用状況</h1>
-        <p>曜日を選ぶと、駐車場・徒歩・公共交通機関の予定を確認できます。</p>
+        <p>曜日を選ぶと、駐車場・乙部在庫倉庫下・徒歩・公共交通機関の予定を確認できます。</p>
         <a class="back-link" href="./index.html">打刻ページへ戻る</a>
       </header>
 
@@ -32,7 +32,7 @@
 
       <section class="current-day-summary" aria-live="polite">
         <strong id="selectedDayTitle">-</strong>
-        <span id="selectedDayCounts">車 0名 / 徒歩 0名 / 公共交通機関 0名</span>
+        <span id="selectedDayCounts">通常駐車場 0名 / 乙部在庫倉庫下 0名 / 徒歩 0名 / 公共交通機関 0名</span>
       </section>
 
       <div id="conflictArea" class="conflict-area" hidden></div>
@@ -67,6 +67,14 @@
             </div>
           </div>
 
+          <article class="commute-card warehouse-card">
+            <div class="commute-card-head">
+              <h3>乙部在庫倉庫下</h3>
+              <span id="warehouseUnderCount">0名</span>
+            </div>
+            <div id="warehouseUnderList" class="name-list"></div>
+          </article>
+
           <article class="commute-card walking-card">
             <div class="commute-card-head">
               <h3>徒歩</h3>
@@ -97,7 +105,7 @@
         <div class="section-head compact-head">
           <div>
             <h2 id="weeklyTableHeading">駐車場 週間早見表</h2>
-            <p>同じ番号を曜日違いで共有している場合も確認できます。</p>
+            <p>同じ番号を曜日違いで共有している場合と、乙部在庫倉庫下の人数を確認できます。</p>
           </div>
         </div>
         <div class="table-scroll">
@@ -120,8 +128,8 @@
       </section>
 
       <details class="content-section assignment-editor" open>
-        <summary>既存スタッフの通勤方法・駐車場番号を登録／変更</summary>
-        <p class="editor-note">現在在籍しているスタッフもここから登録できます。同じ曜日・同じ駐車場番号は保存できません。</p>
+        <summary>既存スタッフの通勤方法・駐車場所を登録／変更</summary>
+        <p class="editor-note">現在在籍しているスタッフもここから登録できます。通常の駐車場番号は同じ曜日に重複できません。乙部在庫倉庫下は複数人登録できます。</p>
         <div class="editor-grid">
           <label>
             スタッフ
@@ -140,9 +148,13 @@
             駐車場番号
             <input type="text" id="assignmentParkingNumber" inputmode="numeric" maxlength="2" placeholder="例：13">
           </label>
+          <label class="assignment-warehouse-field">
+            <span>乙部在庫倉庫下</span>
+            <span class="assignment-check-row"><input type="checkbox" id="assignmentWarehouseUnder"> 使用する</span>
+          </label>
         </div>
         <button type="button" id="saveAssignmentButton" class="save-button">登録内容を保存</button>
-        <p id="assignmentHelp" class="editor-help">車通勤の場合のみ1～32の番号を入力してください。</p>
+        <p id="assignmentHelp" class="editor-help">車通勤は駐車場番号1～32または乙部在庫倉庫下を選択してください。乙部在庫倉庫下は人数のみ集計し、重複警告は出ません。</p>
       </details>
 
       <footer class="page-footer">
@@ -157,6 +169,6 @@
     <button type="button" id="scrollToBottomButton" class="page-navigation-button">一番下に</button>
   </nav>
 
-  <script src="./parking-status.js?v=parking-management-20260729-44"></script>
+  <script src="./parking-status.js?v=parking-warehouse-20260729-45"></script>
 </body>
 </html>

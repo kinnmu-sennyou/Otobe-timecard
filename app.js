@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-management-20260729-44";
+const APP_VERSION = "registration-edit-warehouse-20260729-46";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -61,10 +61,27 @@ const newStaffName = document.getElementById("newStaffName");
 const newEmployeeNo = document.getElementById("newEmployeeNo");
 const newCommuteMethod = document.getElementById("newCommuteMethod");
 const newParkingNumber = document.getElementById("newParkingNumber");
+const newWarehouseUnder = document.getElementById("newWarehouseUnder");
 const newStartTime = document.getElementById("newStartTime");
 const newEndTime = document.getElementById("newEndTime");
 const newBreakMinutes = document.getElementById("newBreakMinutes");
 const newStaffWeeklyScheduleGrid = document.getElementById("newStaffWeeklyScheduleGrid");
+const registrationTargetEmployee = document.getElementById("registrationTargetEmployee");
+const registrationEditStatus = document.getElementById("registrationEditStatus");
+const reloadRegistrationButton = document.getElementById("reloadRegistrationButton");
+const saveRegistrationButton = document.getElementById("saveRegistrationButton");
+const editRegistrationEmploymentType = document.getElementById("editRegistrationEmploymentType");
+const editRegistrationStaffName = document.getElementById("editRegistrationStaffName");
+const editRegistrationEmployeeNo = document.getElementById("editRegistrationEmployeeNo");
+const editRegistrationCommuteMethod = document.getElementById("editRegistrationCommuteMethod");
+const editRegistrationParkingNumber = document.getElementById("editRegistrationParkingNumber");
+const editRegistrationWarehouseUnder = document.getElementById("editRegistrationWarehouseUnder");
+const editRegistrationStartTime = document.getElementById("editRegistrationStartTime");
+const editRegistrationEndTime = document.getElementById("editRegistrationEndTime");
+const editRegistrationBreakMinutes = document.getElementById("editRegistrationBreakMinutes");
+const editRegistrationBulkTimeInput = document.getElementById("editRegistrationBulkTimeInput");
+const applyRegistrationBulkTimeButton = document.getElementById("applyRegistrationBulkTimeButton");
+const registrationWeeklyScheduleGrid = document.getElementById("registrationWeeklyScheduleGrid");
 const scheduleTargetEmployee = document.getElementById("scheduleTargetEmployee");
 const weeklyScheduleGrid = document.getElementById("weeklyScheduleGrid");
 const weeklyScheduleDisplay = document.getElementById("weeklyScheduleDisplay");
@@ -84,6 +101,10 @@ const timePickerHand = document.getElementById("timePickerHand");
 const timePickerNumberLayer = document.getElementById("timePickerNumberLayer");
 const timePickerCancelButton = document.getElementById("timePickerCancelButton");
 const timePickerConfirmButton = document.getElementById("timePickerConfirmButton");
+
+let registrationOriginalEmployeeNo = "";
+let registrationOriginalName = "";
+let registrationLoadToken = 0;
 
 let timePickerTarget = null;
 let timePickerPhase = "hour";
@@ -120,6 +141,7 @@ async function init() {
   initEditDateTime();
   setupWeeklySchedule();
   setupAddStaffForm();
+  setupRegistrationEditForm();
   setupRetireStaff();
   setupSheetOpenSelection();
   setupAdminSheetOpen();
@@ -422,6 +444,7 @@ function isAllowedWhileRestricted(target) {
     "#returnToDefaultEmployeeButton",
     ".sheet-area",
     ".add-staff-area",
+    ".registration-edit-area",
     ".admin-sheet-area",
     ".retire-staff-area",
     ".convenience-area",
@@ -436,7 +459,7 @@ function setupRestrictedSelectionGuard() {
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    showMessage("このスタッフは勤務日時の確認のみです。打刻・修正・勤務時間変更はデフォルト登録スタッフを選択してください。", "error");
+    showMessage("このスタッフは管理項目の確認・変更のみできます。打刻や日付指定修正はデフォルト登録スタッフを選択してください。", "error");
   };
 
   ["click", "input", "change", "submit"].forEach((type) => {
@@ -467,6 +490,9 @@ function updateSelectedEmployeeAccessLock() {
     ".add-staff-area button",
     ".add-staff-area input",
     ".add-staff-area select",
+    ".registration-edit-area button",
+    ".registration-edit-area input",
+    ".registration-edit-area select",
     ".admin-sheet-area button",
     ".admin-sheet-area input",
     ".retire-staff-area button",
@@ -550,7 +576,7 @@ function selectEmployee(emp) {
   if (todayStatus) todayStatus.textContent = `${emp.name} を選択中です。`;
   showMessage(`${emp.name}を選択しました。`, "ok");
   checkYesterdayPunchAlert(emp);
-  resetWeeklyScheduleView(emp);
+  resetRegistrationEditView(emp);
   updateSelectedEmployeeAccessLock();
 }
 
@@ -1112,21 +1138,20 @@ function setupScrollToTopButton() {
 
 function setupWeeklySchedule() {
   setupCustomTimePicker();
-  setupWeeklyScheduleGrid(weeklyScheduleGrid);
   setupWeeklyScheduleGrid(newStaffWeeklyScheduleGrid);
-  setupClockTimeInput(bulkScheduleTimeInput);
+  setupWeeklyScheduleGrid(registrationWeeklyScheduleGrid);
   setupClockTimeInput(newStartTime);
   setupClockTimeInput(newEndTime);
+  setupClockTimeInput(editRegistrationStartTime);
+  setupClockTimeInput(editRegistrationEndTime);
+  setupClockTimeInput(editRegistrationBulkTimeInput);
   setupClockTimeInput(editTime);
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
+  renderScheduleGrid(registrationWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
-  if (applyBulkScheduleTimeButton) {
-    applyBulkScheduleTimeButton.addEventListener("click", applyBulkScheduleTimeToMondayThroughSaturday);
-  }
   if (applyNewStaffStartTimeButton) {
     applyNewStaffStartTimeButton.addEventListener("click", applyNewStaffStartTimeToMondayThroughSaturday);
   }
-  if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.addEventListener("click", saveWeeklySchedule);
 }
 
 function setupWeeklyScheduleGrid(grid) {
@@ -1551,21 +1576,30 @@ function setupAddStaffForm() {
   if (newCommuteMethod) {
     newCommuteMethod.addEventListener("change", updateNewStaffParkingFieldState);
   }
+  if (newWarehouseUnder) {
+    newWarehouseUnder.addEventListener("change", updateNewStaffParkingFieldState);
+  }
   if (newParkingNumber) {
     newParkingNumber.addEventListener("input", () => {
       newParkingNumber.value = normalizeParkingNumberInput(newParkingNumber.value);
     });
   }
   updateNewStaffParkingFieldState();
+  updateRegistrationEditControlsState();
 }
 
 function updateNewStaffParkingFieldState() {
   if (!newParkingNumber) return;
   const isCar = !newCommuteMethod || newCommuteMethod.value === "車";
-  newParkingNumber.disabled = isSending || !isCar;
-  newParkingNumber.required = isCar;
-  if (!isCar) newParkingNumber.value = "";
-  newParkingNumber.placeholder = isCar ? "例：13" : "車通勤以外は入力不要";
+  const usesWarehouseUnder = Boolean(isCar && newWarehouseUnder && newWarehouseUnder.checked);
+  if (newWarehouseUnder) {
+    newWarehouseUnder.disabled = isSending || !isCar;
+    if (!isCar) newWarehouseUnder.checked = false;
+  }
+  newParkingNumber.disabled = isSending || !isCar || usesWarehouseUnder;
+  newParkingNumber.required = isCar && !usesWarehouseUnder;
+  if (!isCar || usesWarehouseUnder) newParkingNumber.value = "";
+  newParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
 }
 
 function normalizeParkingNumberInput(value) {
@@ -1578,6 +1612,292 @@ function normalizeParkingNumberInput(value) {
 function isParkingConflictMessage(messageText) {
   const text = String(messageText || "");
   return text.includes("駐車場番号") && (text.includes("使用予定") || text.includes("重複"));
+}
+
+
+function setupRegistrationEditForm() {
+  if (reloadRegistrationButton) {
+    reloadRegistrationButton.addEventListener("click", () => {
+      if (!selectedEmployee) {
+        showMessage("先に変更するスタッフを選んでね。", "error");
+        return;
+      }
+      loadSelectedRegistration(selectedEmployee, true);
+    });
+  }
+
+  if (saveRegistrationButton) saveRegistrationButton.addEventListener("click", saveRegistrationDetails);
+  if (applyRegistrationBulkTimeButton) applyRegistrationBulkTimeButton.addEventListener("click", applyRegistrationBulkTimeToMondayThroughSaturday);
+
+  if (editRegistrationCommuteMethod) {
+    editRegistrationCommuteMethod.addEventListener("change", updateRegistrationParkingFieldState);
+  }
+  if (editRegistrationWarehouseUnder) {
+    editRegistrationWarehouseUnder.addEventListener("change", updateRegistrationParkingFieldState);
+  }
+  if (editRegistrationParkingNumber) {
+    editRegistrationParkingNumber.addEventListener("input", () => {
+      editRegistrationParkingNumber.value = normalizeParkingNumberInput(editRegistrationParkingNumber.value);
+    });
+  }
+
+  updateRegistrationParkingFieldState();
+  updateRegistrationEditControlsState();
+}
+
+function setRegistrationEditStatus(text, type = "neutral") {
+  if (!registrationEditStatus) return;
+  registrationEditStatus.textContent = text;
+  registrationEditStatus.className = `registration-edit-status ${type}`;
+}
+
+function resetRegistrationEditView(emp) {
+  registrationLoadToken += 1;
+  registrationOriginalEmployeeNo = "";
+  registrationOriginalName = "";
+
+  if (registrationTargetEmployee) {
+    registrationTargetEmployee.textContent = emp ? `${emp.no} ${emp.name}` : "未選択";
+  }
+
+  renderScheduleGrid(registrationWeeklyScheduleGrid, getDefaultWeeklySchedule());
+  if (editRegistrationEmploymentType) editRegistrationEmploymentType.value = "社員";
+  if (editRegistrationStaffName) editRegistrationStaffName.value = emp ? emp.name : "";
+  if (editRegistrationEmployeeNo) editRegistrationEmployeeNo.value = emp ? emp.no : "";
+  if (editRegistrationCommuteMethod) editRegistrationCommuteMethod.value = "";
+  if (editRegistrationParkingNumber) editRegistrationParkingNumber.value = "";
+  if (editRegistrationWarehouseUnder) editRegistrationWarehouseUnder.checked = false;
+  if (editRegistrationStartTime) editRegistrationStartTime.value = "08:00";
+  if (editRegistrationEndTime) editRegistrationEndTime.value = "17:00";
+  if (editRegistrationBreakMinutes) editRegistrationBreakMinutes.value = "60";
+  if (editRegistrationBulkTimeInput) editRegistrationBulkTimeInput.value = "08:00";
+  updateRegistrationParkingFieldState();
+  updateRegistrationEditControlsState();
+
+  if (!emp) {
+    setRegistrationEditStatus("スタッフを選択してください。", "neutral");
+    return;
+  }
+
+  setRegistrationEditStatus("登録内容を読み込み中...", "loading");
+  loadSelectedRegistration(emp, false);
+}
+
+async function loadSelectedRegistration(emp, showResultMessage) {
+  if (!emp) return;
+  const checkedNo = normalizeEmployeeNo(emp.no);
+  const token = ++registrationLoadToken;
+  setRegistrationEditStatus(`${emp.name}の登録内容を読み込み中...`, "loading");
+  updateRegistrationEditControlsState();
+
+  try {
+    const result = await postToScript({
+      mode: "getStaffRegistration",
+      employeeNo: checkedNo,
+      name: emp.name,
+      appVersion: APP_VERSION,
+    });
+
+    if (!result || !result.ok) {
+      throw new Error((result && result.message) || "登録内容を取得できませんでした。");
+    }
+    if (token !== registrationLoadToken) return;
+    if (!selectedEmployee || normalizeEmployeeNo(selectedEmployee.no) !== checkedNo) return;
+
+    const registration = result.registration || result;
+    registrationOriginalEmployeeNo = normalizeEmployeeNo(registration.employeeNo || checkedNo);
+    registrationOriginalName = String(registration.staffName || registration.name || emp.name).trim();
+
+    if (registrationTargetEmployee) registrationTargetEmployee.textContent = `${registrationOriginalEmployeeNo} ${registrationOriginalName}`;
+    if (editRegistrationEmploymentType) editRegistrationEmploymentType.value = registration.employmentType || "社員";
+    if (editRegistrationStaffName) editRegistrationStaffName.value = registrationOriginalName;
+    if (editRegistrationEmployeeNo) editRegistrationEmployeeNo.value = registrationOriginalEmployeeNo;
+    if (editRegistrationCommuteMethod) editRegistrationCommuteMethod.value = registration.commuteMethod || (registration.parkingNumber ? "車" : "");
+    if (editRegistrationParkingNumber) editRegistrationParkingNumber.value = normalizeParkingNumberInput(registration.parkingNumber || "");
+    if (editRegistrationWarehouseUnder) editRegistrationWarehouseUnder.checked = Boolean(registration.warehouseUnder);
+    if (editRegistrationStartTime) editRegistrationStartTime.value = normalizeScheduleTimeForDisplay(registration.startTime) || "08:00";
+    if (editRegistrationEndTime) editRegistrationEndTime.value = normalizeScheduleTimeForDisplay(registration.endTime) || "17:00";
+    if (editRegistrationBreakMinutes) editRegistrationBreakMinutes.value = String(registration.breakMinutes ?? 60);
+    if (editRegistrationBulkTimeInput) editRegistrationBulkTimeInput.value = normalizeScheduleTimeForDisplay(registration.startTime) || "08:00";
+    renderScheduleGrid(registrationWeeklyScheduleGrid, registration.weeklySchedule || registration.schedule || getDefaultWeeklySchedule());
+    updateRegistrationParkingFieldState();
+    updateRegistrationEditControlsState();
+    setRegistrationEditStatus("登録済み内容を読み込みました。変更後に保存ボタンを押してください。", "ok");
+
+    if (showResultMessage) showMessage(`${registrationOriginalName}の登録内容を再読込しました。`, "ok");
+  } catch (error) {
+    if (token !== registrationLoadToken) return;
+    console.error(error);
+    registrationOriginalEmployeeNo = "";
+    setRegistrationEditStatus(`読み込みに失敗しました：${error.message}`, "error");
+    updateRegistrationEditControlsState();
+    if (showResultMessage) handleError(error);
+  }
+}
+
+function applyRegistrationBulkTimeToMondayThroughSaturday() {
+  if (!registrationWeeklyScheduleGrid || !editRegistrationBulkTimeInput) return;
+  const timeValue = applyTimeToMondayThroughSaturday(registrationWeeklyScheduleGrid, editRegistrationBulkTimeInput.value);
+  showMessage(`登録内容変更の月曜日〜土曜日へ ${timeValue} を一括反映しました。最後に保存ボタンを押してね。`, "ok");
+}
+
+function updateRegistrationParkingFieldState() {
+  if (!editRegistrationParkingNumber) return;
+  const isCar = !editRegistrationCommuteMethod || editRegistrationCommuteMethod.value === "車";
+  const hasTarget = Boolean(selectedEmployee && registrationOriginalEmployeeNo);
+  const usesWarehouseUnder = Boolean(isCar && editRegistrationWarehouseUnder && editRegistrationWarehouseUnder.checked);
+  if (editRegistrationWarehouseUnder) {
+    editRegistrationWarehouseUnder.disabled = isSending || !hasTarget || !isCar;
+    if (!isCar) editRegistrationWarehouseUnder.checked = false;
+  }
+  editRegistrationParkingNumber.disabled = isSending || !hasTarget || !isCar || usesWarehouseUnder;
+  editRegistrationParkingNumber.required = isCar && !usesWarehouseUnder;
+  if (!isCar || usesWarehouseUnder) editRegistrationParkingNumber.value = "";
+  editRegistrationParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
+}
+
+function updateRegistrationEditControlsState() {
+  const disabled = isSending || !selectedEmployee || !registrationOriginalEmployeeNo;
+  [
+    editRegistrationEmploymentType,
+    editRegistrationStaffName,
+    editRegistrationEmployeeNo,
+    editRegistrationCommuteMethod,
+    editRegistrationWarehouseUnder,
+    editRegistrationStartTime,
+    editRegistrationEndTime,
+    editRegistrationBreakMinutes,
+    editRegistrationBulkTimeInput,
+    applyRegistrationBulkTimeButton,
+    saveRegistrationButton,
+  ].forEach((control) => {
+    if (control) control.disabled = disabled;
+  });
+
+  if (reloadRegistrationButton) reloadRegistrationButton.disabled = isSending || !selectedEmployee;
+  if (registrationWeeklyScheduleGrid) {
+    registrationWeeklyScheduleGrid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+      const off = row.querySelector(".schedule-off");
+      const time = row.querySelector(".schedule-time");
+      if (off) off.disabled = disabled;
+      if (time) time.disabled = disabled || Boolean(off && off.checked);
+    });
+  }
+  updateRegistrationParkingFieldState();
+}
+
+async function saveRegistrationDetails() {
+  if (isSending) return;
+  if (!selectedEmployee || !registrationOriginalEmployeeNo) {
+    showMessage("先に変更するスタッフを選び、登録内容を読み込んでね。", "error");
+    return;
+  }
+
+  const employmentType = String(editRegistrationEmploymentType && editRegistrationEmploymentType.value || "").trim();
+  const name = String(editRegistrationStaffName && editRegistrationStaffName.value || "").trim();
+  const employeeNo = normalizeEmployeeNo(editRegistrationEmployeeNo && editRegistrationEmployeeNo.value);
+  const commuteMethod = String(editRegistrationCommuteMethod && editRegistrationCommuteMethod.value || "").trim();
+  const warehouseUnder = Boolean(editRegistrationWarehouseUnder && editRegistrationWarehouseUnder.checked);
+  const parkingNumber = normalizeParkingNumberInput(editRegistrationParkingNumber && editRegistrationParkingNumber.value);
+  const startTime = String(editRegistrationStartTime && editRegistrationStartTime.value || "").trim();
+  const endTime = String(editRegistrationEndTime && editRegistrationEndTime.value || "").trim();
+  const breakMinutes = normalizeBreakMinutes(editRegistrationBreakMinutes && editRegistrationBreakMinutes.value);
+  const weeklySchedule = collectWeeklySchedule(registrationWeeklyScheduleGrid);
+
+  if (!["社員", "パート"].includes(employmentType)) {
+    showMessage("雇用形態を選んでね。", "error");
+    return;
+  }
+  if (!name) {
+    showMessage("スタッフ名を入力してね。", "error");
+    return;
+  }
+  if (!employeeNo || employeeNo === "000") {
+    showMessage("社員番号を入力してね。", "error");
+    return;
+  }
+  if (!["車", "徒歩", "公共交通機関"].includes(commuteMethod)) {
+    showMessage("通勤方法を選んでね。", "error");
+    return;
+  }
+  if (commuteMethod === "車" && !warehouseUnder) {
+    const no = Number(parkingNumber);
+    if (!parkingNumber || !Number.isInteger(no) || no < 1 || no > 32) {
+      showMessage("車通勤は、駐車場番号1～32または乙部在庫倉庫下を選んでね。", "error");
+      if (editRegistrationParkingNumber) editRegistrationParkingNumber.focus();
+      return;
+    }
+  }
+  if (!startTime || !endTime) {
+    showMessage("基本の出勤時間と退勤時間を入力してね。", "error");
+    return;
+  }
+  if (breakMinutes === null) {
+    showMessage("休憩時間は0以上の分数で入力してね。", "error");
+    return;
+  }
+  const invalidDay = Object.keys(weeklySchedule).find((day) => !weeklySchedule[day].isOff && !weeklySchedule[day].startTime);
+  if (invalidDay) {
+    showMessage("出勤日にする曜日は出勤時間を入力してね。", "error");
+    return;
+  }
+
+  const identityChanged = employeeNo !== registrationOriginalEmployeeNo || normalizeName(name) !== normalizeName(registrationOriginalName);
+  const confirmText = identityChanged
+    ? `${registrationOriginalEmployeeNo} ${registrationOriginalName}\nから\n${employeeNo} ${name}\nへ識別情報を含めて登録内容を変更しますか？`
+    : `${employeeNo} ${name} の登録内容を保存しますか？`;
+  if (!window.confirm(confirmText)) return;
+
+  const oldEmployeeNo = registrationOriginalEmployeeNo;
+  const oldName = registrationOriginalName;
+  const wasDefaultEmployee = getDefaultEmployeeNo() === oldEmployeeNo;
+  startSending(saveRegistrationButton, "登録内容を保存中...");
+  setRegistrationEditStatus("登録内容を保存中...", "loading");
+
+  try {
+    const result = await postToScript({
+      mode: "updateStaffRegistration",
+      originalEmployeeNo: oldEmployeeNo,
+      originalName: oldName,
+      employmentType,
+      name,
+      employeeNo,
+      commuteMethod,
+      parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
+      warehouseUnder: commuteMethod === "車" && warehouseUnder,
+      startTime,
+      endTime,
+      breakMinutes,
+      weeklySchedule,
+      appVersion: APP_VERSION,
+      userAgent: navigator.userAgent,
+    });
+
+    if (!result || !result.ok) throw new Error((result && result.message) || "登録内容を保存できませんでした。");
+
+    const savedNo = normalizeEmployeeNo(result.employeeNo || employeeNo);
+    const savedName = String(result.staffName || name).trim();
+    if (wasDefaultEmployee) localStorage.setItem(DEFAULT_EMPLOYEE_KEY, savedNo);
+    if (selectedSheetEmployeeNos.has(oldEmployeeNo)) {
+      selectedSheetEmployeeNos.delete(oldEmployeeNo);
+      selectedSheetEmployeeNos.add(savedNo);
+    }
+
+    await refreshEmployeesFromScript(false);
+    const savedEmployee = EMPLOYEES.find((item) => item.no === savedNo) || { no: savedNo, name: savedName, sheetName: savedName, sheetUrl: "" };
+    if (employeeSearchInput) employeeSearchInput.value = "";
+    selectEmployee(savedEmployee);
+    buildEmployeeSelector("");
+    renderSheetStaffChecklist();
+    setRegistrationEditStatus("登録内容を保存しました。最新情報を再読込しています。", "ok");
+    handleResult(result, `${savedName}の登録内容を更新しました。`);
+  } catch (error) {
+    handleError(error);
+    setRegistrationEditStatus(`保存に失敗しました：${error.message}`, "error");
+    if (isParkingConflictMessage(error && error.message)) window.alert(error.message);
+  } finally {
+    stopSending(saveRegistrationButton);
+  }
 }
 
 
@@ -1678,6 +1998,7 @@ async function addStaff() {
   const name = newStaffName.value.trim();
   const employeeNo = normalizeEmployeeNo(newEmployeeNo.value);
   const commuteMethod = newCommuteMethod ? newCommuteMethod.value : "車";
+  const warehouseUnder = Boolean(newWarehouseUnder && newWarehouseUnder.checked);
   const parkingNumber = normalizeParkingNumberInput(newParkingNumber ? newParkingNumber.value : "");
   const startTime = newStartTime.value;
   const endTime = newEndTime.value;
@@ -1704,10 +2025,10 @@ async function addStaff() {
     return;
   }
 
-  if (commuteMethod === "車") {
+  if (commuteMethod === "車" && !warehouseUnder) {
     const parkingNo = Number(parkingNumber);
     if (!parkingNumber || !Number.isInteger(parkingNo) || parkingNo < 1 || parkingNo > 32) {
-      showMessage("車通勤の場合は、駐車場番号を1～32で入力してね。", "error");
+      showMessage("車通勤は、駐車場番号1～32または乙部在庫倉庫下を選んでね。", "error");
       if (newParkingNumber) newParkingNumber.focus();
       return;
     }
@@ -1743,7 +2064,8 @@ async function addStaff() {
       name,
       employeeNo,
       commuteMethod,
-      parkingNumber: commuteMethod === "車" ? parkingNumber : "",
+      parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
+      warehouseUnder: commuteMethod === "車" && warehouseUnder,
       startTime,
       endTime,
       breakMinutes,
@@ -1776,6 +2098,7 @@ async function addStaff() {
     newStaffName.value = "";
     newEmployeeNo.value = "";
     if (newCommuteMethod) newCommuteMethod.value = "車";
+    if (newWarehouseUnder) newWarehouseUnder.checked = false;
     if (newParkingNumber) newParkingNumber.value = "";
     newStartTime.value = "08:00";
     newEndTime.value = "17:00";
@@ -1835,6 +2158,7 @@ function stopSending(button) {
   updateSheetOpenSelectionState();
   updateSelectedEmployeeAccessLock();
   updateNewStaffParkingFieldState();
+  updateRegistrationEditControlsState();
 }
 
 function setControlsDisabled(disabled) {
@@ -1853,10 +2177,25 @@ function setControlsDisabled(disabled) {
   if (newStaffName) newStaffName.disabled = disabled;
   if (newEmployeeNo) newEmployeeNo.disabled = disabled;
   if (newCommuteMethod) newCommuteMethod.disabled = disabled;
-  if (newParkingNumber) newParkingNumber.disabled = disabled || (newCommuteMethod && newCommuteMethod.value !== "車");
+  if (newWarehouseUnder) newWarehouseUnder.disabled = disabled || (newCommuteMethod && newCommuteMethod.value !== "車");
+  if (newParkingNumber) newParkingNumber.disabled = disabled || (newCommuteMethod && newCommuteMethod.value !== "車") || Boolean(newWarehouseUnder && newWarehouseUnder.checked);
   if (newStartTime) newStartTime.disabled = disabled;
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
+  [
+    editRegistrationEmploymentType,
+    editRegistrationStaffName,
+    editRegistrationEmployeeNo,
+    editRegistrationCommuteMethod,
+    editRegistrationWarehouseUnder,
+    editRegistrationStartTime,
+    editRegistrationEndTime,
+    editRegistrationBreakMinutes,
+    editRegistrationBulkTimeInput,
+  ].forEach((control) => { if (control) control.disabled = disabled || !registrationOriginalEmployeeNo; });
+  if (saveRegistrationButton) saveRegistrationButton.disabled = disabled || !registrationOriginalEmployeeNo;
+  if (reloadRegistrationButton) reloadRegistrationButton.disabled = disabled || !selectedEmployee;
+  if (applyRegistrationBulkTimeButton) applyRegistrationBulkTimeButton.disabled = disabled || !registrationOriginalEmployeeNo;
   if (correctionWeek40OverInput) correctionWeek40OverInput.disabled = disabled;
   if (correctionActionButtons) correctionActionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (saveWeeklyScheduleButton) saveWeeklyScheduleButton.disabled = disabled || !selectedEmployee;
@@ -1864,7 +2203,7 @@ function setControlsDisabled(disabled) {
   if (applyBulkScheduleTimeButton) applyBulkScheduleTimeButton.disabled = disabled || !selectedEmployee;
   if (applyNewStaffStartTimeButton) applyNewStaffStartTimeButton.disabled = disabled;
   updateDefaultEmployeeRegistrationUi();
-  [weeklyScheduleGrid, newStaffWeeklyScheduleGrid].forEach((grid) => {
+  [weeklyScheduleGrid, newStaffWeeklyScheduleGrid, registrationWeeklyScheduleGrid].forEach((grid) => {
     if (!grid) return;
     grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
     const off = row.querySelector(".schedule-off");
@@ -1876,6 +2215,7 @@ function setControlsDisabled(disabled) {
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
   if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
   updateSheetOpenSelectionState();
+  updateRegistrationEditControlsState();
   updateSelectedEmployeeAccessLock();
 }
 

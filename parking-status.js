@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-management-20260729-44";
+const APP_VERSION = "parking-warehouse-20260729-45";
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", shortLabel: "月", jsDay: 1 },
@@ -23,9 +23,11 @@ const selectedDayCounts = document.getElementById("selectedDayCounts");
 const conflictArea = document.getElementById("conflictArea");
 const eastParkingGrid = document.getElementById("eastParkingGrid");
 const westParkingGrid = document.getElementById("westParkingGrid");
+const warehouseUnderList = document.getElementById("warehouseUnderList");
 const walkingList = document.getElementById("walkingList");
 const publicTransportList = document.getElementById("publicTransportList");
 const unregisteredList = document.getElementById("unregisteredList");
+const warehouseUnderCount = document.getElementById("warehouseUnderCount");
 const walkingCount = document.getElementById("walkingCount");
 const publicTransportCount = document.getElementById("publicTransportCount");
 const unregisteredCount = document.getElementById("unregisteredCount");
@@ -33,6 +35,7 @@ const weeklyParkingBody = document.getElementById("weeklyParkingBody");
 const assignmentStaffSelect = document.getElementById("assignmentStaffSelect");
 const assignmentCommuteMethod = document.getElementById("assignmentCommuteMethod");
 const assignmentParkingNumber = document.getElementById("assignmentParkingNumber");
+const assignmentWarehouseUnder = document.getElementById("assignmentWarehouseUnder");
 const saveAssignmentButton = document.getElementById("saveAssignmentButton");
 const assignmentHelp = document.getElementById("assignmentHelp");
 const generatedAt = document.getElementById("generatedAt");
@@ -104,6 +107,7 @@ function getDayData(dayKey) {
   const raw = parkingData.days[dayKey] || {};
   return {
     parking: Array.isArray(raw.parking) ? raw.parking : [],
+    warehouseUnder: Array.isArray(raw.warehouseUnder) ? raw.warehouseUnder : [],
     walking: Array.isArray(raw.walking) ? raw.walking : [],
     publicTransport: Array.isArray(raw.publicTransport) ? raw.publicTransport : [],
     unregistered: Array.isArray(raw.unregistered) ? raw.unregistered : [],
@@ -113,7 +117,7 @@ function getDayData(dayKey) {
 function renderDayTabs() {
   dayTabs.querySelectorAll(".day-tab").forEach((button) => {
     const data = getDayData(button.dataset.day);
-    const count = data.parking.length + data.walking.length + data.publicTransport.length + data.unregistered.length;
+    const count = data.parking.length + data.warehouseUnder.length + data.walking.length + data.publicTransport.length + data.unregistered.length;
     const countNode = button.querySelector("span");
     if (countNode) countNode.textContent = `${count}名`;
     const active = button.dataset.day === selectedDayKey;
@@ -126,8 +130,9 @@ function renderSelectedDay() {
   const dayDef = DAY_DEFS.find((day) => day.key === selectedDayKey) || DAY_DEFS[0];
   const data = getDayData(selectedDayKey);
   selectedDayTitle.textContent = dayDef.label;
-  selectedDayCounts.textContent = `車 ${data.parking.length}名 / 徒歩 ${data.walking.length}名 / 公共交通機関 ${data.publicTransport.length}名`;
+  selectedDayCounts.textContent = `通常駐車場 ${data.parking.length}名 / 乙部在庫倉庫下 ${data.warehouseUnder.length}名 / 徒歩 ${data.walking.length}名 / 公共交通機関 ${data.publicTransport.length}名`;
   renderParkingMap(data.parking);
+  renderNameList(warehouseUnderList, warehouseUnderCount, data.warehouseUnder);
   renderNameList(walkingList, walkingCount, data.walking);
   renderNameList(publicTransportList, publicTransportCount, data.publicTransport);
   renderNameList(unregisteredList, unregisteredCount, data.unregistered);
@@ -245,10 +250,9 @@ function renderWeeklyTable() {
     const cell = document.createElement("td");
     cell.colSpan = 8;
     cell.className = "empty-row";
-    cell.textContent = "駐車場番号はまだ登録されていません。";
+    cell.textContent = "通常の駐車場番号はまだ登録されていません。";
     row.appendChild(cell);
     weeklyParkingBody.appendChild(row);
-    return;
   }
 
   numbers.forEach((number) => {
@@ -267,11 +271,29 @@ function renderWeeklyTable() {
     });
     weeklyParkingBody.appendChild(row);
   });
+
+  const warehouseRow = document.createElement("tr");
+  warehouseRow.className = "warehouse-weekly-row";
+  const warehouseLabel = document.createElement("td");
+  warehouseLabel.textContent = "倉庫下";
+  warehouseLabel.title = "乙部在庫倉庫下";
+  warehouseRow.appendChild(warehouseLabel);
+  DAY_DEFS.forEach((day) => {
+    const entries = getDayData(day.key).warehouseUnder;
+    const cell = document.createElement("td");
+    if (entries.length) cell.classList.add("is-warehouse-used");
+    const names = entries.map((entry) => getFamilyName(entry.name || entry.staffName));
+    cell.textContent = entries.length ? `${entries.length}名 ${names.join("・")}` : "";
+    cell.title = entries.map((entry) => entry.name || entry.staffName || "").filter(Boolean).join(" / ");
+    warehouseRow.appendChild(cell);
+  });
+  weeklyParkingBody.appendChild(warehouseRow);
 }
 
 function setupAssignmentEditor() {
   assignmentStaffSelect.addEventListener("change", loadSelectedAssignment);
   assignmentCommuteMethod.addEventListener("change", updateParkingInputState);
+  assignmentWarehouseUnder.addEventListener("change", updateParkingInputState);
   assignmentParkingNumber.addEventListener("input", () => {
     assignmentParkingNumber.value = normalizeParkingNumberInput(assignmentParkingNumber.value);
   });
@@ -299,11 +321,13 @@ function loadSelectedAssignment() {
   if (!employee) {
     assignmentCommuteMethod.value = "";
     assignmentParkingNumber.value = "";
+    assignmentWarehouseUnder.checked = false;
     updateParkingInputState();
     return;
   }
   assignmentCommuteMethod.value = employee.commuteMethod || "";
   assignmentParkingNumber.value = employee.parkingNumber || "";
+  assignmentWarehouseUnder.checked = Boolean(employee.warehouseUnder);
   updateParkingInputState();
 }
 
@@ -314,13 +338,18 @@ function getSelectedEmployee() {
 
 function updateParkingInputState() {
   const isCar = assignmentCommuteMethod.value === "車";
-  assignmentParkingNumber.disabled = !isCar || isSaving;
-  assignmentParkingNumber.required = isCar;
-  if (!isCar) assignmentParkingNumber.value = "";
-  assignmentParkingNumber.placeholder = isCar ? "例：13" : "車通勤以外は入力不要";
-  assignmentHelp.textContent = isCar
-    ? "車通勤の場合は1～32の番号を入力してください。同じ曜日に使用予定がある番号は保存できません。"
-    : "徒歩・公共交通機関は駐車場番号なしで保存されます。";
+  const usesWarehouseUnder = Boolean(isCar && assignmentWarehouseUnder.checked);
+  assignmentWarehouseUnder.disabled = !isCar || isSaving;
+  if (!isCar) assignmentWarehouseUnder.checked = false;
+  assignmentParkingNumber.disabled = !isCar || usesWarehouseUnder || isSaving;
+  assignmentParkingNumber.required = isCar && !usesWarehouseUnder;
+  if (!isCar || usesWarehouseUnder) assignmentParkingNumber.value = "";
+  assignmentParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
+  assignmentHelp.textContent = !isCar
+    ? "徒歩・公共交通機関は駐車場所なしで保存されます。"
+    : usesWarehouseUnder
+      ? "乙部在庫倉庫下は複数人登録できます。重複警告は出さず、曜日ごとの人数を集計します。"
+      : "通常駐車場は1～32を入力してください。同じ曜日に使用予定がある番号は保存できません。";
 }
 
 async function saveAssignment() {
@@ -331,15 +360,16 @@ async function saveAssignment() {
     return;
   }
   const commuteMethod = assignmentCommuteMethod.value;
+  const warehouseUnder = Boolean(assignmentWarehouseUnder.checked);
   const parkingNumber = normalizeParkingNumberInput(assignmentParkingNumber.value);
   if (!["車", "徒歩", "公共交通機関"].includes(commuteMethod)) {
     setMessage("通勤方法を選択してください。", "error");
     return;
   }
-  if (commuteMethod === "車") {
+  if (commuteMethod === "車" && !warehouseUnder) {
     const number = Number(parkingNumber);
     if (!parkingNumber || number < 1 || number > 32) {
-      setMessage("駐車場番号を1～32で入力してください。", "error");
+      setMessage("駐車場番号1～32または乙部在庫倉庫下を選択してください。", "error");
       assignmentParkingNumber.focus();
       return;
     }
@@ -355,7 +385,8 @@ async function saveAssignment() {
       employeeNo: employee.employeeNo || employee.no,
       name: employee.name || employee.staffName,
       commuteMethod,
-      parkingNumber: commuteMethod === "車" ? parkingNumber : "",
+      parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
+      warehouseUnder: commuteMethod === "車" && warehouseUnder,
       appVersion: APP_VERSION,
     });
     if (!result || !result.ok) throw new Error((result && result.message) || "保存できませんでした。");

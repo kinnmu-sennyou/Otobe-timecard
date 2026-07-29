@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=remove-inline-schedule-20260729-43">
+  <link rel="stylesheet" href="./style.css?v=registration-edit-warehouse-20260729-46">
 </head>
 <body>
   <main class="page">
@@ -163,34 +163,6 @@
       </div>
 
 
-      <details class="weekly-schedule-area">
-        <summary>勤務時間変更フォーム</summary>
-        <p class="small">選択中スタッフ本人が、登録済みの出勤時間と休みをいつでも変更できます。</p>
-        <div id="weeklyScheduleEditor">
-          <section class="schedule-bulk-apply" aria-label="月曜日から土曜日への一括時間設定">
-            <div class="schedule-bulk-copy">
-              <strong>月曜〜土曜へ一括反映</strong>
-              <span>時計で時間を1回選び、月曜日から土曜日へまとめて入力します。</span>
-            </div>
-            <label class="schedule-bulk-time-label">
-              一括時間
-              <input type="text" id="bulkScheduleTimeInput" class="clock-time-input schedule-bulk-time-input" value="08:00" readonly inputmode="none" data-clock-title="一括反映する時間を選択" aria-label="月曜から土曜へ一括反映する時間を時計から選択">
-            </label>
-            <button type="button" id="applyBulkScheduleTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に入力した時間を一括反映</button>
-          </section>
-          <div id="weeklyScheduleGrid" class="weekly-schedule-grid">
-            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
-          </div>
-          <button type="button" id="saveWeeklyScheduleButton" class="sub-button">勤務予定を更新</button>
-        </div>
-      </details>
-
       <details class="add-staff-area">
         <summary>新規スタッフ追加</summary>
         <p class="small">雇用形態を登録し、個人勤務表シートを自動作成します。</p>
@@ -228,7 +200,11 @@
             駐車場番号
             <input type="text" id="newParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2" aria-describedby="newParkingNumberHelp">
           </label>
-          <p id="newParkingNumberHelp" class="parking-number-note">車通勤の場合のみ、1～32の駐車場番号を入力してください。同じ曜日・同じ番号は登録できません。</p>
+          <label class="warehouse-under-field">
+            <input type="checkbox" id="newWarehouseUnder" class="warehouse-under-checkbox">
+            <span>乙部在庫倉庫下</span>
+          </label>
+          <p id="newParkingNumberHelp" class="parking-number-note">車通勤は「駐車場番号1～32」または「乙部在庫倉庫下」のどちらかを登録します。通常番号は同じ曜日に重複登録できません。乙部在庫倉庫下は複数人登録でき、使用人数を一覧で確認できます。</p>
 
           <label class="add-staff-field add-staff-start-field">
             出勤時間
@@ -248,7 +224,7 @@
 
         <div class="new-staff-schedule-section">
           <div class="section-title">初回の曜日別勤務設定</div>
-          <p class="small">登録時点の予定を曜日ごとに設定してください。登録後も上の「勤務時間変更フォーム」から変更できます。</p>
+          <p class="small">登録時点の予定を曜日ごとに設定してください。登録後は下の「登録内容の変更」からまとめて変更できます。</p>
           <div class="new-staff-time-apply-row">
             <span>上で選んだ出勤時間を、月曜日から土曜日へまとめて入力します。</span>
             <button type="button" id="applyNewStaffStartTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に出勤時間を一括反映</button>
@@ -266,6 +242,106 @@
 
         <button type="button" id="addStaffButton" class="sub-button add-staff-button">新規スタッフを登録</button>
         <p class="small">登録後、この端末のスタッフ選択欄にも追加されます。</p>
+      </details>
+
+      <details class="registration-edit-area">
+        <summary>登録内容の変更</summary>
+        <p class="small">選択中スタッフの雇用情報・通勤方法・駐車場番号・乙部在庫倉庫下・勤務時間・曜日別勤務予定をまとめて追加・編集します。</p>
+
+        <div class="registration-target-box">
+          <div>
+            <span>変更対象</span>
+            <strong id="registrationTargetEmployee">未選択</strong>
+          </div>
+          <button type="button" id="reloadRegistrationButton" class="compact-control-button">登録内容を再読込</button>
+        </div>
+
+        <p id="registrationEditStatus" class="registration-edit-status" aria-live="polite">スタッフを選択してください。</p>
+
+        <div class="add-staff-grid registration-edit-grid">
+          <label class="add-staff-field add-staff-employment-field">
+            雇用形態
+            <select id="editRegistrationEmploymentType">
+              <option value="社員">社員</option>
+              <option value="パート">パート</option>
+            </select>
+          </label>
+
+          <label class="add-staff-field add-staff-name-field">
+            スタッフ名
+            <input type="text" id="editRegistrationStaffName" placeholder="例：佐藤　花子">
+          </label>
+          <p class="staff-name-note">スタッフ名を変更する場合も、苗字と名前の間に【全角スペース】を入れてください。</p>
+
+          <label class="add-staff-field add-staff-number-field">
+            社員番号
+            <input type="text" id="editRegistrationEmployeeNo" inputmode="numeric" placeholder="例：052">
+          </label>
+
+          <label class="add-staff-field add-staff-commute-field">
+            通勤方法
+            <select id="editRegistrationCommuteMethod">
+              <option value="">選択してください</option>
+              <option value="車">車</option>
+              <option value="徒歩">徒歩</option>
+              <option value="公共交通機関">公共交通機関</option>
+            </select>
+          </label>
+
+          <label class="add-staff-field add-staff-parking-field">
+            駐車場番号
+            <input type="text" id="editRegistrationParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2" aria-describedby="editRegistrationParkingHelp">
+          </label>
+          <label class="warehouse-under-field">
+            <input type="checkbox" id="editRegistrationWarehouseUnder" class="warehouse-under-checkbox">
+            <span>乙部在庫倉庫下</span>
+          </label>
+          <p id="editRegistrationParkingHelp" class="parking-number-note">車通勤は通常の駐車場番号または乙部在庫倉庫下を選択します。通常番号だけ同じ曜日の重複を警告します。乙部在庫倉庫下は重複可能で、使用人数を一覧表示します。</p>
+
+          <label class="add-staff-field add-staff-start-field">
+            基本の出勤時間
+            <input type="text" id="editRegistrationStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="基本の出勤時間を選択" aria-label="時計から基本の出勤時間を選択">
+          </label>
+
+          <label class="add-staff-field add-staff-end-field">
+            基本の退勤時間
+            <input type="text" id="editRegistrationEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" data-clock-title="基本の退勤時間を選択" aria-label="時計から基本の退勤時間を選択">
+          </label>
+
+          <label class="add-staff-field add-staff-break-field">
+            休憩時間（分）
+            <input type="number" id="editRegistrationBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
+          </label>
+        </div>
+
+        <div class="new-staff-schedule-section registration-schedule-section">
+          <div class="section-title">曜日別勤務予定</div>
+          <p class="small">これまでの「勤務時間変更フォーム」の内容をここへ統合しています。</p>
+          <section class="schedule-bulk-apply" aria-label="登録内容変更の月曜日から土曜日への一括時間設定">
+            <div class="schedule-bulk-copy">
+              <strong>月曜〜土曜へ一括反映</strong>
+              <span>時間を1回選び、月曜日から土曜日へまとめて入力します。</span>
+            </div>
+            <label class="schedule-bulk-time-label">
+              一括時間
+              <input type="text" id="editRegistrationBulkTimeInput" class="clock-time-input schedule-bulk-time-input" value="08:00" readonly inputmode="none" data-clock-title="一括反映する時間を選択" aria-label="登録内容変更で一括反映する時間を選択">
+            </label>
+            <button type="button" id="applyRegistrationBulkTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に一括反映</button>
+          </section>
+
+          <div id="registrationWeeklyScheduleGrid" class="weekly-schedule-grid">
+            <div class="weekly-schedule-row" data-day="mon"><strong>月曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から月曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="tue"><strong>火曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から火曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="wed"><strong>水曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から水曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="thu"><strong>木曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から木曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="fri"><strong>金曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から金曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off">休み</label></div>
+            <div class="weekly-schedule-row" data-day="sat"><strong>土曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から土曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+            <div class="weekly-schedule-row" data-day="sun"><strong>日曜日</strong><label>出勤時間<input type="text" class="schedule-time clock-time-input" value="08:00" readonly inputmode="none" aria-label="時計から日曜日の出勤時間を選択"></label><label class="schedule-off-label"><input type="checkbox" class="schedule-off" checked>休み</label></div>
+          </div>
+        </div>
+
+        <button type="button" id="saveRegistrationButton" class="sub-button registration-save-button">選択中スタッフの登録内容を保存</button>
+        <p class="small">社員番号やスタッフ名を変更した場合は、勤務予定・勤務表・打刻データ側の識別情報も同時に更新します。</p>
       </details>
 
       <details class="admin-sheet-area">
@@ -364,6 +440,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=parking-management-20260729-44"></script>
+<script src="./app.js?v=registration-edit-warehouse-20260729-46"></script>
 </body>
 </html>
