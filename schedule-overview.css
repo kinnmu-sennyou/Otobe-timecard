@@ -330,7 +330,9 @@ h1 {
   right: max(14px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
   z-index: 1200;
-  display: grid;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   gap: 8px;
 }
 

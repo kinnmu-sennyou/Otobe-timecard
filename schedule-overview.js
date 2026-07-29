@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-tools-20260729-41";
+const APP_VERSION = "weekly-attendance-tools-20260729-42";
 const DAY_DEFS = [
   { key: "mon", label: "\u6708\u66dc\u65e5" },
   { key: "tue", label: "\u706b\u66dc\u65e5" },
@@ -204,7 +204,11 @@ function assignLanes(shifts) {
 }
 
 function timeToMinutes(value) {
-  const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  const normalized = String(value || "")
+    .trim()
+    .replace(/[：﹕∶]/g, ":")
+    .replace(/\s+/g, "");
+  const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
