@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "mobile-layout-v12-20260727-36";
+const APP_VERSION = "weekly-attendance-tools-20260729-40";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -94,6 +94,7 @@ const retireKeyInput = document.getElementById("retireKeyInput");
 
 const adminOpenKeyInput = document.getElementById("adminOpenKeyInput");
 const showAllSheetsButton = document.getElementById("showAllSheetsButton");
+const scrollToTopButton = document.getElementById("scrollToTopButton");
 
 init();
 
@@ -119,6 +120,7 @@ async function init() {
   setupRetireStaff();
   setupSheetOpenSelection();
   setupAdminSheetOpen();
+  setupScrollToTopButton();
 
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
   pdfButton.addEventListener("click", openStaffSheet);
@@ -418,7 +420,9 @@ function isAllowedWhileRestricted(target) {
     ".sheet-area",
     ".add-staff-area",
     ".admin-sheet-area",
-    ".retire-staff-area"
+    ".retire-staff-area",
+    ".convenience-area",
+    "#scrollToTopButton"
   ].join(",")));
 }
 
@@ -462,7 +466,8 @@ function updateSelectedEmployeeAccessLock() {
     ".admin-sheet-area button",
     ".admin-sheet-area input",
     ".retire-staff-area button",
-    ".retire-staff-area input"
+    ".retire-staff-area input",
+    "#scrollToTopButton"
   ];
 
   document.querySelectorAll("button, input, select, textarea").forEach((control) => {
@@ -1080,6 +1085,14 @@ async function showAllSheetsForAdmin() {
   }
 }
 
+
+
+function setupScrollToTopButton() {
+  if (!scrollToTopButton) return;
+  scrollToTopButton.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
 
 function setupWeeklySchedule() {
   setupCustomTimePicker();

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7b7c9">
+  <title>&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;</title>
+  <link rel="stylesheet" href="./schedule-overview.css?v=weekly-attendance-tools-20260729-40">
+</head>
+<body>
+  <main id="pageTop" class="overview-page">
+    <section class="overview-panel">
+      <header class="overview-hero">
+        <div class="overview-badge">Convenient Tool</div>
+        <h1>&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;</h1>
+        <p>&#30331;&#37682;&#28168;&#12415;&#12398;&#21220;&#21209;&#20104;&#23450;&#12434;&#12289;&#26332;&#26085;&#12392;&#26178;&#38291;&#24111;&#12391;&#19968;&#35239;&#34920;&#31034;&#12375;&#12414;&#12377;&#12290;</p>
+      </header>
+
+      <div class="overview-actions">
+        <a class="back-button" href="./index.html">&#25171;&#21051;&#12506;&#12540;&#12472;&#12395;&#25147;&#12427;</a>
+        <button type="button" id="refreshButton" class="refresh-button">&#26368;&#26032;&#12398;&#29366;&#27841;&#12395;&#26356;&#26032;</button>
+      </div>
+
+      <div id="overviewStatus" class="overview-status loading" aria-live="polite">&#21220;&#21209;&#20104;&#23450;&#12434;&#35501;&#12415;&#36796;&#12435;&#12391;&#12356;&#12414;&#12377;&#12290;</div>
+
+      <section class="timeline-section" aria-labelledby="timelineTitle">
+        <div class="timeline-heading-row">
+          <div>
+            <h2 id="timelineTitle">&#26332;&#26085;&#21029;&#12479;&#12452;&#12512;&#12521;&#12452;&#12531;</h2>
+            <p>&#24038;&#21491;&#12395;&#12473;&#12463;&#12525;&#12540;&#12523;&#12375;&#12390;0:00&#65374;23:00&#12434;&#30906;&#35469;&#12391;&#12365;&#12414;&#12377;&#12290;</p>
+          </div>
+          <span id="staffCount" class="staff-count">0&#21517;</span>
+        </div>
+
+        <div id="timelineScroll" class="timeline-scroll" tabindex="0" aria-label="&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;&#12398;&#26178;&#38291;&#36600;">
+          <div id="scheduleBoard" class="schedule-board"></div>
+        </div>
+      </section>
+
+      <p id="generatedAt" class="generated-at"></p>
+    </section>
+  </main>
+
+  <button type="button" id="scrollToTopButton" class="scroll-to-top-button" aria-label="&#12506;&#12540;&#12472;&#12398;&#19968;&#30058;&#19978;&#12395;&#25147;&#12427;">&#19968;&#30058;&#19978;&#12395;</button>
+  <script src="./schedule-overview.js?v=weekly-attendance-tools-20260729-40"></script>
+</body>
+</html>

@@ -2288,3 +2288,95 @@ body.time-picker-open {
     font-size: 13px;
   }
 }
+
+
+/* ===== 2026-07-29: convenient tools and fixed scroll-to-top ===== */
+.convenience-divider {
+  height: 1px;
+  margin: 24px 2px 0;
+  background: linear-gradient(90deg, transparent, #dfbdca 12%, #dfbdca 88%, transparent);
+}
+
+.convenience-area {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #ffffff;
+}
+
+.convenience-title {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.attendance-overview-button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #443940, #6a5660);
+  color: #ffffff;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(68, 57, 64, .16);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.attendance-overview-button span {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: .03em;
+}
+
+.attendance-overview-button small {
+  color: rgba(255, 255, 255, .82);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.attendance-overview-button:active {
+  transform: translateY(1px) scale(.99);
+  box-shadow: 0 4px 10px rgba(68, 57, 64, .14);
+}
+
+.scroll-to-top-button {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 1200;
+  min-width: 98px;
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, .7);
+  border-radius: 999px;
+  background: rgba(68, 57, 64, .94);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(48, 41, 45, .24);
+  backdrop-filter: blur(8px);
+}
+
+.scroll-to-top-button:active {
+  transform: translateY(1px) scale(.98);
+}
+
+.page {
+  padding-bottom: 82px;
+}
+
+@media (max-width: 420px) {
+  .scroll-to-top-button {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    min-width: 88px;
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
