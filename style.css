@@ -443,6 +443,10 @@ select:disabled,
   line-height: 1.6;
 }
 
+.message:empty {
+  display: none;
+}
+
 .message {
   min-height: 34px;
   margin: 15px 0 0;

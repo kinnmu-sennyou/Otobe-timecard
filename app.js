@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "registration-edit-warehouse-20260729-46";
+const APP_VERSION = "registration-edit-warehouse-20260729-47";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -163,7 +163,6 @@ async function init() {
   selectCorrectionAction(selectedCorrectionAction);
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
-  showMessage(`読み込みました。版：${APP_VERSION}`, "ok");
 }
 
 function loadEmployees() {
