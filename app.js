@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-tools-20260729-40";
+const APP_VERSION = "weekly-attendance-tools-20260729-41";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -95,6 +95,7 @@ const retireKeyInput = document.getElementById("retireKeyInput");
 const adminOpenKeyInput = document.getElementById("adminOpenKeyInput");
 const showAllSheetsButton = document.getElementById("showAllSheetsButton");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
+const scrollToBottomButton = document.getElementById("scrollToBottomButton");
 
 init();
 
@@ -422,7 +423,8 @@ function isAllowedWhileRestricted(target) {
     ".admin-sheet-area",
     ".retire-staff-area",
     ".convenience-area",
-    "#scrollToTopButton"
+    "#scrollToTopButton",
+    "#scrollToBottomButton"
   ].join(",")));
 }
 
@@ -467,7 +469,8 @@ function updateSelectedEmployeeAccessLock() {
     ".admin-sheet-area input",
     ".retire-staff-area button",
     ".retire-staff-area input",
-    "#scrollToTopButton"
+    "#scrollToTopButton",
+    "#scrollToBottomButton"
   ];
 
   document.querySelectorAll("button, input, select, textarea").forEach((control) => {
@@ -1088,10 +1091,21 @@ async function showAllSheetsForAdmin() {
 
 
 function setupScrollToTopButton() {
-  if (!scrollToTopButton) return;
-  scrollToTopButton.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  if (scrollToTopButton) {
+    scrollToTopButton.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  if (scrollToBottomButton) {
+    scrollToBottomButton.addEventListener("click", () => {
+      const bottom = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      window.scrollTo({ top: bottom, behavior: "smooth" });
+    });
+  }
 }
 
 function setupWeeklySchedule() {

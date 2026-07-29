@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=weekly-attendance-tools-20260729-40">
+  <link rel="stylesheet" href="./style.css?v=weekly-attendance-tools-20260729-41">
 </head>
 <body>
   <main class="page">
@@ -311,7 +311,10 @@
     </section>
   </main>
 
-  <button type="button" id="scrollToTopButton" class="scroll-to-top-button" aria-label="&#12506;&#12540;&#12472;&#12398;&#19968;&#30058;&#19978;&#12395;&#25147;&#12427;">&#19968;&#30058;&#19978;&#12395;</button>
+  <nav class="fixed-page-navigation" aria-label="ページ内移動">
+    <button type="button" id="scrollToTopButton" class="page-navigation-button" aria-label="ページの一番上に移動">一番上に</button>
+    <button type="button" id="scrollToBottomButton" class="page-navigation-button" aria-label="ページの一番下に移動">一番下に</button>
+  </nav>
 
 
   <div id="timePickerModal" class="time-picker-modal" hidden>
@@ -345,6 +348,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=weekly-attendance-tools-20260729-40"></script>
+<script src="./app.js?v=weekly-attendance-tools-20260729-41"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-tools-20260729-40";
+const APP_VERSION = "weekly-attendance-tools-20260729-41";
 const DAY_DEFS = [
   { key: "mon", label: "\u6708\u66dc\u65e5" },
   { key: "tue", label: "\u706b\u66dc\u65e5" },
@@ -16,6 +16,7 @@ const refreshButton = document.getElementById("refreshButton");
 const staffCountElement = document.getElementById("staffCount");
 const generatedAtElement = document.getElementById("generatedAt");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
+const scrollToBottomButton = document.getElementById("scrollToBottomButton");
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initOverview);
@@ -25,9 +26,20 @@ if (document.readyState === "loading") {
 
 function initOverview() {
   refreshButton.addEventListener("click", loadOverview);
-  scrollToTopButton.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  if (scrollToTopButton) {
+    scrollToTopButton.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+  if (scrollToBottomButton) {
+    scrollToBottomButton.addEventListener("click", () => {
+      const bottom = Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight
+      );
+      window.scrollTo({ top: bottom, behavior: "smooth" });
+    });
+  }
   renderEmptyBoard();
   loadOverview();
 }

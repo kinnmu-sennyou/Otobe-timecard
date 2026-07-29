@@ -2343,11 +2343,16 @@ body.time-picker-open {
   box-shadow: 0 4px 10px rgba(68, 57, 64, .14);
 }
 
-.scroll-to-top-button {
+.fixed-page-navigation {
   position: fixed;
   right: max(14px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
   z-index: 1200;
+  display: grid;
+  gap: 8px;
+}
+
+.page-navigation-button {
   min-width: 98px;
   min-height: 44px;
   padding: 9px 14px;
@@ -2362,18 +2367,22 @@ body.time-picker-open {
   backdrop-filter: blur(8px);
 }
 
-.scroll-to-top-button:active {
+.page-navigation-button:active {
   transform: translateY(1px) scale(.98);
 }
 
 .page {
-  padding-bottom: 82px;
+  padding-bottom: 130px;
 }
 
 @media (max-width: 420px) {
-  .scroll-to-top-button {
+  .fixed-page-navigation {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 6px;
+  }
+
+  .page-navigation-button {
     min-width: 88px;
     min-height: 42px;
     padding: 8px 12px;
