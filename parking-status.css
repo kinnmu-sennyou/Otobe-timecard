@@ -493,26 +493,33 @@ td.is-warehouse-used { background:#f2dfbd; font-weight:900; }
 @media print {
   @page {
     size: A4 landscape;
-    margin: 10mm;
+    margin: 8mm;
   }
 
+  html,
   body.print-parking-map {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
     background: #fff !important;
   }
 
-  body.print-parking-map * {
-    visibility: hidden !important;
-  }
-
-  body.print-parking-map .parking-map-section,
-  body.print-parking-map .parking-map-section * {
-    visibility: visible !important;
-  }
-
-  body.print-parking-map .parking-map-section {
-    position: absolute !important;
-    inset: 0 auto auto 0 !important;
+  /* visibility:hidden では元のページ高が残り、2枚目に白紙が出るため、
+     印刷対象以外はレイアウトごと完全に外します。 */
+  body.print-parking-map .page {
     width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.print-parking-map .panel {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     border: 0 !important;
@@ -521,31 +528,115 @@ td.is-warehouse-used { background:#f2dfbd; font-weight:900; }
     box-shadow: none !important;
   }
 
+  body.print-parking-map .panel > :not(.overview-layout),
+  body.print-parking-map .overview-layout > :not(.parking-map-section),
+  body.print-parking-map .fixed-page-navigation {
+    display: none !important;
+  }
+
+  body.print-parking-map .overview-layout {
+    display: block !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.print-parking-map .parking-map-section {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+    break-after: avoid-page !important;
+    page-break-after: avoid !important;
+  }
+
   body.print-parking-map .parking-map-section .section-head {
-    margin-bottom: 8px !important;
+    margin: 0 0 3mm !important;
+    padding: 0 !important;
+  }
+
+  body.print-parking-map .parking-map-section .section-head h2 {
+    font-size: 16pt !important;
+  }
+
+  body.print-parking-map .parking-map-section .section-head p {
+    margin-top: 1mm !important;
+    font-size: 9pt !important;
   }
 
   body.print-parking-map .print-day-label {
     display: block !important;
-    margin: 4px 0 0 !important;
+    margin: 1mm 0 0 !important;
     color: #222 !important;
-    font-size: 13px !important;
+    font-size: 10pt !important;
     font-weight: 900 !important;
   }
 
+  body.print-parking-map .legend-list {
+    gap: 4mm !important;
+  }
+
+  body.print-parking-map .legend {
+    font-size: 9pt !important;
+  }
+
+  body.print-parking-map .legend-mark {
+    width: 5mm !important;
+    height: 5mm !important;
+  }
+
+  /* A4横の印刷可能領域を縦にも使い、画面表示より大きく印刷します。 */
   body.print-parking-map .parking-map {
-    grid-template-columns: minmax(0, 2fr) minmax(150px, .75fr) !important;
-    gap: 14px !important;
-    margin-top: 8px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 2fr) minmax(58mm, .72fr) !important;
+    gap: 5mm !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    align-items: start !important;
+    break-inside: avoid-page !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.print-parking-map .parking-zone h3 {
+    margin: 0 0 2mm !important;
+    font-size: 12pt !important;
+  }
+
+  body.print-parking-map .east-parking-grid,
+  body.print-parking-map .west-parking-grid {
+    gap: 1.2mm !important;
+  }
+
+  body.print-parking-map .east-parking-row {
+    gap: 2.5mm !important;
   }
 
   body.print-parking-map .parking-space {
-    min-height: 31px !important;
-    break-inside: avoid;
+    grid-template-columns: 13mm minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 12mm !important;
+    min-height: 12mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  body.print-parking-map .parking-space-number {
+    font-size: 11pt !important;
   }
 
   body.print-parking-map .parking-space-names {
-    font-size: 12px !important;
+    padding: 1mm 2mm !important;
+    font-size: 10.5pt !important;
+    line-height: 1.15 !important;
   }
 }
-

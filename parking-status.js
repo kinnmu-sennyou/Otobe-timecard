@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-print-landscape-20260729-54";
+const APP_VERSION = "parking-print-fit-one-page-20260729-55";
 
 const LIGHT_BLUE_EMPTY_PARKING_NUMBERS = new Set(["1", "4", "5", "13", "16", "17", "18", "21", "30"]);
 
