@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-empty-lightblue-20260729-49";
+const APP_VERSION = "parking-summary-removed-20260729-50";
 
 const LIGHT_BLUE_EMPTY_PARKING_NUMBERS = new Set(["1", "4", "5", "13", "16", "17", "18", "21", "30"]);
 
@@ -19,8 +19,6 @@ let selectedDayKey = getTodayDayKey();
 const message = document.getElementById("message");
 const dayTabs = document.getElementById("dayTabs");
 const staffTotalBadge = document.getElementById("staffTotalBadge");
-const selectedDayTitle = document.getElementById("selectedDayTitle");
-const selectedDayCounts = document.getElementById("selectedDayCounts");
 const conflictArea = document.getElementById("conflictArea");
 const eastParkingGrid = document.getElementById("eastParkingGrid");
 const westParkingGrid = document.getElementById("westParkingGrid");
@@ -120,10 +118,7 @@ function renderDayTabs() {
 }
 
 function renderSelectedDay() {
-  const dayDef = DAY_DEFS.find((day) => day.key === selectedDayKey) || DAY_DEFS[0];
   const data = getDayData(selectedDayKey);
-  selectedDayTitle.textContent = dayDef.label;
-  selectedDayCounts.textContent = `通常駐車場 ${data.parking.length}名 / 乙部在庫倉庫下 ${data.warehouseUnder.length}名 / 徒歩 ${data.walking.length}名 / 公共交通機関 ${data.publicTransport.length}名`;
   renderParkingMap(data.parking);
   renderNameList(warehouseUnderList, warehouseUnderCount, data.warehouseUnder);
   renderNameList(walkingList, walkingCount, data.walking);

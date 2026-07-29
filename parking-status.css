@@ -133,20 +133,6 @@ button, input, select, summary { font: inherit; }
 }
 .day-tab.is-active span { color: rgba(255,255,255,.85); }
 
-.current-day-summary {
-  display: flex;
-  justify-content: center;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 12px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: var(--green-soft);
-}
-.current-day-summary strong { color: var(--green-dark); font-size: 18px; }
-.current-day-summary span { font-size: 13px; font-weight: 800; }
-
 .conflict-area {
   margin-top: 12px;
   padding: 12px 14px;

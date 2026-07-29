@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#4f8175">
   <title>駐車場使用状況</title>
-  <link rel="stylesheet" href="./parking-status.css?v=parking-empty-lightblue-20260729-49">
+  <link rel="stylesheet" href="./parking-status.css?v=parking-summary-removed-20260729-50">
 </head>
 <body>
   <main class="page">
@@ -27,11 +27,6 @@
           <span id="staffTotalBadge" class="count-badge">0名</span>
         </div>
         <div id="dayTabs" class="day-tabs" role="tablist" aria-label="表示する曜日"></div>
-      </section>
-
-      <section class="current-day-summary" aria-live="polite">
-        <strong id="selectedDayTitle">-</strong>
-        <span id="selectedDayCounts">通常駐車場 0名 / 乙部在庫倉庫下 0名 / 徒歩 0名 / 公共交通機関 0名</span>
       </section>
 
       <div id="conflictArea" class="conflict-area" hidden></div>
@@ -145,6 +140,6 @@
     <button type="button" id="scrollToBottomButton" class="page-navigation-button">一番下に</button>
   </nav>
 
-  <script src="./parking-status.js?v=parking-empty-lightblue-20260729-49"></script>
+  <script src="./parking-status.js?v=parking-summary-removed-20260729-50"></script>
 </body>
 </html>
