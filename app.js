@@ -1611,7 +1611,7 @@ function normalizeParkingNumberInput(value) {
 
 function isParkingConflictMessage(messageText) {
   const text = String(messageText || "");
-  return text.includes("駐車場番号") && (text.includes("使用予定") || text.includes("重複"));
+  return text.includes("駐車場番号") && (text.includes("使用中") || text.includes("使用予定") || text.includes("重複"));
 }
 
 
