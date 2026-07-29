@@ -12,7 +12,11 @@
   --pink-dark: #d96d90;
   --pink-light: #fff0f6;
   --shadow: 0 14px 34px rgba(118, 70, 87, .13);
-  --label-width: 78px;
+  --label-width: 54px;
+  --lane-step: 10px;
+  --bar-height: 9px;
+  --bar-top-offset: 1px;
+  --canvas-padding: 2px;
   --mobile-hour-width: 72px;
   --mobile-timeline-width: 1728px;
 }
@@ -24,7 +28,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  padding-bottom: 82px;
+  padding-bottom: 0;
   background:
     radial-gradient(circle at top left, rgba(255, 213, 227, .75) 0, transparent 32%),
     radial-gradient(circle at bottom right, rgba(229, 244, 255, .82) 0, transparent 34%),
@@ -40,43 +44,43 @@ a {
 
 .overview-page {
   min-height: 100vh;
-  padding: 18px 18px 130px;
+  padding: 6px 8px 44px;
 }
 
 .overview-panel {
   width: 100%;
-  max-width: 1380px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 9px 10px;
   border: 1px solid rgba(239, 221, 229, .95);
-  border-radius: 24px;
+  border-radius: 4px;
   background: var(--paper);
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
 }
 
 .overview-hero {
-  padding: 8px 8px 14px;
+  padding: 1px 4px 5px;
   text-align: center;
 }
 
 .overview-badge {
   display: inline-flex;
-  min-height: 26px;
+  min-height: 20px;
   align-items: center;
   justify-content: center;
-  padding: 4px 12px;
+  padding: 2px 9px;
   border-radius: 999px;
   background: var(--pink-light);
   color: var(--pink-dark);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: .04em;
 }
 
 h1 {
-  margin: 8px 0 5px;
-  font-size: 32px;
+  margin: 2px 0 1px;
+  font-size: 22px;
   letter-spacing: .06em;
 }
 
@@ -84,26 +88,26 @@ h1 {
 .timeline-heading-row p {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.6;
+  line-height: 1.35;
 }
 
 .overview-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 3px;
+  margin-top: 4px;
 }
 
 .back-button,
 .refresh-button {
   display: flex;
-  min-height: 48px;
+  min-height: 34px;
   align-items: center;
   justify-content: center;
-  padding: 10px 14px;
-  border-radius: 15px;
+  padding: 5px 10px;
+  border-radius: 10px;
   font-weight: 900;
   text-align: center;
   text-decoration: none;
@@ -128,12 +132,12 @@ h1 {
 }
 
 .overview-status {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 15px;
+  margin-top: 5px;
+  padding: 5px 8px;
+  border-radius: 10px;
   text-align: center;
   font-weight: 900;
-  line-height: 1.55;
+  line-height: 1.3;
 }
 
 .overview-status.loading {
@@ -152,10 +156,10 @@ h1 {
 }
 
 .timeline-section {
-  margin-top: 13px;
-  padding: 15px;
+  margin-top: 5px;
+  padding: 7px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 12px;
   background: #ffffff;
 }
 
@@ -163,23 +167,23 @@ h1 {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 5px;
 }
 
 .timeline-heading-row h2 {
-  margin: 0 0 4px;
+  margin: 0 0 1px;
   color: var(--pink-dark);
-  font-size: 17px;
+  font-size: 14px;
 }
 
 .staff-count {
   flex: 0 0 auto;
-  padding: 6px 11px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: var(--pink-light);
   color: #8a3f59;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -208,8 +212,8 @@ h1 {
   position: sticky;
   top: 0;
   z-index: 20;
-  min-height: 48px;
-  border-bottom: 2px solid #dfb6c7;
+  min-height: 27px;
+  border-bottom: 1px solid #dfb6c7;
   background: #fff3f8;
 }
 
@@ -229,7 +233,7 @@ h1 {
 
 .corner-label {
   z-index: 30;
-  font-size: 12px;
+  font-size: 9px;
 }
 
 .hour-grid {
@@ -246,7 +250,7 @@ h1 {
   overflow: hidden;
   border-right: 1px solid #ead1dc;
   color: #7a4c5b;
-  font-size: clamp(8px, .78vw, 11px);
+  font-size: clamp(7px, .62vw, 9px);
   font-weight: 900;
   letter-spacing: -.03em;
   white-space: nowrap;
@@ -265,14 +269,14 @@ h1 {
 }
 
 .day-label {
-  min-height: 58px;
-  font-size: 13px;
+  min-height: 24px;
+  font-size: 10px;
 }
 
 .day-canvas {
   position: relative;
   min-width: 0;
-  min-height: 58px;
+  min-height: 24px;
   background-color: #ffffff;
   background-image:
     linear-gradient(to right, rgba(234, 209, 220, .9) 1px, transparent 1px),
@@ -287,23 +291,23 @@ h1 {
 .shift-bar {
   position: absolute;
   display: flex;
-  min-width: 18px;
-  height: 30px;
+  min-width: 10px;
+  height: var(--bar-height);
   align-items: center;
   gap: 7px;
   overflow: hidden;
-  padding: 4px 8px;
+  padding: 0 3px;
   border: 1px solid rgba(138, 63, 89, .32);
   border-radius: 10px;
   background: linear-gradient(135deg, #ffe0eb, #fff5fa);
   color: #64283b;
-  box-shadow: 0 3px 8px rgba(118, 70, 87, .12);
+  box-shadow: none;
   white-space: nowrap;
 }
 
 .shift-bar .shift-name {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 8px;
   font-weight: 900;
   text-overflow: ellipsis;
 }
@@ -311,24 +315,24 @@ h1 {
 .shift-bar .shift-time {
   flex: 0 0 auto;
   color: #8a3f59;
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 800;
 }
 
 .empty-day {
   position: absolute;
-  left: 12px;
+  left: 6px;
   top: 50%;
   color: #9a8b91;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 800;
   transform: translateY(-50%);
 }
 
 .generated-at {
-  margin: 10px 2px 0;
+  margin: 4px 2px 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 700;
   text-align: right;
 }
@@ -363,10 +367,34 @@ h1 {
   transform: translateY(1px) scale(.98);
 }
 
+/* PCでは勤務帯を極細表示にして、7曜日を画面内へ収めやすくします。 */
+@media (min-width: 901px) {
+  .shift-time {
+    display: none;
+  }
+
+  .fixed-page-navigation {
+    right: 8px;
+    bottom: 8px;
+    gap: 5px;
+  }
+
+  .page-navigation-button {
+    min-width: 76px;
+    min-height: 32px;
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+}
+
 /* タブレット・スマホは時間軸を横スクロールします。 */
 @media (max-width: 900px) {
   :root {
     --label-width: 92px;
+    --lane-step: 38px;
+    --bar-height: 30px;
+    --bar-top-offset: 5px;
+    --canvas-padding: 10px;
   }
 
   .overview-page {
@@ -419,6 +447,40 @@ h1 {
     letter-spacing: 0;
   }
 
+  .timeline-header {
+    min-height: 48px;
+  }
+
+  .day-label,
+  .day-canvas {
+    min-height: 58px;
+  }
+
+  .day-label {
+    font-size: 13px;
+  }
+
+  .shift-bar {
+    min-width: 18px;
+    gap: 7px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(118, 70, 87, .12);
+  }
+
+  .shift-bar .shift-name {
+    font-size: 13px;
+  }
+
+  .shift-bar .shift-time {
+    font-size: 10px;
+  }
+
+  .empty-day {
+    left: 12px;
+    font-size: 12px;
+  }
+
   .day-canvas {
     background-size: var(--mobile-hour-width) 100%, calc(var(--mobile-hour-width) / 2) 100%;
   }
@@ -445,5 +507,95 @@ h1 {
     min-height: 42px;
     padding: 8px 12px;
     font-size: 13px;
+  }
+}
+
+/* ===== v5 PC完全コンパクト表示 / スマホ従来表示維持 ===== */
+@media (min-width: 901px) {
+  .overview-panel {
+    border-radius: 16px;
+  }
+
+  .timeline-scroll {
+    border-radius: 10px;
+  }
+
+  .shift-bar {
+    gap: 3px;
+    border-radius: 4px;
+  }
+}
+
+@media (max-width: 900px) {
+  body {
+    padding-bottom: 82px;
+  }
+
+  .overview-hero {
+    padding: 8px 8px 14px;
+  }
+
+  .overview-badge {
+    min-height: 26px;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+
+  .overview-hero p,
+  .timeline-heading-row p {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .overview-actions {
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .back-button,
+  .refresh-button {
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 15px;
+  }
+
+  .overview-status {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 15px;
+    line-height: 1.55;
+  }
+
+  .timeline-section {
+    margin-top: 13px;
+    border-radius: 20px;
+  }
+
+  .timeline-heading-row {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .timeline-heading-row h2 {
+    margin-bottom: 4px;
+    font-size: 17px;
+  }
+
+  .staff-count {
+    padding: 6px 11px;
+    font-size: 13px;
+  }
+
+  .timeline-scroll {
+    border-radius: 16px;
+  }
+
+  .corner-label {
+    font-size: 12px;
+  }
+
+  .generated-at {
+    margin-top: 10px;
+    font-size: 12px;
   }
 }

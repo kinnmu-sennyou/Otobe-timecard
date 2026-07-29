@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-overview-v4-20260729-43";
+const APP_VERSION = "weekly-attendance-overview-v5-20260729-44";
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", aliases: ["mon", "monday", "月", "月曜", "月曜日"] },
@@ -18,6 +18,8 @@ const staffCountElement = document.getElementById("staffCount");
 const generatedAtElement = document.getElementById("generatedAt");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
 const scrollToBottomButton = document.getElementById("scrollToBottomButton");
+let lastOverviewResult = null;
+let lastCompactMode = window.matchMedia("(min-width: 901px)").matches;
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initOverview);
@@ -41,6 +43,17 @@ function initOverview() {
     });
   }
 
+  window.addEventListener("resize", debounce(() => {
+    const compactMode = window.matchMedia("(min-width: 901px)").matches;
+    if (compactMode === lastCompactMode) return;
+    lastCompactMode = compactMode;
+    if (lastOverviewResult) {
+      renderBoard(lastOverviewResult);
+    } else {
+      renderEmptyBoard();
+    }
+  }, 120));
+
   renderEmptyBoard();
   loadOverview();
 }
@@ -59,6 +72,7 @@ async function loadOverview() {
       throw new Error((result && result.message) || "週間出勤状況を取得できませんでした。");
     }
 
+    lastOverviewResult = result;
     const renderResult = renderBoard(result);
     staffCountElement.textContent = `${result.employees.length}名`;
 
@@ -172,7 +186,8 @@ function buildDayRow(day, shifts) {
 
   const placed = assignLanes(shifts);
   const laneCount = placed.reduce((max, shift) => Math.max(max, shift.lane + 1), 0);
-  canvas.style.height = `${Math.max(1, laneCount) * 38 + 10}px`;
+  const metrics = getTimelineMetrics();
+  canvas.style.height = `${Math.max(1, laneCount) * metrics.laneStep + metrics.canvasPadding}px`;
 
   if (!placed.length) {
     const empty = document.createElement("span");
@@ -186,7 +201,7 @@ function buildDayRow(day, shifts) {
     bar.className = "shift-bar";
     bar.style.left = `${(shift.startMinutes / 1440) * 100}%`;
     bar.style.width = `${((shift.endMinutes - shift.startMinutes) / 1440) * 100}%`;
-    bar.style.top = `${shift.lane * 38 + 5}px`;
+    bar.style.top = `${shift.lane * metrics.laneStep + metrics.barTopOffset}px`;
     bar.title = `${shift.fullName} ${shift.startTime}～${shift.endTime}`;
     bar.setAttribute("aria-label", `${shift.fullName}、${shift.startTime}から${shift.endTime}`);
 
@@ -429,6 +444,28 @@ function getFamilyName(value) {
   const fullName = String(value || "").trim();
   if (!fullName) return "未設定";
   return fullName.split(/[\s\u3000]+/)[0] || fullName;
+}
+
+function getTimelineMetrics() {
+  const styles = getComputedStyle(document.documentElement);
+  return {
+    laneStep: readCssPixel(styles, "--lane-step", 38),
+    barTopOffset: readCssPixel(styles, "--bar-top-offset", 5),
+    canvasPadding: readCssPixel(styles, "--canvas-padding", 10),
+  };
+}
+
+function readCssPixel(styles, name, fallback) {
+  const value = Number.parseFloat(styles.getPropertyValue(name));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function debounce(callback, wait) {
+  let timer = 0;
+  return (...args) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => callback(...args), wait);
+  };
 }
 
 function setStatus(text, type) {
