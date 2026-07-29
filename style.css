@@ -2391,3 +2391,48 @@ body.time-picker-open {
     font-size: 13px;
   }
 }
+
+
+/* ===== 2026-07-29: 駐車場・通勤方法登録 ===== */
+.add-staff-commute-field,
+.add-staff-parking-field {
+  grid-column: auto;
+}
+
+.parking-number-note {
+  grid-column: 1 / -1;
+  margin: -2px 0 2px;
+  padding: 9px 11px;
+  border-radius: 14px;
+  background: #fff8e8;
+  color: #7a5a1f;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.convenience-button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.parking-overview-link {
+  background: linear-gradient(135deg, #315d53, #4f8175);
+}
+
+@media (max-width: 720px) {
+  .add-staff-commute-field {
+    grid-column: 1;
+  }
+
+  .add-staff-parking-field {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 520px) {
+  .convenience-button-grid {
+    grid-template-columns: 1fr;
+  }
+}

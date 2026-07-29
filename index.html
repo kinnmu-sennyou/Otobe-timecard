@@ -215,6 +215,21 @@
             <input type="text" id="newEmployeeNo" inputmode="numeric" placeholder="例：052">
           </label>
 
+          <label class="add-staff-field add-staff-commute-field">
+            通勤方法
+            <select id="newCommuteMethod">
+              <option value="車">車</option>
+              <option value="徒歩">徒歩</option>
+              <option value="公共交通機関">公共交通機関</option>
+            </select>
+          </label>
+
+          <label class="add-staff-field add-staff-parking-field">
+            駐車場番号
+            <input type="text" id="newParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2" aria-describedby="newParkingNumberHelp">
+          </label>
+          <p id="newParkingNumberHelp" class="parking-number-note">車通勤の場合のみ、1～32の駐車場番号を入力してください。同じ曜日・同じ番号は登録できません。</p>
+
           <label class="add-staff-field add-staff-start-field">
             出勤時間
             <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="出勤時間を選択" aria-label="時計から新規スタッフの出勤時間を選択">
@@ -298,10 +313,16 @@
       <div class="convenience-divider" role="separator"></div>
       <section class="convenience-area" aria-labelledby="convenienceTitle">
         <div id="convenienceTitle" class="section-title convenience-title">&#20415;&#21033;&#27231;&#33021;</div>
-        <a class="attendance-overview-button" href="./schedule-overview.html">
-          <span>&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;&#12434;&#35211;&#12427;</span>
-          <small>&#26332;&#26085;&#12539;&#26178;&#38291;&#24111;&#12372;&#12392;&#12398;&#20986;&#21220;&#12473;&#12479;&#12483;&#12501;&#12434;&#19968;&#35239;&#34920;&#31034;</small>
-        </a>
+        <div class="convenience-button-grid">
+          <a class="attendance-overview-button" href="./schedule-overview.html">
+            <span>週間出勤状況を見る</span>
+            <small>曜日・時間帯ごとの出勤スタッフを一覧表示</small>
+          </a>
+          <a class="attendance-overview-button parking-overview-link" href="./parking-status.html">
+            <span>駐車場使用状況を見る</span>
+            <small>曜日別の駐車場・徒歩・公共交通機関を確認</small>
+          </a>
+        </div>
       </section>
     </section>
   </main>
@@ -343,6 +364,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=remove-inline-schedule-20260729-43"></script>
+<script src="./app.js?v=parking-management-20260729-44"></script>
 </body>
 </html>

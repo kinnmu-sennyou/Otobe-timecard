@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-tools-20260729-41";
+const APP_VERSION = "parking-management-20260729-44";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -59,6 +59,8 @@ const addStaffButton = document.getElementById("addStaffButton");
 const newEmploymentType = document.getElementById("newEmploymentType");
 const newStaffName = document.getElementById("newStaffName");
 const newEmployeeNo = document.getElementById("newEmployeeNo");
+const newCommuteMethod = document.getElementById("newCommuteMethod");
+const newParkingNumber = document.getElementById("newParkingNumber");
 const newStartTime = document.getElementById("newStartTime");
 const newEndTime = document.getElementById("newEndTime");
 const newBreakMinutes = document.getElementById("newBreakMinutes");
@@ -1534,7 +1536,10 @@ async function saveWeeklySchedule() {
     handleResult(result, `${selectedEmployee.name}の勤務予定を更新しました。`);
     renderWeeklySchedule(result.schedule || schedule); renderWeeklyScheduleDisplay(result.schedule || schedule);
     if (weeklyScheduleStatus) weeklyScheduleStatus.textContent = "更新後の勤務予定を表示しています。";
-  } catch (error) { handleError(error); }
+  } catch (error) {
+    handleError(error);
+    if (isParkingConflictMessage(error && error.message)) window.alert(error.message);
+  }
   finally { stopSending(saveWeeklyScheduleButton); }
 }
 
@@ -1542,6 +1547,37 @@ function setupAddStaffForm() {
   if (!addStaffButton) return;
 
   addStaffButton.addEventListener("click", addStaff);
+
+  if (newCommuteMethod) {
+    newCommuteMethod.addEventListener("change", updateNewStaffParkingFieldState);
+  }
+  if (newParkingNumber) {
+    newParkingNumber.addEventListener("input", () => {
+      newParkingNumber.value = normalizeParkingNumberInput(newParkingNumber.value);
+    });
+  }
+  updateNewStaffParkingFieldState();
+}
+
+function updateNewStaffParkingFieldState() {
+  if (!newParkingNumber) return;
+  const isCar = !newCommuteMethod || newCommuteMethod.value === "車";
+  newParkingNumber.disabled = isSending || !isCar;
+  newParkingNumber.required = isCar;
+  if (!isCar) newParkingNumber.value = "";
+  newParkingNumber.placeholder = isCar ? "例：13" : "車通勤以外は入力不要";
+}
+
+function normalizeParkingNumberInput(value) {
+  return String(value || "")
+    .replace(/[０-９]/g, (char) => String(char.charCodeAt(0) - 0xFEE0))
+    .replace(/\D/g, "")
+    .slice(0, 2);
+}
+
+function isParkingConflictMessage(messageText) {
+  const text = String(messageText || "");
+  return text.includes("駐車場番号") && (text.includes("使用予定") || text.includes("重複"));
 }
 
 
@@ -1641,6 +1677,8 @@ async function addStaff() {
   const employmentType = newEmploymentType.value;
   const name = newStaffName.value.trim();
   const employeeNo = normalizeEmployeeNo(newEmployeeNo.value);
+  const commuteMethod = newCommuteMethod ? newCommuteMethod.value : "車";
+  const parkingNumber = normalizeParkingNumberInput(newParkingNumber ? newParkingNumber.value : "");
   const startTime = newStartTime.value;
   const endTime = newEndTime.value;
   const breakMinutes = normalizeBreakMinutes(newBreakMinutes ? newBreakMinutes.value : "60");
@@ -1659,6 +1697,20 @@ async function addStaff() {
   if (!employeeNo || employeeNo === "000") {
     showMessage("社員番号を入力してね。", "error");
     return;
+  }
+
+  if (!["車", "徒歩", "公共交通機関"].includes(commuteMethod)) {
+    showMessage("通勤方法を選んでね。", "error");
+    return;
+  }
+
+  if (commuteMethod === "車") {
+    const parkingNo = Number(parkingNumber);
+    if (!parkingNumber || !Number.isInteger(parkingNo) || parkingNo < 1 || parkingNo > 32) {
+      showMessage("車通勤の場合は、駐車場番号を1～32で入力してね。", "error");
+      if (newParkingNumber) newParkingNumber.focus();
+      return;
+    }
   }
 
   if (!startTime || !endTime) {
@@ -1690,6 +1742,8 @@ async function addStaff() {
       employmentType,
       name,
       employeeNo,
+      commuteMethod,
+      parkingNumber: commuteMethod === "車" ? parkingNumber : "",
       startTime,
       endTime,
       breakMinutes,
@@ -1721,14 +1775,20 @@ async function addStaff() {
 
     newStaffName.value = "";
     newEmployeeNo.value = "";
+    if (newCommuteMethod) newCommuteMethod.value = "車";
+    if (newParkingNumber) newParkingNumber.value = "";
     newStartTime.value = "08:00";
     newEndTime.value = "17:00";
     if (newBreakMinutes) newBreakMinutes.value = "60";
+    updateNewStaffParkingFieldState();
     renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
     if (todayStatus) todayStatus.textContent = `${newEmp.name} を新規登録しました。`;
   } catch (error) {
     handleError(error);
+    if (isParkingConflictMessage(error && error.message)) {
+      window.alert(error.message);
+    }
   } finally {
     stopSending(addStaffButton);
   }
@@ -1774,6 +1834,7 @@ function stopSending(button) {
   buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
   updateSheetOpenSelectionState();
   updateSelectedEmployeeAccessLock();
+  updateNewStaffParkingFieldState();
 }
 
 function setControlsDisabled(disabled) {
@@ -1791,6 +1852,8 @@ function setControlsDisabled(disabled) {
   if (newEmploymentType) newEmploymentType.disabled = disabled;
   if (newStaffName) newStaffName.disabled = disabled;
   if (newEmployeeNo) newEmployeeNo.disabled = disabled;
+  if (newCommuteMethod) newCommuteMethod.disabled = disabled;
+  if (newParkingNumber) newParkingNumber.disabled = disabled || (newCommuteMethod && newCommuteMethod.value !== "車");
   if (newStartTime) newStartTime.disabled = disabled;
   if (newEndTime) newEndTime.disabled = disabled;
   if (newBreakMinutes) newBreakMinutes.disabled = disabled;
