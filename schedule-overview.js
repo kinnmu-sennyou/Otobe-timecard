@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-overview-v5-20260729-44";
+const APP_VERSION = "weekly-attendance-overview-v6-day-switch-20260729-45";
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", aliases: ["mon", "monday", "月", "月曜", "月曜日"] },
@@ -13,12 +13,15 @@ const DAY_DEFS = [
 
 const statusElement = document.getElementById("overviewStatus");
 const boardElement = document.getElementById("scheduleBoard");
+const daySwitchElement = document.getElementById("daySwitch");
 const refreshButton = document.getElementById("refreshButton");
 const staffCountElement = document.getElementById("staffCount");
 const generatedAtElement = document.getElementById("generatedAt");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
 const scrollToBottomButton = document.getElementById("scrollToBottomButton");
 let lastOverviewResult = null;
+let selectedDayKey = getTodayDayKey();
+let lastDayCounts = {};
 let lastCompactMode = window.matchMedia("(min-width: 901px)").matches;
 
 if (document.readyState === "loading") {
@@ -28,6 +31,7 @@ if (document.readyState === "loading") {
 }
 
 function initOverview() {
+  buildDaySwitch();
   refreshButton.addEventListener("click", loadOverview);
 
   if (scrollToTopButton) {
@@ -74,7 +78,6 @@ async function loadOverview() {
 
     lastOverviewResult = result;
     const renderResult = renderBoard(result);
-    staffCountElement.textContent = `${result.employees.length}名`;
 
     const versionText = result.version ? ` / データ版：${result.version}` : "";
     generatedAtElement.textContent = result.generatedAt
@@ -95,7 +98,8 @@ async function loadOverview() {
   } catch (error) {
     console.error(error);
     renderEmptyBoard();
-    staffCountElement.textContent = "0名";
+    const selectedDay = DAY_DEFS.find((day) => day.key === selectedDayKey) || DAY_DEFS[0];
+    staffCountElement.textContent = `${selectedDay.label} 0名`;
     generatedAtElement.textContent = "";
     setStatus(`取得できませんでした：${error.message}`, "error");
   } finally {
@@ -103,22 +107,91 @@ async function loadOverview() {
   }
 }
 
-function renderEmptyBoard() {
-  boardElement.innerHTML = "";
-  boardElement.appendChild(buildTimelineHeader());
+function getTodayDayKey() {
+  const keysByDayNumber = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  return keysByDayNumber[new Date().getDay()] || "mon";
+}
+
+function buildDaySwitch() {
+  if (!daySwitchElement) return;
+  daySwitchElement.innerHTML = "";
+
   DAY_DEFS.forEach((day) => {
-    boardElement.appendChild(buildDayRow(day, []));
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "day-switch-button";
+    button.dataset.day = day.key;
+    button.setAttribute("aria-pressed", day.key === selectedDayKey ? "true" : "false");
+    button.addEventListener("click", () => selectDay(day.key));
+    daySwitchElement.appendChild(button);
+  });
+
+  updateDaySwitch();
+}
+
+function selectDay(dayKey) {
+  if (!DAY_DEFS.some((day) => day.key === dayKey)) return;
+  selectedDayKey = dayKey;
+  updateDaySwitch();
+
+  if (lastOverviewResult) {
+    renderBoard(lastOverviewResult);
+  } else {
+    renderEmptyBoard();
+  }
+}
+
+function updateDaySwitch() {
+  if (!daySwitchElement) return;
+
+  daySwitchElement.querySelectorAll("[data-day]").forEach((button) => {
+    const day = DAY_DEFS.find((item) => item.key === button.dataset.day);
+    if (!day) return;
+    const isActive = day.key === selectedDayKey;
+    const count = Number(lastDayCounts[day.key] || 0);
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+    button.textContent = count > 0 ? `${day.label.slice(0, 1)} ${count}` : day.label.slice(0, 1);
+    button.title = `${day.label}を表示${count > 0 ? `（${count}名）` : ""}`;
   });
 }
 
+function renderEmptyBoard() {
+  const day = DAY_DEFS.find((item) => item.key === selectedDayKey) || DAY_DEFS[0];
+  lastDayCounts = {};
+  updateDaySwitch();
+  boardElement.innerHTML = "";
+  boardElement.appendChild(buildTimelineHeader());
+  boardElement.appendChild(buildDayRow(day, []));
+  staffCountElement.textContent = `${day.label} 0名`;
+}
+
 function renderBoard(result) {
-  const employees = Array.isArray(result && result.employees) ? result.employees : [];
-  const serverTimeline = result && typeof result.timeline === "object" ? result.timeline : null;
-  const dayCounts = {};
-  let totalShifts = 0;
+  const dayData = buildAllDayShiftData(result);
+  const day = DAY_DEFS.find((item) => item.key === selectedDayKey) || DAY_DEFS[0];
+  const shifts = dayData.shiftsByDay[day.key] || [];
+
+  lastDayCounts = dayData.dayCounts;
+  updateDaySwitch();
 
   boardElement.innerHTML = "";
   boardElement.appendChild(buildTimelineHeader());
+  boardElement.appendChild(buildDayRow(day, shifts));
+  staffCountElement.textContent = `${day.label} ${shifts.length}名`;
+
+  return {
+    dayCounts: dayData.dayCounts,
+    totalShifts: dayData.totalShifts,
+    selectedDayCount: shifts.length,
+  };
+}
+
+function buildAllDayShiftData(result) {
+  const employees = Array.isArray(result && result.employees) ? result.employees : [];
+  const serverTimeline = result && typeof result.timeline === "object" ? result.timeline : null;
+  const shiftsByDay = {};
+  const dayCounts = {};
+  let totalShifts = 0;
 
   DAY_DEFS.forEach((day) => {
     let shifts = [];
@@ -140,12 +213,12 @@ function renderBoard(result) {
         a.employeeNo.localeCompare(b.employeeNo, "ja");
     });
 
+    shiftsByDay[day.key] = shifts;
     dayCounts[day.key] = shifts.length;
     totalShifts += shifts.length;
-    boardElement.appendChild(buildDayRow(day, shifts));
   });
 
-  return { dayCounts, totalShifts };
+  return { shiftsByDay, dayCounts, totalShifts };
 }
 
 function buildTimelineHeader() {

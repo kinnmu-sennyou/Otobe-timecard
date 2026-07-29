@@ -599,3 +599,88 @@ h1 {
     font-size: 12px;
   }
 }
+
+/* ===== v6 曜日切替表示 ===== */
+.day-switch {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 6px;
+}
+
+.day-switch-button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 3px;
+  overflow: hidden;
+  border: 1px solid #e4c3d0;
+  border-radius: 8px;
+  background: #fffafd;
+  color: #7a4c5b;
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.day-switch-button:hover {
+  border-color: var(--pink-dark);
+  background: var(--pink-light);
+}
+
+.day-switch-button.active {
+  border-color: var(--pink-dark);
+  background: linear-gradient(135deg, #ee91af, #d96d90);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(217, 109, 144, .2);
+}
+
+.day-switch-button:active {
+  transform: translateY(1px);
+}
+
+@media (min-width: 901px) {
+  .timeline-section {
+    max-height: none;
+  }
+
+  .day-switch {
+    gap: 3px;
+    margin-bottom: 4px;
+  }
+
+  .day-switch-button {
+    min-height: 25px;
+    padding: 2px 3px;
+    border-radius: 6px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  .day-switch {
+    gap: 6px;
+    margin: 0 4px 10px;
+  }
+
+  .day-switch-button {
+    min-height: 42px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 420px) {
+  .day-switch {
+    gap: 4px;
+    margin-right: 0;
+    margin-left: 0;
+  }
+
+  .day-switch-button {
+    min-height: 38px;
+    padding: 3px 1px;
+    font-size: 11px;
+  }
+}

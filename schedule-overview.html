@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7b7c9">
   <title>&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;</title>
-  <link rel="stylesheet" href="./schedule-overview.css?v=weekly-overview-v5-20260729-44">
+  <link rel="stylesheet" href="./schedule-overview.css?v=weekly-overview-v6-day-switch-20260729-45">
 </head>
 <body>
   <main id="pageTop" class="overview-page">
@@ -27,12 +27,14 @@
         <div class="timeline-heading-row">
           <div>
             <h2 id="timelineTitle">&#26332;&#26085;&#21029;&#12479;&#12452;&#12512;&#12521;&#12452;&#12531;</h2>
-            <p>PC&#12391;&#12399;0:00&#65374;23:00&#12392;7&#26332;&#26085;&#12434;&#12467;&#12531;&#12497;&#12463;&#12488;&#12395;&#19968;&#35239;&#34920;&#31034;&#12375;&#12289;&#12473;&#12510;&#12507;&#12391;&#12399;&#24038;&#21491;&#12395;&#12473;&#12463;&#12525;&#12540;&#12523;&#12391;&#12365;&#12414;&#12377;&#12290;</p>
+            <p>&#26332;&#26085;&#12508;&#12479;&#12531;&#12391;&#34920;&#31034;&#12434;&#20999;&#12426;&#26367;&#12360;&#12414;&#12377;&#12290;&#26368;&#21021;&#12399;&#20170;&#26085;&#12398;&#26332;&#26085;&#12434;&#34920;&#31034;&#12375;&#12414;&#12377;&#12290;PC&#12391;&#12399;0:00&#65374;23:00&#12434;&#12506;&#12540;&#12472;&#24133;&#20869;&#12395;&#34920;&#31034;&#12375;&#12414;&#12377;&#12290;</p>
           </div>
           <span id="staffCount" class="staff-count">0&#21517;</span>
         </div>
 
-        <div id="timelineScroll" class="timeline-scroll" tabindex="0" aria-label="&#36913;&#38291;&#20986;&#21220;&#29366;&#27841;&#12398;&#26178;&#38291;&#36600;">
+        <div id="daySwitch" class="day-switch" role="group" aria-label="表示する曜日を選択"></div>
+
+        <div id="timelineScroll" class="timeline-scroll" tabindex="0" aria-label="選択した曜日の出勤状況の時間軸">
           <div id="scheduleBoard" class="schedule-board"></div>
         </div>
       </section>
@@ -45,6 +47,6 @@
     <button type="button" id="scrollToTopButton" class="page-navigation-button" aria-label="ページの一番上に移動">一番上に</button>
     <button type="button" id="scrollToBottomButton" class="page-navigation-button" aria-label="ページの一番下に移動">一番下に</button>
   </nav>
-  <script src="./schedule-overview.js?v=weekly-overview-v5-20260729-44"></script>
+  <script src="./schedule-overview.js?v=weekly-overview-v6-day-switch-20260729-45"></script>
 </body>
 </html>
