@@ -370,3 +370,72 @@ td.is-warehouse-used { background:#f2dfbd; font-weight:900; }
   margin-top: 10px;
   margin-bottom: 0;
 }
+
+/* ===== 駐車場週間早見表：登録人数増加を見越した縦方向コンパクト表示 ===== */
+.weekly-table-section {
+  padding: 11px 13px;
+}
+
+.weekly-table-section .section-head p {
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.weekly-table-section .table-scroll {
+  margin-top: 7px;
+  border-radius: 11px;
+}
+
+.weekly-table-section table {
+  min-width: 680px;
+  table-layout: fixed;
+}
+
+.weekly-table-section th,
+.weekly-table-section td {
+  height: 25px;
+  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1.15;
+  vertical-align: middle;
+}
+
+.weekly-table-section th {
+  height: 27px;
+  font-size: 11px;
+}
+
+.weekly-table-section th:first-child,
+.weekly-table-section td:first-child {
+  width: 48px;
+}
+
+.weekly-table-section td:first-child {
+  font-size: 12px;
+}
+
+.weekly-table-section td.is-used,
+.weekly-table-section td.is-warehouse-used {
+  font-size: 11px;
+}
+
+.weekly-table-section .warehouse-weekly-row td {
+  height: 24px;
+}
+
+.weekly-table-section .warehouse-weekly-row td:first-child {
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .weekly-table-section {
+    padding: 10px;
+  }
+
+  .weekly-table-section th,
+  .weekly-table-section td {
+    height: 27px;
+    padding: 3px 5px;
+    font-size: 11px;
+  }
+}
