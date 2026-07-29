@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=registration-edit-parking-inline-20260729-47">
+  <link rel="stylesheet" href="./style.css?v=registration-weekday-duration-parttime-20260729-48">
 </head>
 <body>
   <main class="page">
@@ -208,24 +208,24 @@
           </div>
 
           <label class="add-staff-field add-staff-start-field">
-            出勤時間
-            <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="出勤時間を選択" aria-label="時計から新規スタッフの出勤時間を選択">
+            基本の出勤時間
+            <input type="text" id="newStartTime" class="clock-time-input" value="08:00" readonly inputmode="none" data-clock-title="基本の出勤時間を選択" aria-label="時計から新規スタッフの基本の出勤時間を選択">
           </label>
 
           <label class="add-staff-field add-staff-end-field">
-            退勤時間
-            <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" data-clock-title="退勤時間を選択" aria-label="時計から新規スタッフの退勤時間を選択">
+            基本の退勤時間
+            <input type="text" id="newEndTime" class="clock-time-input" value="17:00" readonly inputmode="none" data-clock-title="基本の退勤時間を選択" aria-label="時計から新規スタッフの基本の退勤時間を選択">
           </label>
 
           <label class="add-staff-field add-staff-break-field">
-            休憩時間（分）
+            基本の休憩時間（分）
             <input type="number" id="newBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
           </label>
         </div>
 
         <div class="new-staff-schedule-section">
           <div class="section-title">初回の曜日別勤務設定</div>
-          <p class="small">登録時点の予定を曜日ごとに設定してください。登録後は下の「登録内容の変更」からまとめて変更できます。</p>
+          <p class="small">曜日ごとの出勤時間を設定してください。退勤時間は、基本設定から算出した実働時間と休憩時間を保つよう自動計算されます。パートは不就労時間を0として集計します。</p>
           <div class="new-staff-time-apply-row">
             <span>上で選んだ出勤時間を、月曜日から土曜日へまとめて入力します。</span>
             <button type="button" id="applyNewStaffStartTimeButton" class="schedule-bulk-apply-button">月曜〜土曜に出勤時間を一括反映</button>
@@ -311,14 +311,14 @@
           </label>
 
           <label class="add-staff-field add-staff-break-field">
-            休憩時間（分）
+            基本の休憩時間（分）
             <input type="number" id="editRegistrationBreakMinutes" value="60" min="0" max="480" step="1" inputmode="numeric">
           </label>
         </div>
 
         <div class="new-staff-schedule-section registration-schedule-section">
           <div class="section-title">曜日別勤務予定</div>
-          <p class="small">これまでの「勤務時間変更フォーム」の内容をここへ統合しています。</p>
+          <p class="small">曜日ごとの出勤時間を変更すると、基本設定の実働時間と休憩時間を保った退勤時間を自動計算します。パートは不就労時間を0として集計します。</p>
           <section class="schedule-bulk-apply" aria-label="登録内容変更の月曜日から土曜日への一括時間設定">
             <div class="schedule-bulk-copy">
               <strong>月曜〜土曜へ一括反映</strong>
@@ -443,6 +443,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=registration-edit-warehouse-20260729-46"></script>
+<script src="./app.js?v=registration-weekday-duration-parttime-20260729-48"></script>
 </body>
 </html>

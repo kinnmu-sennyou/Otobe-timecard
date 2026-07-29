@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "registration-edit-warehouse-20260729-47";
+const APP_VERSION = "registration-weekday-duration-parttime-20260729-48";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -1145,6 +1145,18 @@ function setupWeeklySchedule() {
   setupClockTimeInput(editRegistrationEndTime);
   setupClockTimeInput(editRegistrationBulkTimeInput);
   setupClockTimeInput(editTime);
+
+  [newStartTime, newEndTime, newBreakMinutes].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("input", () => updateDerivedSchedulePreviewForGrid(newStaffWeeklyScheduleGrid));
+    input.addEventListener("change", () => updateDerivedSchedulePreviewForGrid(newStaffWeeklyScheduleGrid));
+  });
+  [editRegistrationStartTime, editRegistrationEndTime, editRegistrationBreakMinutes].forEach((input) => {
+    if (!input) return;
+    input.addEventListener("input", () => updateDerivedSchedulePreviewForGrid(registrationWeeklyScheduleGrid));
+    input.addEventListener("change", () => updateDerivedSchedulePreviewForGrid(registrationWeeklyScheduleGrid));
+  });
+
   renderScheduleGrid(newStaffWeeklyScheduleGrid, getDefaultWeeklySchedule());
   renderScheduleGrid(registrationWeeklyScheduleGrid, getDefaultWeeklySchedule());
 
@@ -1160,9 +1172,12 @@ function setupWeeklyScheduleGrid(grid) {
     const time = row.querySelector(".schedule-time");
     if (!off || !time) return;
     setupClockTimeInput(time);
+    time.addEventListener("input", () => updateDerivedSchedulePreviewForGrid(grid));
+    time.addEventListener("change", () => updateDerivedSchedulePreviewForGrid(grid));
     off.addEventListener("change", () => {
       time.disabled = off.checked || isSending;
       row.classList.toggle("is-off", off.checked);
+      updateDerivedSchedulePreviewForGrid(grid);
     });
   });
 }
@@ -1390,6 +1405,88 @@ function updateTimePickerHand() {
   timePickerHand.style.setProperty("--time-picker-hand-length", `${lengthPercent}%`);
 }
 
+function getDerivedSchedulePatternInputs(grid) {
+  if (grid === newStaffWeeklyScheduleGrid) {
+    return { startInput: newStartTime, endInput: newEndTime, breakInput: newBreakMinutes };
+  }
+  if (grid === registrationWeeklyScheduleGrid) {
+    return { startInput: editRegistrationStartTime, endInput: editRegistrationEndTime, breakInput: editRegistrationBreakMinutes };
+  }
+  return null;
+}
+
+function getBaseWorkPatternForGrid(grid) {
+  const inputs = getDerivedSchedulePatternInputs(grid);
+  if (!inputs || !inputs.startInput || !inputs.endInput || !inputs.breakInput) return null;
+  const start = parseClockTime(inputs.startInput.value || "08:00");
+  const end = parseClockTime(inputs.endInput.value || "17:00");
+  const startMinutes = start.hour * 60 + start.minute;
+  const endMinutes = end.hour * 60 + end.minute;
+  const spanMinutes = endMinutes - startMinutes;
+  const breakMinutes = Number(String(inputs.breakInput.value || "0").trim());
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0 || spanMinutes <= breakMinutes) {
+    return { valid: false, spanMinutes, breakMinutes };
+  }
+  return {
+    valid: true,
+    spanMinutes,
+    breakMinutes,
+    workMinutes: spanMinutes - breakMinutes,
+  };
+}
+
+function minutesToClockText(totalMinutes) {
+  const normalized = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+  return `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+}
+
+function formatWorkMinutesForPreview(minutes) {
+  const value = Math.max(0, Number(minutes || 0));
+  const hours = Math.floor(value / 60);
+  const remainder = value % 60;
+  if (!remainder) return `${hours}時間`;
+  if (!hours) return `${remainder}分`;
+  return `${hours}時間${remainder}分`;
+}
+
+function updateDerivedSchedulePreviewForGrid(grid) {
+  if (!grid) return;
+  const pattern = getBaseWorkPatternForGrid(grid);
+  grid.querySelectorAll(".weekly-schedule-row").forEach((row) => {
+    const off = row.querySelector(".schedule-off");
+    const time = row.querySelector(".schedule-time");
+    const timeLabel = time && time.closest("label");
+    if (!time || !timeLabel) return;
+
+    let preview = timeLabel.querySelector(".schedule-derived-preview");
+    if (!preview) {
+      preview = document.createElement("span");
+      preview.className = "schedule-derived-preview";
+      timeLabel.appendChild(preview);
+    }
+
+    if (off && off.checked) {
+      preview.textContent = "休み";
+      preview.classList.add("is-off");
+      preview.classList.remove("is-error");
+      return;
+    }
+
+    preview.classList.remove("is-off");
+    if (!pattern || !pattern.valid) {
+      preview.textContent = "基本の出退勤・休憩時間を確認";
+      preview.classList.add("is-error");
+      return;
+    }
+
+    const start = parseClockTime(time.value || "08:00");
+    const startMinutes = start.hour * 60 + start.minute;
+    const endText = minutesToClockText(startMinutes + pattern.spanMinutes);
+    preview.textContent = `退勤 ${endText} ／ 実働 ${formatWorkMinutesForPreview(pattern.workMinutes)}`;
+    preview.classList.remove("is-error");
+  });
+}
+
 function applyTimeToMondayThroughSaturday(grid, rawTime) {
   if (!grid) return "";
   const parsed = parseClockTime(rawTime || "08:00");
@@ -1408,6 +1505,7 @@ function applyTimeToMondayThroughSaturday(grid, rawTime) {
     row.classList.remove("is-off");
   });
 
+  updateDerivedSchedulePreviewForGrid(grid);
   return timeValue;
 }
 
@@ -1447,6 +1545,7 @@ function renderScheduleGrid(grid, schedule) {
     time.disabled = off.checked || isSending;
     row.classList.toggle("is-off", off.checked);
   });
+  updateDerivedSchedulePreviewForGrid(grid);
 }
 
 function resetWeeklyScheduleView(emp) {
@@ -1670,6 +1769,7 @@ function resetRegistrationEditView(emp) {
   if (editRegistrationEndTime) editRegistrationEndTime.value = "17:00";
   if (editRegistrationBreakMinutes) editRegistrationBreakMinutes.value = "60";
   if (editRegistrationBulkTimeInput) editRegistrationBulkTimeInput.value = "08:00";
+  updateDerivedSchedulePreviewForGrid(registrationWeeklyScheduleGrid);
   updateRegistrationParkingFieldState();
   updateRegistrationEditControlsState();
 
@@ -1833,6 +1933,11 @@ async function saveRegistrationDetails() {
   }
   if (breakMinutes === null) {
     showMessage("休憩時間は0以上の分数で入力してね。", "error");
+    return;
+  }
+  const basePattern = getBaseWorkPatternForGrid(registrationWeeklyScheduleGrid);
+  if (!basePattern || !basePattern.valid) {
+    showMessage("基本の出退勤時間から休憩時間を引いた実働が0分以下です。基本時間と休憩時間を確認してね。", "error");
     return;
   }
   const invalidDay = Object.keys(weeklySchedule).find((day) => !weeklySchedule[day].isOff && !weeklySchedule[day].startTime);
@@ -2034,12 +2139,18 @@ async function addStaff() {
   }
 
   if (!startTime || !endTime) {
-    showMessage("出勤時間と退勤時間を入力してね。", "error");
+    showMessage("基本の出勤時間と退勤時間を入力してね。", "error");
     return;
   }
 
   if (breakMinutes === null) {
     showMessage("休憩時間は0以上の分数で入力してね。", "error");
+    return;
+  }
+
+  const basePattern = getBaseWorkPatternForGrid(newStaffWeeklyScheduleGrid);
+  if (!basePattern || !basePattern.valid) {
+    showMessage("基本の出退勤時間から休憩時間を引いた実働が0分以下です。基本時間と休憩時間を確認してね。", "error");
     return;
   }
 

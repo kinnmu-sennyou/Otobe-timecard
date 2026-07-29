@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-overview-v6-day-switch-20260729-45";
+const APP_VERSION = "weekly-attendance-derived-end-20260729-46";
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", aliases: ["mon", "monday", "月", "月曜", "月曜日"] },
@@ -350,6 +350,28 @@ function buildShift(employee, dayDef) {
     employee.workStartTime,
     employee.start
   );
+
+  if (endValue === undefined || endValue === null || endValue === "") {
+    const baseStartValue = firstDefined(
+      employee.defaultStartTime,
+      employee.startTime,
+      employee.workStartTime,
+      employee.start
+    );
+    const baseEndValue = firstDefined(
+      employee.defaultEndTime,
+      employee.endTime,
+      employee.workEndTime,
+      employee.finishTime,
+      employee.end
+    );
+    const baseStartMinutes = timeToMinutes(baseStartValue);
+    const baseEndMinutes = timeToMinutes(baseEndValue);
+    const selectedStartMinutes = timeToMinutes(startValue);
+    if (baseStartMinutes !== null && baseEndMinutes !== null && selectedStartMinutes !== null && baseEndMinutes > baseStartMinutes) {
+      endValue = minutesToTime(Math.min(1440, selectedStartMinutes + (baseEndMinutes - baseStartMinutes)));
+    }
+  }
 
   endValue = firstDefined(
     endValue,

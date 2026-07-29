@@ -2714,3 +2714,30 @@ body.time-picker-open {
     grid-column: 1;
   }
 }
+
+/* ===== 曜日別勤務予定：基本実働から自動算出した退勤時刻 ===== */
+.schedule-derived-preview {
+  display: block;
+  margin-top: 3px;
+  color: #5f5360;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.schedule-derived-preview.is-off {
+  color: #9b7a85;
+}
+
+.schedule-derived-preview.is-error {
+  color: var(--danger);
+  white-space: normal;
+}
+
+@media (max-width: 620px) {
+  .schedule-derived-preview {
+    font-size: 10px;
+    white-space: normal;
+  }
+}
