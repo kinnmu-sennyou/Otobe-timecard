@@ -1,5 +1,7 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-warehouse-cleanup-20260729-47";
+const APP_VERSION = "parking-empty-lightblue-20260729-49";
+
+const LIGHT_BLUE_EMPTY_PARKING_NUMBERS = new Set(["1", "4", "5", "13", "16", "17", "18", "21", "30"]);
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", shortLabel: "月", jsDay: 1 },
@@ -162,6 +164,9 @@ function renderParkingMap(entries) {
 function createParkingSpace(number, entries) {
   const space = document.createElement("div");
   space.className = "parking-space";
+  if (!entries.length && LIGHT_BLUE_EMPTY_PARKING_NUMBERS.has(String(number))) {
+    space.classList.add("is-light-blue-empty");
+  }
   if (entries.length) space.classList.add("is-occupied");
   if (entries.length > 1) space.classList.add("has-conflict");
 
