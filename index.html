@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=registration-edit-warehouse-20260729-46">
+  <link rel="stylesheet" href="./style.css?v=registration-edit-parking-inline-20260729-47">
 </head>
 <body>
   <main class="page">
@@ -196,15 +196,16 @@
             </select>
           </label>
 
-          <label class="add-staff-field add-staff-parking-field">
-            駐車場番号
-            <input type="text" id="newParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2" aria-describedby="newParkingNumberHelp">
-          </label>
-          <label class="warehouse-under-field">
-            <input type="checkbox" id="newWarehouseUnder" class="warehouse-under-checkbox">
-            <span>乙部在庫倉庫下</span>
-          </label>
-          <p id="newParkingNumberHelp" class="parking-number-note">車通勤は「駐車場番号1～32」または「乙部在庫倉庫下」のどちらかを登録します。通常番号は同じ曜日に重複登録できません。乙部在庫倉庫下は複数人登録でき、使用人数を一覧で確認できます。</p>
+          <div class="parking-location-fields">
+            <label class="add-staff-field add-staff-parking-field">
+              駐車場番号
+              <input type="text" id="newParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2">
+            </label>
+            <label class="warehouse-under-field">
+              <input type="checkbox" id="newWarehouseUnder" class="warehouse-under-checkbox">
+              <span>乙部在庫倉庫下</span>
+            </label>
+          </div>
 
           <label class="add-staff-field add-staff-start-field">
             出勤時間
@@ -288,15 +289,16 @@
             </select>
           </label>
 
-          <label class="add-staff-field add-staff-parking-field">
-            駐車場番号
-            <input type="text" id="editRegistrationParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2" aria-describedby="editRegistrationParkingHelp">
-          </label>
-          <label class="warehouse-under-field">
-            <input type="checkbox" id="editRegistrationWarehouseUnder" class="warehouse-under-checkbox">
-            <span>乙部在庫倉庫下</span>
-          </label>
-          <p id="editRegistrationParkingHelp" class="parking-number-note">車通勤は通常の駐車場番号または乙部在庫倉庫下を選択します。通常番号だけ同じ曜日の重複を警告します。乙部在庫倉庫下は重複可能で、使用人数を一覧表示します。</p>
+          <div class="parking-location-fields">
+            <label class="add-staff-field add-staff-parking-field">
+              駐車場番号
+              <input type="text" id="editRegistrationParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2">
+            </label>
+            <label class="warehouse-under-field">
+              <input type="checkbox" id="editRegistrationWarehouseUnder" class="warehouse-under-checkbox">
+              <span>乙部在庫倉庫下</span>
+            </label>
+          </div>
 
           <label class="add-staff-field add-staff-start-field">
             基本の出勤時間
