@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-warehouse-20260729-45";
+const APP_VERSION = "parking-warehouse-cleanup-20260729-47";
 
 const DAY_DEFS = [
   { key: "mon", label: "月曜日", shortLabel: "月", jsDay: 1 },
@@ -13,7 +13,6 @@ const DAY_DEFS = [
 
 let parkingData = { employees: [], days: {}, conflicts: [] };
 let selectedDayKey = getTodayDayKey();
-let isSaving = false;
 
 const message = document.getElementById("message");
 const dayTabs = document.getElementById("dayTabs");
@@ -32,12 +31,6 @@ const walkingCount = document.getElementById("walkingCount");
 const publicTransportCount = document.getElementById("publicTransportCount");
 const unregisteredCount = document.getElementById("unregisteredCount");
 const weeklyParkingBody = document.getElementById("weeklyParkingBody");
-const assignmentStaffSelect = document.getElementById("assignmentStaffSelect");
-const assignmentCommuteMethod = document.getElementById("assignmentCommuteMethod");
-const assignmentParkingNumber = document.getElementById("assignmentParkingNumber");
-const assignmentWarehouseUnder = document.getElementById("assignmentWarehouseUnder");
-const saveAssignmentButton = document.getElementById("saveAssignmentButton");
-const assignmentHelp = document.getElementById("assignmentHelp");
 const generatedAt = document.getElementById("generatedAt");
 const dataVersion = document.getElementById("dataVersion");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
@@ -47,7 +40,6 @@ init();
 
 function init() {
   buildDayTabs();
-  setupAssignmentEditor();
   setupPageNavigation();
   loadParkingUsage();
 }
@@ -100,7 +92,6 @@ function renderAll() {
   renderDayTabs();
   renderSelectedDay();
   renderWeeklyTable();
-  renderAssignmentStaffOptions();
 }
 
 function getDayData(dayKey) {
@@ -290,119 +281,6 @@ function renderWeeklyTable() {
   weeklyParkingBody.appendChild(warehouseRow);
 }
 
-function setupAssignmentEditor() {
-  assignmentStaffSelect.addEventListener("change", loadSelectedAssignment);
-  assignmentCommuteMethod.addEventListener("change", updateParkingInputState);
-  assignmentWarehouseUnder.addEventListener("change", updateParkingInputState);
-  assignmentParkingNumber.addEventListener("input", () => {
-    assignmentParkingNumber.value = normalizeParkingNumberInput(assignmentParkingNumber.value);
-  });
-  saveAssignmentButton.addEventListener("click", saveAssignment);
-}
-
-function renderAssignmentStaffOptions() {
-  const previous = assignmentStaffSelect.value;
-  assignmentStaffSelect.innerHTML = "";
-  parkingData.employees.forEach((employee) => {
-    const option = document.createElement("option");
-    option.value = employee.employeeNo || employee.no;
-    option.textContent = `${String(employee.employeeNo || employee.no).padStart(3, "0")} ${employee.name || employee.staffName}`;
-    assignmentStaffSelect.appendChild(option);
-  });
-  if (previous && parkingData.employees.some((employee) => String(employee.employeeNo || employee.no) === previous)) {
-    assignmentStaffSelect.value = previous;
-  }
-  loadSelectedAssignment();
-  saveAssignmentButton.disabled = !parkingData.employees.length || isSaving;
-}
-
-function loadSelectedAssignment() {
-  const employee = getSelectedEmployee();
-  if (!employee) {
-    assignmentCommuteMethod.value = "";
-    assignmentParkingNumber.value = "";
-    assignmentWarehouseUnder.checked = false;
-    updateParkingInputState();
-    return;
-  }
-  assignmentCommuteMethod.value = employee.commuteMethod || "";
-  assignmentParkingNumber.value = employee.parkingNumber || "";
-  assignmentWarehouseUnder.checked = Boolean(employee.warehouseUnder);
-  updateParkingInputState();
-}
-
-function getSelectedEmployee() {
-  const employeeNo = assignmentStaffSelect.value;
-  return parkingData.employees.find((employee) => String(employee.employeeNo || employee.no) === employeeNo) || null;
-}
-
-function updateParkingInputState() {
-  const isCar = assignmentCommuteMethod.value === "車";
-  const usesWarehouseUnder = Boolean(isCar && assignmentWarehouseUnder.checked);
-  assignmentWarehouseUnder.disabled = !isCar || isSaving;
-  if (!isCar) assignmentWarehouseUnder.checked = false;
-  assignmentParkingNumber.disabled = !isCar || usesWarehouseUnder || isSaving;
-  assignmentParkingNumber.required = isCar && !usesWarehouseUnder;
-  if (!isCar || usesWarehouseUnder) assignmentParkingNumber.value = "";
-  assignmentParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
-  assignmentHelp.textContent = !isCar
-    ? "徒歩・公共交通機関は駐車場所なしで保存されます。"
-    : usesWarehouseUnder
-      ? "乙部在庫倉庫下は複数人登録できます。重複警告は出さず、曜日ごとの人数を集計します。"
-      : "通常駐車場は1～32を入力してください。同じ曜日に使用予定がある番号は保存できません。";
-}
-
-async function saveAssignment() {
-  if (isSaving) return;
-  const employee = getSelectedEmployee();
-  if (!employee) {
-    setMessage("登録するスタッフを選択してください。", "error");
-    return;
-  }
-  const commuteMethod = assignmentCommuteMethod.value;
-  const warehouseUnder = Boolean(assignmentWarehouseUnder.checked);
-  const parkingNumber = normalizeParkingNumberInput(assignmentParkingNumber.value);
-  if (!["車", "徒歩", "公共交通機関"].includes(commuteMethod)) {
-    setMessage("通勤方法を選択してください。", "error");
-    return;
-  }
-  if (commuteMethod === "車" && !warehouseUnder) {
-    const number = Number(parkingNumber);
-    if (!parkingNumber || number < 1 || number > 32) {
-      setMessage("駐車場番号1～32または乙部在庫倉庫下を選択してください。", "error");
-      assignmentParkingNumber.focus();
-      return;
-    }
-  }
-
-  isSaving = true;
-  saveAssignmentButton.disabled = true;
-  updateParkingInputState();
-  setMessage(`${employee.name || employee.staffName} の登録内容を保存中...`, "loading");
-  try {
-    const result = await postToScript({
-      mode: "saveParkingAssignment",
-      employeeNo: employee.employeeNo || employee.no,
-      name: employee.name || employee.staffName,
-      commuteMethod,
-      parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
-      warehouseUnder: commuteMethod === "車" && warehouseUnder,
-      appVersion: APP_VERSION,
-    });
-    if (!result || !result.ok) throw new Error((result && result.message) || "保存できませんでした。");
-    setMessage(result.message || "登録内容を保存しました。", "ok");
-    await loadParkingUsage();
-  } catch (error) {
-    console.error(error);
-    setMessage(`保存できませんでした：${error.message}`, "error");
-    if (isParkingConflictMessage(error.message)) window.alert(error.message);
-  } finally {
-    isSaving = false;
-    saveAssignmentButton.disabled = !parkingData.employees.length;
-    updateParkingInputState();
-  }
-}
-
 function normalizeParkingNumber(value) {
   const text = normalizeParkingNumberInput(value);
   const number = Number(text);
@@ -419,11 +297,6 @@ function normalizeParkingNumberInput(value) {
 function getFamilyName(name) {
   const normalized = String(name || "").trim().replace(/[\s　]+/g, " ");
   return normalized.split(" ")[0] || normalized;
-}
-
-function isParkingConflictMessage(text) {
-  const messageText = String(text || "");
-  return messageText.includes("駐車場番号") && (messageText.includes("使用予定") || messageText.includes("重複"));
 }
 
 function setMessage(text, type) {

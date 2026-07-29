@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#4f8175">
   <title>駐車場使用状況</title>
-  <link rel="stylesheet" href="./parking-status.css?v=parking-warehouse-separate-20260729-46">
+  <link rel="stylesheet" href="./parking-status.css?v=parking-warehouse-cleanup-20260729-47">
 </head>
 <body>
   <main class="page">
@@ -17,7 +17,6 @@
         <a class="back-link" href="./index.html">打刻ページへ戻る</a>
       </header>
 
-      <div id="message" class="message loading" aria-live="polite">登録内容を読み込み中...</div>
 
       <section class="day-section" aria-labelledby="dayHeading">
         <div class="section-head">
@@ -132,40 +131,12 @@
         </div>
       </section>
 
-      <details class="content-section assignment-editor" open>
-        <summary>既存スタッフの通勤方法・駐車場所を登録／変更</summary>
-        <p class="editor-note">現在在籍しているスタッフもここから登録できます。通常の駐車場番号は同じ曜日に重複できません。乙部在庫倉庫下は複数人登録できます。</p>
-        <div class="editor-grid">
-          <label>
-            スタッフ
-            <select id="assignmentStaffSelect"></select>
-          </label>
-          <label>
-            通勤方法
-            <select id="assignmentCommuteMethod">
-              <option value="">未登録</option>
-              <option value="車">車</option>
-              <option value="徒歩">徒歩</option>
-              <option value="公共交通機関">公共交通機関</option>
-            </select>
-          </label>
-          <label>
-            駐車場番号
-            <input type="text" id="assignmentParkingNumber" inputmode="numeric" maxlength="2" placeholder="例：13">
-          </label>
-          <label class="assignment-warehouse-field">
-            <span>乙部在庫倉庫下</span>
-            <span class="assignment-check-row"><input type="checkbox" id="assignmentWarehouseUnder"> 使用する</span>
-          </label>
-        </div>
-        <button type="button" id="saveAssignmentButton" class="save-button">登録内容を保存</button>
-        <p id="assignmentHelp" class="editor-help">車通勤は駐車場番号1～32または乙部在庫倉庫下を選択してください。乙部在庫倉庫下は人数のみ集計し、重複警告は出ません。</p>
-      </details>
-
       <footer class="page-footer">
         <span id="generatedAt">最終取得：-</span>
         <span id="dataVersion">データ版：-</span>
       </footer>
+
+      <div id="message" class="message loading bottom-update-message" aria-live="polite">登録内容を読み込み中...</div>
     </section>
   </main>
 
@@ -174,6 +145,6 @@
     <button type="button" id="scrollToBottomButton" class="page-navigation-button">一番下に</button>
   </nav>
 
-  <script src="./parking-status.js?v=parking-warehouse-separate-20260729-46"></script>
+  <script src="./parking-status.js?v=parking-warehouse-cleanup-20260729-47"></script>
 </body>
 </html>
