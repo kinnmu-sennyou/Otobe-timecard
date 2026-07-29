@@ -164,6 +164,40 @@ button, input, select, summary { font: inherit; }
   gap: 13px;
 }
 
+.commute-column {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+.commute-column > .content-section {
+  margin-top: 13px;
+}
+.warehouse-section {
+  padding: 11px 12px;
+  border-color: #eadcc7;
+  background: #fffaf1;
+}
+.warehouse-section-head {
+  align-items: center;
+}
+.warehouse-section-head h2 {
+  font-size: 16px;
+  color: #765936;
+}
+.warehouse-section-head p {
+  margin-top: 2px;
+  font-size: 12px;
+}
+.warehouse-count-badge {
+  padding: 5px 9px;
+  color: #765936;
+  background: #f2dfbd;
+}
+.warehouse-name-list {
+  min-height: 22px;
+  margin-top: 6px;
+}
+
 .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--muted); }
 .legend-mark { width: 15px; height: 15px; border-radius: 4px; border: 1px solid #c8b900; }
 .legend-mark.occupied { background: var(--yellow); }
@@ -208,10 +242,12 @@ button, input, select, summary { font: inherit; }
 .parking-space.has-conflict { background: #ffafbd; border-width: 2px; border-color: var(--danger); }
 .parking-space.placeholder { border-style: dashed; color: var(--muted); background: #faf7f8; }
 
-.commute-section { display: grid; align-content: start; gap: 10px; }
-.commute-section > .section-head { margin-bottom: 2px; }
+.commute-section { display: grid; align-content: start; gap: 8px; padding: 12px; }
+.commute-section > .section-head { margin-bottom: 0; }
+.commute-section-head h2 { font-size: 17px; }
+.commute-section-head p { margin-top: 2px; font-size: 12px; }
 .commute-card {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 15px;
   background: var(--soft);
@@ -222,7 +258,7 @@ button, input, select, summary { font: inherit; }
 .commute-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .commute-card h3 { margin: 0; font-size: 16px; }
 .commute-card-head span { font-size: 12px; font-weight: 900; color: var(--muted); }
-.name-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; min-height: 28px; }
+.name-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; min-height: 24px; }
 .name-chip {
   display: inline-flex;
   align-items: center;
@@ -303,6 +339,7 @@ input:disabled { opacity: .65; }
 
 @media (max-width: 900px) {
   .overview-layout { grid-template-columns: 1fr; }
+  .commute-column { gap: 0; }
   .commute-section { grid-template-columns: repeat(3, minmax(0,1fr)); }
   .commute-section > .section-head { grid-column: 1 / -1; }
 }
@@ -315,6 +352,7 @@ input:disabled { opacity: .65; }
   .parking-map { grid-template-columns: 1fr; }
   .west-parking-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .commute-section { grid-template-columns: 1fr; }
+  .warehouse-section { padding: 10px 11px; }
   .editor-grid { grid-template-columns: 1fr 1fr; }
   .editor-grid label:first-child { grid-column: 1 / -1; }
 }
@@ -332,7 +370,6 @@ input:disabled { opacity: .65; }
 
 
 /* ===== 乙部在庫倉庫下 ===== */
-.warehouse-card { border-left:5px solid #9b7b54; background:#fffaf1; }
 .assignment-warehouse-field { align-content:end; }
 .assignment-check-row { min-height:46px; display:flex; align-items:center; gap:9px; padding:8px 10px; border:1px solid #d8cbd0; border-radius:13px; background:#fffafd; color:var(--ink); font-size:15px; font-weight:900; }
 .assignment-check-row input { width:21px; height:21px; min-height:0; margin:0; padding:0; accent-color:var(--green-dark); }

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#4f8175">
   <title>駐車場使用状況</title>
-  <link rel="stylesheet" href="./parking-status.css?v=parking-warehouse-20260729-45">
+  <link rel="stylesheet" href="./parking-status.css?v=parking-warehouse-separate-20260729-46">
 </head>
 <body>
   <main class="page">
@@ -59,46 +59,51 @@
           </div>
         </section>
 
-        <section class="content-section commute-section" aria-labelledby="commuteHeading">
-          <div class="section-head compact-head">
-            <div>
-              <h2 id="commuteHeading">車以外の通勤</h2>
-              <p>選択中の曜日に出勤するスタッフです。</p>
+        <div class="commute-column">
+          <section class="content-section warehouse-section" aria-labelledby="warehouseHeading">
+            <div class="section-head compact-head warehouse-section-head">
+              <div>
+                <h2 id="warehouseHeading">乙部在庫倉庫下</h2>
+                <p>選択中の曜日に使用するスタッフです。</p>
+              </div>
+              <span id="warehouseUnderCount" class="count-badge warehouse-count-badge">0名</span>
             </div>
-          </div>
+            <div id="warehouseUnderList" class="name-list warehouse-name-list"></div>
+          </section>
 
-          <article class="commute-card warehouse-card">
-            <div class="commute-card-head">
-              <h3>乙部在庫倉庫下</h3>
-              <span id="warehouseUnderCount">0名</span>
+          <section class="content-section commute-section" aria-labelledby="commuteHeading">
+            <div class="section-head compact-head commute-section-head">
+              <div>
+                <h2 id="commuteHeading">車以外の通勤</h2>
+                <p>選択中の曜日に出勤するスタッフです。</p>
+              </div>
             </div>
-            <div id="warehouseUnderList" class="name-list"></div>
-          </article>
 
-          <article class="commute-card walking-card">
-            <div class="commute-card-head">
-              <h3>徒歩</h3>
-              <span id="walkingCount">0名</span>
-            </div>
-            <div id="walkingList" class="name-list"></div>
-          </article>
+            <article class="commute-card walking-card">
+              <div class="commute-card-head">
+                <h3>徒歩</h3>
+                <span id="walkingCount">0名</span>
+              </div>
+              <div id="walkingList" class="name-list"></div>
+            </article>
 
-          <article class="commute-card transit-card">
-            <div class="commute-card-head">
-              <h3>公共交通機関</h3>
-              <span id="publicTransportCount">0名</span>
-            </div>
-            <div id="publicTransportList" class="name-list"></div>
-          </article>
+            <article class="commute-card transit-card">
+              <div class="commute-card-head">
+                <h3>公共交通機関</h3>
+                <span id="publicTransportCount">0名</span>
+              </div>
+              <div id="publicTransportList" class="name-list"></div>
+            </article>
 
-          <article class="commute-card unregistered-card">
-            <div class="commute-card-head">
-              <h3>通勤方法未登録</h3>
-              <span id="unregisteredCount">0名</span>
-            </div>
-            <div id="unregisteredList" class="name-list"></div>
-          </article>
-        </section>
+            <article class="commute-card unregistered-card">
+              <div class="commute-card-head">
+                <h3>通勤方法未登録</h3>
+                <span id="unregisteredCount">0名</span>
+              </div>
+              <div id="unregisteredList" class="name-list"></div>
+            </article>
+          </section>
+        </div>
       </div>
 
       <section class="content-section weekly-table-section" aria-labelledby="weeklyTableHeading">
@@ -169,6 +174,6 @@
     <button type="button" id="scrollToBottomButton" class="page-navigation-button">一番下に</button>
   </nav>
 
-  <script src="./parking-status.js?v=parking-warehouse-20260729-45"></script>
+  <script src="./parking-status.js?v=parking-warehouse-separate-20260729-46"></script>
 </body>
 </html>
