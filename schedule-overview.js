@@ -1,13 +1,14 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "weekly-attendance-tools-20260729-42";
+const APP_VERSION = "weekly-attendance-overview-v4-20260729-43";
+
 const DAY_DEFS = [
-  { key: "mon", label: "\u6708\u66dc\u65e5" },
-  { key: "tue", label: "\u706b\u66dc\u65e5" },
-  { key: "wed", label: "\u6c34\u66dc\u65e5" },
-  { key: "thu", label: "\u6728\u66dc\u65e5" },
-  { key: "fri", label: "\u91d1\u66dc\u65e5" },
-  { key: "sat", label: "\u571f\u66dc\u65e5" },
-  { key: "sun", label: "\u65e5\u66dc\u65e5" },
+  { key: "mon", label: "月曜日", aliases: ["mon", "monday", "月", "月曜", "月曜日"] },
+  { key: "tue", label: "火曜日", aliases: ["tue", "tuesday", "火", "火曜", "火曜日"] },
+  { key: "wed", label: "水曜日", aliases: ["wed", "wednesday", "水", "水曜", "水曜日"] },
+  { key: "thu", label: "木曜日", aliases: ["thu", "thursday", "木", "木曜", "木曜日"] },
+  { key: "fri", label: "金曜日", aliases: ["fri", "friday", "金", "金曜", "金曜日"] },
+  { key: "sat", label: "土曜日", aliases: ["sat", "saturday", "土", "土曜", "土曜日"] },
+  { key: "sun", label: "日曜日", aliases: ["sun", "sunday", "日", "日曜", "日曜日"] },
 ];
 
 const statusElement = document.getElementById("overviewStatus");
@@ -26,27 +27,27 @@ if (document.readyState === "loading") {
 
 function initOverview() {
   refreshButton.addEventListener("click", loadOverview);
+
   if (scrollToTopButton) {
     scrollToTopButton.addEventListener("click", () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
   }
+
   if (scrollToBottomButton) {
     scrollToBottomButton.addEventListener("click", () => {
-      const bottom = Math.max(
-        document.body.scrollHeight,
-        document.documentElement.scrollHeight
-      );
+      const bottom = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
       window.scrollTo({ top: bottom, behavior: "smooth" });
     });
   }
+
   renderEmptyBoard();
   loadOverview();
 }
 
 async function loadOverview() {
   refreshButton.disabled = true;
-  setStatus("\u52e4\u52d9\u4e88\u5b9a\u3092\u8aad\u307f\u8fbc\u3093\u3067\u3044\u307e\u3059\u3002", "loading");
+  setStatus("勤務予定を読み込んでいます。", "loading");
 
   try {
     const result = await postToScript({
@@ -55,19 +56,34 @@ async function loadOverview() {
     });
 
     if (!result || !result.ok || !Array.isArray(result.employees)) {
-      throw new Error((result && result.message) || "\u9031\u9593\u51fa\u52e4\u72b6\u6cc1\u3092\u53d6\u5f97\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\u3002");
+      throw new Error((result && result.message) || "週間出勤状況を取得できませんでした。");
     }
 
-    renderBoard(result.employees);
-    staffCountElement.textContent = `${result.employees.length}\u540d`;
-    generatedAtElement.textContent = result.generatedAt ? `\u66f4\u65b0\u65e5\u6642\uff1a${result.generatedAt}` : "";
-    setStatus(result.message || "\u9031\u9593\u51fa\u52e4\u72b6\u6cc1\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002", "ok");
+    const renderResult = renderBoard(result);
+    staffCountElement.textContent = `${result.employees.length}名`;
+
+    const versionText = result.version ? ` / データ版：${result.version}` : "";
+    generatedAtElement.textContent = result.generatedAt
+      ? `更新日時：${result.generatedAt}${versionText}`
+      : versionText.replace(/^ \/ /, "");
+
+    if (renderResult.totalShifts === 0 && result.employees.length > 0) {
+      setStatus(
+        `スタッフ${result.employees.length}名は取得できましたが、勤務時刻を読み取れませんでした。Apps Scriptを最新版へ差し替えて再デプロイしてください。`,
+        "error"
+      );
+    } else {
+      const countSummary = DAY_DEFS
+        .map((day) => `${day.label.slice(0, 1)}${renderResult.dayCounts[day.key] || 0}名`)
+        .join(" / ");
+      setStatus(`${result.message || "週間出勤状況を更新しました。"} ${countSummary}`, "ok");
+    }
   } catch (error) {
     console.error(error);
     renderEmptyBoard();
-    staffCountElement.textContent = "0\u540d";
+    staffCountElement.textContent = "0名";
     generatedAtElement.textContent = "";
-    setStatus(`\u53d6\u5f97\u3067\u304d\u307e\u305b\u3093\u3067\u3057\u305f\uff1a${error.message}`, "error");
+    setStatus(`取得できませんでした：${error.message}`, "error");
   } finally {
     refreshButton.disabled = false;
   }
@@ -81,18 +97,41 @@ function renderEmptyBoard() {
   });
 }
 
-function renderBoard(employees) {
+function renderBoard(result) {
+  const employees = Array.isArray(result && result.employees) ? result.employees : [];
+  const serverTimeline = result && typeof result.timeline === "object" ? result.timeline : null;
+  const dayCounts = {};
+  let totalShifts = 0;
+
   boardElement.innerHTML = "";
   boardElement.appendChild(buildTimelineHeader());
 
   DAY_DEFS.forEach((day) => {
-    const shifts = employees
-      .map((employee) => buildShift(employee, day.key))
-      .filter(Boolean)
-      .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes || a.employeeNo.localeCompare(b.employeeNo));
+    let shifts = [];
 
+    if (serverTimeline) {
+      const timelineRows = getValueByAliases(serverTimeline, day.aliases);
+      if (Array.isArray(timelineRows)) {
+        shifts = timelineRows.map(normalizeServerShift).filter(Boolean);
+      }
+    }
+
+    if (!shifts.length) {
+      shifts = employees.map((employee) => buildShift(employee, day)).filter(Boolean);
+    }
+
+    shifts.sort((a, b) => {
+      return a.startMinutes - b.startMinutes ||
+        a.endMinutes - b.endMinutes ||
+        a.employeeNo.localeCompare(b.employeeNo, "ja");
+    });
+
+    dayCounts[day.key] = shifts.length;
+    totalShifts += shifts.length;
     boardElement.appendChild(buildDayRow(day, shifts));
   });
+
+  return { dayCounts, totalShifts };
 }
 
 function buildTimelineHeader() {
@@ -101,17 +140,19 @@ function buildTimelineHeader() {
 
   const corner = document.createElement("div");
   corner.className = "corner-label";
-  corner.textContent = "\u66dc\u65e5";
+  corner.textContent = "曜日";
   header.appendChild(corner);
 
   const hourGrid = document.createElement("div");
   hourGrid.className = "hour-grid";
+
   for (let hour = 0; hour < 24; hour += 1) {
     const cell = document.createElement("div");
     cell.className = "hour-cell";
     cell.textContent = `${hour}:00`;
     hourGrid.appendChild(cell);
   }
+
   header.appendChild(hourGrid);
   return header;
 }
@@ -119,7 +160,7 @@ function buildTimelineHeader() {
 function buildDayRow(day, shifts) {
   const row = document.createElement("section");
   row.className = "day-row";
-  row.setAttribute("aria-label", `${day.label}\u306e\u51fa\u52e4\u72b6\u6cc1`);
+  row.setAttribute("aria-label", `${day.label}の出勤状況`);
 
   const label = document.createElement("div");
   label.className = "day-label";
@@ -136,7 +177,7 @@ function buildDayRow(day, shifts) {
   if (!placed.length) {
     const empty = document.createElement("span");
     empty.className = "empty-day";
-    empty.textContent = "\u51fa\u52e4\u4e88\u5b9a\u306a\u3057";
+    empty.textContent = "出勤予定なし";
     canvas.appendChild(empty);
   }
 
@@ -146,8 +187,8 @@ function buildDayRow(day, shifts) {
     bar.style.left = `${(shift.startMinutes / 1440) * 100}%`;
     bar.style.width = `${((shift.endMinutes - shift.startMinutes) / 1440) * 100}%`;
     bar.style.top = `${shift.lane * 38 + 5}px`;
-    bar.title = `${shift.fullName} ${shift.startTime}\uff5e${shift.endTime}`;
-    bar.setAttribute("aria-label", `${shift.fullName}\u3001${shift.startTime}\u304b\u3089${shift.endTime}`);
+    bar.title = `${shift.fullName} ${shift.startTime}～${shift.endTime}`;
+    bar.setAttribute("aria-label", `${shift.fullName}、${shift.startTime}から${shift.endTime}`);
 
     const name = document.createElement("span");
     name.className = "shift-name";
@@ -166,24 +207,134 @@ function buildDayRow(day, shifts) {
   return row;
 }
 
-function buildShift(employee, dayKey) {
-  const day = employee && employee.schedule ? employee.schedule[dayKey] : null;
-  if (!day || day.isOff) return null;
+function normalizeServerShift(value) {
+  if (!value || typeof value !== "object") return null;
 
-  const startMinutes = timeToMinutes(day.startTime);
-  let endMinutes = timeToMinutes(day.endTime);
+  const startValue = firstDefined(value.startTime, value.start, value.from, value.begin);
+  const endValue = firstDefined(value.endTime, value.end, value.to, value.finish);
+  const startMinutes = timeToMinutes(startValue);
+  let endMinutes = timeToMinutes(endValue);
+
   if (startMinutes === null || endMinutes === null) return null;
-
   if (endMinutes <= startMinutes) endMinutes = 1440;
-  const clampedStart = Math.max(0, Math.min(1439, startMinutes));
-  const clampedEnd = Math.max(clampedStart + 1, Math.min(1440, endMinutes));
+
+  return buildNormalizedShift({
+    employeeNo: firstDefined(value.employeeNo, value.no, value.staffNo),
+    name: firstDefined(value.name, value.staffName, value.fullName),
+    startValue,
+    endValue,
+    startMinutes,
+    endMinutes,
+  });
+}
+
+function buildShift(employee, dayDef) {
+  if (!employee || typeof employee !== "object") return null;
+
+  const dayValue = resolveDayValue(employee, dayDef);
+  if (isOffValue(dayValue)) return null;
+
+  let startValue = "";
+  let endValue = "";
+
+  if (dayValue && typeof dayValue === "object" && !Array.isArray(dayValue)) {
+    if (isTruthyOffFlag(firstDefined(dayValue.isOff, dayValue.off, dayValue.holiday, dayValue.closed))) {
+      return null;
+    }
+
+    startValue = firstDefined(
+      dayValue.startTime,
+      dayValue.start,
+      dayValue.from,
+      dayValue.begin,
+      dayValue.time,
+      dayValue.value
+    );
+    endValue = firstDefined(dayValue.endTime, dayValue.end, dayValue.to, dayValue.finish);
+  } else {
+    startValue = dayValue;
+  }
+
+  startValue = firstDefined(
+    startValue,
+    employee.startTime,
+    employee.defaultStartTime,
+    employee.workStartTime,
+    employee.start
+  );
+
+  endValue = firstDefined(
+    endValue,
+    employee.endTime,
+    employee.defaultEndTime,
+    employee.workEndTime,
+    employee.finishTime,
+    employee.end
+  );
+
+  const startMinutes = timeToMinutes(startValue);
+  let endMinutes = timeToMinutes(endValue);
+  if (startMinutes === null || endMinutes === null) return null;
+  if (endMinutes <= startMinutes) endMinutes = 1440;
+
+  return buildNormalizedShift({
+    employeeNo: firstDefined(employee.employeeNo, employee.no, employee.staffNo),
+    name: firstDefined(employee.name, employee.staffName, employee.fullName),
+    startValue,
+    endValue,
+    startMinutes,
+    endMinutes,
+  });
+}
+
+function resolveDayValue(employee, dayDef) {
+  const sources = [
+    employee.schedule,
+    employee.weeklySchedule,
+    employee.days,
+    employee.shifts,
+    employee.workSchedule,
+    employee,
+  ];
+
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+    const value = getValueByAliases(source, dayDef.aliases);
+    if (value !== undefined && value !== null && value !== "") return value;
+  }
+
+  return null;
+}
+
+function getValueByAliases(source, aliases) {
+  if (!source || typeof source !== "object") return undefined;
+
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(source, alias)) return source[alias];
+  }
+
+  const sourceKeys = Object.keys(source);
+  for (const key of sourceKeys) {
+    const normalizedKey = String(key).trim().toLowerCase();
+    if (aliases.some((alias) => normalizedKey === String(alias).trim().toLowerCase())) {
+      return source[key];
+    }
+  }
+
+  return undefined;
+}
+
+function buildNormalizedShift(data) {
+  const clampedStart = Math.max(0, Math.min(1439, data.startMinutes));
+  const clampedEnd = Math.max(clampedStart + 1, Math.min(1440, data.endMinutes));
+  const fullName = String(data.name || "").trim() || "名称未設定";
 
   return {
-    employeeNo: String(employee.employeeNo || ""),
-    fullName: String(employee.name || "").trim(),
-    familyName: getFamilyName(employee.name),
-    startTime: normalizeTimeText(day.startTime),
-    endTime: normalizeTimeText(day.endTime),
+    employeeNo: String(data.employeeNo || ""),
+    fullName,
+    familyName: getFamilyName(fullName),
+    startTime: minutesToTime(clampedStart),
+    endTime: minutesToTime(clampedEnd),
     startMinutes: clampedStart,
     endMinutes: clampedEnd,
   };
@@ -191,43 +342,92 @@ function buildShift(employee, dayKey) {
 
 function assignLanes(shifts) {
   const laneEnds = [];
+
   return shifts.map((shift) => {
     let lane = laneEnds.findIndex((endMinutes) => endMinutes <= shift.startMinutes);
+
     if (lane < 0) {
       lane = laneEnds.length;
       laneEnds.push(shift.endMinutes);
     } else {
       laneEnds[lane] = shift.endMinutes;
     }
+
     return { ...shift, lane };
   });
 }
 
 function timeToMinutes(value) {
-  const normalized = String(value || "")
-    .trim()
-    .replace(/[：﹕∶]/g, ":")
-    .replace(/\s+/g, "");
-  const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.getHours() * 60 + value.getMinutes();
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    if (value >= 0 && value < 1) return Math.round(value * 1440);
+    if (value >= 0 && value <= 24) return Math.round(value * 60);
+  }
+
+  const normalized = normalizeTimeSource(value);
+  if (!normalized) return null;
+  if (/^(休み|休日|off|closed)$/i.test(normalized)) return null;
+
+  const direct = normalized.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/);
+  const japanese = normalized.match(/^(\d{1,2})時(?:(\d{1,2})分?)?$/);
+  const iso = normalized.match(/[T\s](\d{1,2}):(\d{2})(?::\d{2})?/);
+  const match = direct || japanese || iso;
+
   if (!match) return null;
+
   const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
+  const minute = Number(match[2] || 0);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
   if (hour === 24 && minute !== 0) return null;
+
   return hour * 60 + minute;
 }
 
-function normalizeTimeText(value) {
-  const minutes = timeToMinutes(value);
-  if (minutes === null) return String(value || "");
-  const hour = Math.floor(minutes / 60);
-  const minute = minutes % 60;
+function normalizeTimeSource(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .trim()
+    .replace(/[０-９]/g, (char) => String(char.charCodeAt(0) - 0xfee0))
+    .replace(/[：﹕∶]/g, ":")
+    .replace(/[～〜]/g, "-")
+    .replace(/\s+/g, "");
+}
+
+function minutesToTime(minutes) {
+  const safeMinutes = Math.max(0, Math.min(1440, Number(minutes) || 0));
+  const hour = Math.floor(safeMinutes / 60);
+  const minute = safeMinutes % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function isOffValue(value) {
+  if (value === null || value === undefined || value === "") return false;
+
+  if (typeof value === "object" && !Array.isArray(value)) {
+    return isTruthyOffFlag(firstDefined(value.isOff, value.off, value.holiday, value.closed));
+  }
+
+  const normalized = normalizeTimeSource(value).toLowerCase();
+  return ["休み", "休日", "公休", "off", "closed"].includes(normalized);
+}
+
+function isTruthyOffFlag(value) {
+  if (value === true || value === 1) return true;
+  const normalized = String(value === null || value === undefined ? "" : value).trim().toLowerCase();
+  return ["true", "1", "yes", "on", "休み", "休日", "公休", "off", "closed"].includes(normalized);
+}
+
+function firstDefined(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
 function getFamilyName(value) {
   const fullName = String(value || "").trim();
-  if (!fullName) return "\u672a\u8a2d\u5b9a";
+  if (!fullName) return "未設定";
   return fullName.split(/[\s\u3000]+/)[0] || fullName;
 }
 
@@ -242,7 +442,7 @@ function postToScript(payload) {
     const script = document.createElement("script");
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("Apps Script\u304b\u3089\u5fdc\u7b54\u304c\u3042\u308a\u307e\u305b\u3093\u3067\u3057\u305f\u3002"));
+      reject(new Error("Apps Scriptから応答がありませんでした。"));
     }, 30000);
 
     function cleanup() {
@@ -263,7 +463,7 @@ function postToScript(payload) {
 
     script.onerror = () => {
       cleanup();
-      reject(new Error("Apps Script\u3092\u8aad\u307f\u8fbc\u3081\u307e\u305b\u3093\u3067\u3057\u305f\u3002"));
+      reject(new Error("Apps Scriptを読み込めませんでした。"));
     };
 
     script.src = `${ENDPOINT_URL}?${params.toString()}`;

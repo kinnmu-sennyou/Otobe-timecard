@@ -12,9 +12,9 @@
   --pink-dark: #d96d90;
   --pink-light: #fff0f6;
   --shadow: 0 14px 34px rgba(118, 70, 87, .13);
-  --label-width: 92px;
-  --hour-width: 72px;
-  --timeline-width: 1728px;
+  --label-width: 78px;
+  --mobile-hour-width: 72px;
+  --mobile-timeline-width: 1728px;
 }
 
 html {
@@ -40,12 +40,12 @@ a {
 
 .overview-page {
   min-height: 100vh;
-  padding: 18px;
+  padding: 18px 18px 130px;
 }
 
 .overview-panel {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1380px;
   margin: 0 auto;
   padding: 20px;
   border: 1px solid rgba(239, 221, 229, .95);
@@ -183,26 +183,25 @@ h1 {
   font-weight: 900;
 }
 
+/* PCでは0:00～23:00をページ幅の中に収めます。 */
 .timeline-scroll {
   width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   border: 1px solid #e4c3d0;
   border-radius: 16px;
   background: #ffffff;
   box-shadow: inset 0 0 0 1px rgba(228, 195, 208, .35);
-  scrollbar-width: thin;
 }
 
 .schedule-board {
-  width: calc(var(--label-width) + var(--timeline-width));
-  min-width: calc(var(--label-width) + var(--timeline-width));
+  width: 100%;
+  min-width: 0;
 }
 
 .timeline-header,
 .day-row {
   display: grid;
-  grid-template-columns: var(--label-width) var(--timeline-width);
+  grid-template-columns: var(--label-width) minmax(0, 1fr);
 }
 
 .timeline-header {
@@ -230,23 +229,31 @@ h1 {
 
 .corner-label {
   z-index: 30;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .hour-grid {
   display: grid;
-  grid-template-columns: repeat(24, var(--hour-width));
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  min-width: 0;
 }
 
 .hour-cell {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-right: 1px solid #ead1dc;
   color: #7a4c5b;
-  font-size: 12px;
+  font-size: clamp(8px, .78vw, 11px);
   font-weight: 900;
+  letter-spacing: -.03em;
   white-space: nowrap;
+}
+
+.hour-cell:last-child {
+  border-right: 0;
 }
 
 .day-row {
@@ -259,17 +266,18 @@ h1 {
 
 .day-label {
   min-height: 58px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .day-canvas {
   position: relative;
+  min-width: 0;
   min-height: 58px;
   background-color: #ffffff;
   background-image:
     linear-gradient(to right, rgba(234, 209, 220, .9) 1px, transparent 1px),
     linear-gradient(to right, rgba(234, 209, 220, .36) 1px, transparent 1px);
-  background-size: var(--hour-width) 100%, calc(var(--hour-width) / 2) 100%;
+  background-size: calc(100% / 24) 100%, calc(100% / 48) 100%;
 }
 
 .day-row:nth-child(odd) .day-canvas {
@@ -284,7 +292,7 @@ h1 {
   align-items: center;
   gap: 7px;
   overflow: hidden;
-  padding: 4px 9px;
+  padding: 4px 8px;
   border: 1px solid rgba(138, 63, 89, .32);
   border-radius: 10px;
   background: linear-gradient(135deg, #ffe0eb, #fff5fa);
@@ -355,9 +363,14 @@ h1 {
   transform: translateY(1px) scale(.98);
 }
 
-@media (max-width: 720px) {
+/* タブレット・スマホは時間軸を横スクロールします。 */
+@media (max-width: 900px) {
+  :root {
+    --label-width: 92px;
+  }
+
   .overview-page {
-    padding: 12px;
+    padding: 12px 12px 130px;
   }
 
   .overview-panel {
@@ -379,6 +392,35 @@ h1 {
 
   .timeline-heading-row {
     padding: 0 4px;
+  }
+
+  .timeline-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+  }
+
+  .schedule-board {
+    width: calc(var(--label-width) + var(--mobile-timeline-width));
+    min-width: calc(var(--label-width) + var(--mobile-timeline-width));
+  }
+
+  .timeline-header,
+  .day-row {
+    grid-template-columns: var(--label-width) var(--mobile-timeline-width);
+  }
+
+  .hour-grid {
+    grid-template-columns: repeat(24, var(--mobile-hour-width));
+  }
+
+  .hour-cell {
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  .day-canvas {
+    background-size: var(--mobile-hour-width) 100%, calc(var(--mobile-hour-width) / 2) 100%;
   }
 }
 
@@ -405,5 +447,3 @@ h1 {
     font-size: 13px;
   }
 }
-
-.overview-page { padding-bottom: 130px; }
