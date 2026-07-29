@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "registration-weekday-duration-parttime-20260729-48";
+const APP_VERSION = "registration-employee-number-sort-20260729-49";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -179,7 +179,20 @@ function loadEmployees() {
     });
   });
 
-  EMPLOYEES = Array.from(map.values());
+  EMPLOYEES = sortEmployeesByEmployeeNo(Array.from(map.values()));
+}
+
+function sortEmployeesByEmployeeNo(employees) {
+  return [...(Array.isArray(employees) ? employees : [])].sort((a, b) => {
+    const noA = Number(normalizeEmployeeNo(a && a.no));
+    const noB = Number(normalizeEmployeeNo(b && b.no));
+
+    if (Number.isFinite(noA) && Number.isFinite(noB) && noA !== noB) {
+      return noA - noB;
+    }
+
+    return normalizeName(a && a.name).localeCompare(normalizeName(b && b.name), "ja");
+  });
 }
 
 
@@ -193,12 +206,12 @@ async function refreshEmployeesFromScript(showStatus) {
     throw new Error((result && result.message) || "スタッフ一覧を取得できませんでした。");
   }
 
-  EMPLOYEES = result.employees.map((emp) => ({
+  EMPLOYEES = sortEmployeesByEmployeeNo(result.employees.map((emp) => ({
     name: emp.name,
     no: normalizeEmployeeNo(emp.no),
     sheetName: emp.sheetName || emp.name,
     sheetUrl: emp.sheetUrl || "",
-  }));
+  })));
 
   localStorage.setItem(EXTRA_EMPLOYEES_KEY, JSON.stringify(EMPLOYEES));
   renderSheetStaffChecklist();
@@ -273,6 +286,8 @@ function buildEmployeeSelector(query) {
     const current = EMPLOYEES.find((emp) => emp.no === currentNo) || EMPLOYEES[0];
     candidates = current ? [current] : [];
   }
+
+  candidates = sortEmployeesByEmployeeNo(candidates);
 
   employeeSelect.innerHTML = "";
 
