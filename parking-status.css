@@ -441,3 +441,111 @@ td.is-warehouse-used { background:#f2dfbd; font-weight:900; }
     font-size: 11px;
   }
 }
+
+/* ===== 車以外の通勤：2行表示＋内部スクロール ===== */
+.commute-card .name-list {
+  max-height: 64px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: flex-start;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.commute-card .name-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.commute-card .name-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cfc3c8;
+}
+
+.commute-card .name-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===== 駐車場見取り図 印刷ボタン ===== */
+.print-parking-map-button {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 9px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 7px 16px rgba(49, 93, 83, .18);
+}
+
+.print-parking-map-button:active {
+  transform: translateY(1px);
+}
+
+.print-day-label {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  body.print-parking-map {
+    background: #fff !important;
+  }
+
+  body.print-parking-map * {
+    visibility: hidden !important;
+  }
+
+  body.print-parking-map .parking-map-section,
+  body.print-parking-map .parking-map-section * {
+    visibility: visible !important;
+  }
+
+  body.print-parking-map .parking-map-section {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+
+  body.print-parking-map .parking-map-section .section-head {
+    margin-bottom: 8px !important;
+  }
+
+  body.print-parking-map .print-day-label {
+    display: block !important;
+    margin: 4px 0 0 !important;
+    color: #222 !important;
+    font-size: 13px !important;
+    font-weight: 900 !important;
+  }
+
+  body.print-parking-map .parking-map {
+    grid-template-columns: minmax(0, 2fr) minmax(150px, .75fr) !important;
+    gap: 14px !important;
+    margin-top: 8px !important;
+  }
+
+  body.print-parking-map .parking-space {
+    min-height: 31px !important;
+    break-inside: avoid;
+  }
+
+  body.print-parking-map .parking-space-names {
+    font-size: 12px !important;
+  }
+}
+

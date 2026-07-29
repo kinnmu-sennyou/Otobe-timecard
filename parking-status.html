@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#4f8175">
   <title>駐車場使用状況</title>
-  <link rel="stylesheet" href="./parking-status.css?v=parking-legend-vacant-20260729-52">
+  <link rel="stylesheet" href="./parking-status.css?v=parking-print-scroll-20260729-53">
 </head>
 <body>
   <main class="page">
@@ -37,6 +37,7 @@
             <div>
               <h2 id="parkingMapHeading">駐車場見取り図</h2>
               <p>使用中の番号にスタッフ名が表示されます。</p>
+              <p id="printDayLabel" class="print-day-label" aria-hidden="true"></p>
             </div>
             <div class="legend-list" aria-label="駐車場の凡例">
               <div class="legend"><span class="legend-mark occupied"></span>使用中</div>
@@ -100,6 +101,8 @@
               <div id="unregisteredList" class="name-list"></div>
             </article>
           </section>
+
+          <button type="button" id="printParkingMapButton" class="print-parking-map-button">駐車場見取り図を印刷する</button>
         </div>
       </div>
 
@@ -143,6 +146,6 @@
     <button type="button" id="scrollToBottomButton" class="page-navigation-button">一番下に</button>
   </nav>
 
-  <script src="./parking-status.js?v=parking-legend-vacant-20260729-52"></script>
+  <script src="./parking-status.js?v=parking-print-scroll-20260729-53"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "parking-summary-removed-20260729-50";
+const APP_VERSION = "parking-print-scroll-20260729-53";
 
 const LIGHT_BLUE_EMPTY_PARKING_NUMBERS = new Set(["1", "4", "5", "13", "16", "17", "18", "21", "30"]);
 
@@ -35,12 +35,15 @@ const generatedAt = document.getElementById("generatedAt");
 const dataVersion = document.getElementById("dataVersion");
 const scrollToTopButton = document.getElementById("scrollToTopButton");
 const scrollToBottomButton = document.getElementById("scrollToBottomButton");
+const printParkingMapButton = document.getElementById("printParkingMapButton");
+const printDayLabel = document.getElementById("printDayLabel");
 
 init();
 
 function init() {
   buildDayTabs();
   setupPageNavigation();
+  setupParkingMapPrint();
   loadParkingUsage();
 }
 
@@ -119,6 +122,7 @@ function renderDayTabs() {
 
 function renderSelectedDay() {
   const data = getDayData(selectedDayKey);
+  updatePrintDayLabel();
   renderParkingMap(data.parking);
   renderNameList(warehouseUnderList, warehouseUnderCount, data.warehouseUnder);
   renderNameList(walkingList, walkingCount, data.walking);
@@ -297,6 +301,26 @@ function normalizeParkingNumberInput(value) {
 function getFamilyName(name) {
   const normalized = String(name || "").trim().replace(/[\s　]+/g, " ");
   return normalized.split(" ")[0] || normalized;
+}
+
+function updatePrintDayLabel() {
+  if (!printDayLabel) return;
+  const day = DAY_DEFS.find((item) => item.key === selectedDayKey);
+  printDayLabel.textContent = day ? `表示曜日：${day.label}` : "";
+}
+
+function setupParkingMapPrint() {
+  if (!printParkingMapButton) return;
+
+  printParkingMapButton.addEventListener("click", () => {
+    updatePrintDayLabel();
+    document.body.classList.add("print-parking-map");
+    window.setTimeout(() => window.print(), 50);
+  });
+
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("print-parking-map");
+  });
 }
 
 function setMessage(text, type) {
