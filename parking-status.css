@@ -184,9 +184,11 @@ button, input, select, summary { font: inherit; }
   margin-top: 6px;
 }
 
-.legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.legend-list { display: inline-flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; }
+.legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; }
 .legend-mark { width: 15px; height: 15px; border-radius: 4px; border: 1px solid #c8b900; }
 .legend-mark.occupied { background: var(--yellow); }
+.legend-mark.vacant { background: #e5f5ff; border-color: #9bc9df; }
 
 .parking-map {
   display: grid;
