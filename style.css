@@ -1677,7 +1677,7 @@ body.time-picker-open {
   }
 }
 
-/* ===== 2026-07-27 日時修正：打刻内容5択をスマホでも横1列・文字1行 ===== */
+/* ===== 2026-08-07 日時修正：出張を加えた打刻内容6択を横1列・文字1行 ===== */
 .correction-action-area,
 .correction-action-grid,
 .correction-action-grid button {
@@ -1699,7 +1699,7 @@ body.time-picker-open {
 
 .correction-action-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 4px;
   width: 100%;
 }

@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "registration-employee-number-sort-20260729-49";
+const APP_VERSION = "business-trip-start-overwrite-20260807-51";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -8,7 +8,7 @@ const BASE_EMPLOYEES = [
   { name: "山田 英之", no: "015", sheetName: "山田 英之", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=715259581#gid=715259581" },
 ];
 
-const ACTIONS = ["出勤", "退勤", "現時刻打刻", "途中退社", "有給"];
+const ACTIONS = ["出勤", "退勤", "現時刻打刻", "途中退社", "有給", "出張"];
 const BREAK_MODES = ["normal", "half", "none"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
@@ -742,7 +742,7 @@ async function punchBySpecifiedDateTime() {
     return;
   }
 
-  if (correctionAction !== "有給" && !editTime.value) {
+  if (!isSpecialCorrectionAction(correctionAction) && !editTime.value) {
     showMessage("時刻を指定してね。", "error");
     setUpdateStatus("修正反映失敗：時刻を指定してください。", "error");
     return;
@@ -760,7 +760,7 @@ async function punchBySpecifiedDateTime() {
       employeeNo: selectedEmployee.no,
       sheetName: selectedEmployee.sheetName,
       date: editDate.value,
-      time: correctionAction === "有給" ? "00:00" : editTime.value,
+      time: isSpecialCorrectionAction(correctionAction) ? "00:00" : editTime.value,
       breakMode: getSelectedBreakMode(),
       week40Over: getCorrectionWeek40OverValue(),
       appVersion: APP_VERSION,
@@ -777,6 +777,10 @@ async function punchBySpecifiedDateTime() {
   } finally {
     stopSending(editUpdateButton);
   }
+}
+
+function isSpecialCorrectionAction(action) {
+  return action === "有給" || action === "出張";
 }
 
 function setupSheetOpenSelection() {
@@ -2254,7 +2258,7 @@ function canSend(action) {
   }
 
   if (!ACTIONS.includes(action)) {
-    showMessage("出勤・退勤・現時刻打刻・途中退社・有給のどれかを選んでね。", "error");
+    showMessage("出勤・退勤・現時刻打刻・途中退社・有給・出張のどれかを選んでね。", "error");
     return false;
   }
 
