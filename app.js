@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "punch-status-viewer-20260831-52";
+const APP_VERSION = "punch-status-viewer-separate-20260831-52";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -149,10 +149,8 @@ async function init() {
   setupScrollToTopButton();
 
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
-  if (pdfButton) {
-    pdfButton.textContent = "打刻状況を確認する";
-    pdfButton.addEventListener("click", openStaffSheet);
-  }
+  pdfButton.addEventListener("click", openStaffSheet);
+  setupPunchStatusButton();
 
   const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
   const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
@@ -1016,6 +1014,11 @@ function updateSheetOpenSelectionState() {
     pdfButton.disabled = Boolean(isSending || validSelectedCount === 0);
   }
 
+  const punchStatusButton = document.getElementById("punchStatusButton");
+  if (punchStatusButton) {
+    punchStatusButton.disabled = Boolean(isSending || validSelectedCount === 0);
+  }
+
   if (selectAllSheetStaffButton) {
     selectAllSheetStaffButton.textContent = isFiltering ? "表示中を選択" : "全選択";
     selectAllSheetStaffButton.disabled = Boolean(
@@ -1064,6 +1067,17 @@ function getSheetTargetDate() {
 
 function getSheetTargetMonthLabel() {
   return sheetTargetMonth && sheetTargetMonth.value === "previous" ? "先月分" : "当月分";
+}
+
+function setupPunchStatusButton() {
+  if (!pdfButton || document.getElementById("punchStatusButton")) return;
+
+  const button = pdfButton.cloneNode(false);
+  button.id = "punchStatusButton";
+  button.textContent = "打刻状況を確認する";
+  button.disabled = pdfButton.disabled;
+  button.addEventListener("click", openPunchStatusViewer);
+  pdfButton.insertAdjacentElement("afterend", button);
 }
 
 function getPunchStatusViewKey() {
@@ -1377,7 +1391,7 @@ function showPunchStatusViewer(result, monthLabel) {
   document.body.style.overflow = "hidden";
 }
 
-async function openStaffSheet() {
+async function openPunchStatusViewer() {
   if (isSending) {
     showMessage("今処理中だから、少し待ってね。", "loading");
     return;
@@ -1399,8 +1413,9 @@ async function openStaffSheet() {
 
   const targetDate = getSheetTargetDate();
   const monthLabel = getSheetTargetMonthLabel();
+  const punchStatusButton = document.getElementById("punchStatusButton");
 
-  startSending(pdfButton, `${monthLabel}の打刻状況を読み込み中...`);
+  startSending(punchStatusButton, `${monthLabel}の打刻状況を読み込み中...`);
 
   try {
     const result = await postToScript({
@@ -1417,6 +1432,50 @@ async function openStaffSheet() {
     if (String(error && error.message || "").includes("打刻状況確認キー")) {
       clearPunchStatusViewKey();
     }
+    handleError(error);
+  } finally {
+    stopSending(punchStatusButton);
+  }
+}
+
+async function openStaffSheet() {
+  if (isSending) {
+    showMessage("今処理中だから、少し待ってね。", "loading");
+    return;
+  }
+
+  const selectedEmployees = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no));
+
+  if (!selectedEmployees.length) {
+    showMessage("スプレッドシートを開くスタッフにチェックを入れてね。", "error");
+    updateSheetOpenSelectionState();
+    return;
+  }
+
+  const targetDate = getSheetTargetDate();
+  const monthLabel = getSheetTargetMonthLabel();
+
+  startSending(pdfButton, `${monthLabel}の勤務表を準備中...`);
+
+  try {
+    const result = await postToScript({
+      mode: "openSelectedSheets",
+      employeeNos: selectedEmployees.map((emp) => emp.no),
+      date: targetDate,
+      appVersion: APP_VERSION,
+    });
+
+    const missingCount = Array.isArray(result.missingStaffNames) ? result.missingStaffNames.length : 0;
+    const successText = missingCount
+      ? `${monthLabel}：${result.shownCount}名分を表示します（シートなし ${missingCount}名）`
+      : `${monthLabel}：${result.shownCount}名分のシートだけ表示して開きます。`;
+
+    handleResult(result, successText);
+
+    if (result.sheetUrl) {
+      window.location.href = result.sheetUrl;
+    }
+  } catch (error) {
     handleError(error);
   } finally {
     stopSending(pdfButton);
