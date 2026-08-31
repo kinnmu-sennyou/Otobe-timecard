@@ -151,12 +151,21 @@ async function init() {
   pdfButton.addEventListener("click", openStaffSheet);
 
   const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
-  const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || EMPLOYEES[0];
+  const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
 
   if (initialEmployee) {
+    // デフォルト登録済み端末は、今までどおり登録スタッフを自動選択します。
     selectEmployee(initialEmployee);
-    buildEmployeeSelector("");
+  } else {
+    // デフォルト未登録端末は、初回を必ず未選択にします。
+    selectedEmployee = null;
+    if (selectedEmployeeText) selectedEmployeeText.textContent = "未選択";
+    if (retireTargetEmployee) retireTargetEmployee.textContent = "未選択";
+    if (todayStatus) todayStatus.textContent = "スタッフを選択してください。";
+    resetRegistrationEditView(null);
+    setYesterdayAlertVisible(false);
   }
+  buildEmployeeSelector("");
 
   renderSheetStaffChecklist();
   selectAction(selectedAction);
@@ -272,7 +281,8 @@ function buildEmployeeSelector(query) {
   const normalizedQuery = normalizeName(searchText).toLowerCase();
   const numericQuery = searchText.replace(/\D/g, "");
   const isSearching = Boolean(normalizedQuery || numericQuery);
-  const currentNo = selectedEmployee ? selectedEmployee.no : normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
 
   let candidates = [];
 
@@ -282,14 +292,27 @@ function buildEmployeeSelector(query) {
       const noText = normalizeEmployeeNo(emp.no);
       return nameText.includes(normalizedQuery) || (numericQuery && noText.includes(numericQuery));
     });
+  } else if (selectedEmployee) {
+    candidates = [selectedEmployee];
+  } else if (defaultEmployee) {
+    // デフォルト登録済みなら、従来どおり登録スタッフを表示します。
+    candidates = [defaultEmployee];
   } else {
-    const current = EMPLOYEES.find((emp) => emp.no === currentNo) || EMPLOYEES[0];
-    candidates = current ? [current] : [];
+    // デフォルト未登録の初回だけ、未選択のまま全スタッフから選べるようにします。
+    candidates = [...EMPLOYEES];
   }
 
   candidates = sortEmployeesByEmployeeNo(candidates);
 
   employeeSelect.innerHTML = "";
+
+  if (!selectedEmployee && !defaultEmployee && !isSearching) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "スタッフを選択してください";
+    placeholder.selected = true;
+    employeeSelect.appendChild(placeholder);
+  }
 
   if (!candidates.length) {
     const option = document.createElement("option");
@@ -309,9 +332,15 @@ function buildEmployeeSelector(query) {
     employeeSelect.appendChild(option);
   });
 
-  const selectedNo = selectedEmployee ? selectedEmployee.no : candidates[0].no;
-  const nextNo = candidates.some((emp) => emp.no === selectedNo) ? selectedNo : candidates[0].no;
-  employeeSelect.value = nextNo;
+  if (selectedEmployee && candidates.some((emp) => emp.no === selectedEmployee.no)) {
+    employeeSelect.value = selectedEmployee.no;
+  } else if (defaultEmployee && candidates.some((emp) => emp.no === defaultEmployee.no)) {
+    employeeSelect.value = defaultEmployee.no;
+  } else if (!isSearching) {
+    employeeSelect.value = "";
+  } else {
+    employeeSelect.value = candidates[0].no;
+  }
 
   // 検索で候補が絞られた時、selectの候補表示だけ変わってもchangeが発火しない場合があります。
   // そのため、表示中の候補が現在の選択スタッフと違う場合はここで選択中表示も同期します。
@@ -527,7 +556,7 @@ function updateSelectedEmployeeAccessLock() {
   });
 
   if (employeeSearchInput) employeeSearchInput.disabled = Boolean(isSending);
-  if (employeeSelect) employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length || !employeeSelect.value);
+  if (employeeSelect) employeeSelect.disabled = Boolean(isSending || !employeeSelect.options.length);
   updateSheetOpenSelectionState();
 
   updateDefaultEmployeeRegistrationUi();
@@ -2292,7 +2321,7 @@ function stopSending(button) {
 
 function setControlsDisabled(disabled) {
   if (employeeSearchInput) employeeSearchInput.disabled = disabled;
-  if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length || !employeeSelect.value;
+  if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length;
   actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   editUpdateButton.disabled = disabled;
