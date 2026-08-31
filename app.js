@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "punch-status-viewer-no-key-20260831-53";
+const APP_VERSION = "punch-status-default-employee-button-move-20260831-54";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -461,6 +461,8 @@ function updateDefaultEmployeeRegistrationUi() {
       ? "現在、デフォルト登録スタッフを選択中です"
       : "デフォルト登録スタッフの選択に戻します";
   }
+
+  updatePunchStatusButtonState();
 }
 
 
@@ -486,6 +488,7 @@ function isAllowedWhileRestricted(target) {
     "#defaultEmployeeUnregisteredArea",
     "#defaultEmployeeRegisteredArea",
     "#returnToDefaultEmployeeButton",
+    "#punchStatusButton",
     ".sheet-area",
     ".add-staff-area",
     ".registration-edit-area",
@@ -527,6 +530,7 @@ function updateSelectedEmployeeAccessLock() {
     "#setDefaultEmployeeButton",
     "#changeDefaultEmployeeButton",
     "#returnToDefaultEmployeeButton",
+    "#punchStatusButton",
     ".sheet-area button",
     ".sheet-area input",
     ".sheet-area select",
@@ -1013,10 +1017,7 @@ function updateSheetOpenSelectionState() {
     pdfButton.disabled = Boolean(isSending || validSelectedCount === 0);
   }
 
-  const punchStatusButton = document.getElementById("punchStatusButton");
-  if (punchStatusButton) {
-    punchStatusButton.disabled = Boolean(isSending || validSelectedCount === 0);
-  }
+  updatePunchStatusButtonState();
 
   if (selectAllSheetStaffButton) {
     selectAllSheetStaffButton.textContent = isFiltering ? "表示中を選択" : "全選択";
@@ -1069,14 +1070,33 @@ function getSheetTargetMonthLabel() {
 }
 
 function setupPunchStatusButton() {
-  if (!pdfButton || document.getElementById("punchStatusButton")) return;
+  if (document.getElementById("punchStatusButton")) return;
 
-  const button = pdfButton.cloneNode(false);
+  const punchCard = actionButtons && actionButtons.closest(".card-block");
+  if (!punchCard) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
   button.id = "punchStatusButton";
+  button.className = "sheet-button";
   button.textContent = "打刻状況を確認する";
-  button.disabled = pdfButton.disabled;
+  button.style.width = "100%";
+  button.style.marginTop = "14px";
   button.addEventListener("click", openPunchStatusViewer);
-  pdfButton.insertAdjacentElement("afterend", button);
+  punchCard.appendChild(button);
+  updatePunchStatusButtonState();
+}
+
+function updatePunchStatusButtonState() {
+  const punchStatusButton = document.getElementById("punchStatusButton");
+  if (!punchStatusButton) return;
+
+  const defaultNo = getDefaultEmployeeNo();
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
+  punchStatusButton.disabled = Boolean(isSending || !defaultEmployee);
+  punchStatusButton.title = defaultEmployee
+    ? `デフォルト登録スタッフ：${defaultEmployee.no} ${defaultEmployee.name}`
+    : "先にこの端末のデフォルトスタッフを登録してください";
 }
 
 function ensurePunchStatusViewer() {
@@ -1463,11 +1483,12 @@ async function openPunchStatusViewer() {
     return;
   }
 
-  const selectedEmployees = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no));
+  const defaultNo = getDefaultEmployeeNo();
+  const defaultEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo);
 
-  if (!selectedEmployees.length) {
-    showMessage("打刻状況を確認するスタッフにチェックを入れてね。", "error");
-    updateSheetOpenSelectionState();
+  if (!defaultEmployee) {
+    showMessage("この端末にデフォルトスタッフが登録されていません。先にスタッフを選んでデフォルト登録してください。", "error");
+    updatePunchStatusButtonState();
     return;
   }
 
@@ -1480,7 +1501,7 @@ async function openPunchStatusViewer() {
   try {
     const result = await postToScript({
       mode: "getPunchStatus",
-      employeeNos: selectedEmployees.map((emp) => emp.no),
+      employeeNos: [defaultEmployee.no],
       date: targetDate,
       appVersion: APP_VERSION,
     });
