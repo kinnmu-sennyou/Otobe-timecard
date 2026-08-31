@@ -1221,8 +1221,11 @@ function getPunchStatusNonAttendanceDays(status) {
   rows.forEach((row, index) => {
     if (index >= dayLimit || !String(row && row.date || "").trim()) return;
     const startHour = String((row && row.startHour) ?? "").trim();
-    const hasAttendancePunch = parsePunchStatusNumber(startHour) !== null;
-    if (!hasAttendancePunch) count++;
+    const countsAsAttendance =
+      parsePunchStatusNumber(startHour) !== null ||
+      startHour === "有給" ||
+      startHour === "出張";
+    if (!countsAsAttendance) count++;
   });
 
   return count;
