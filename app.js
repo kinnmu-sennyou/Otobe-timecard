@@ -1066,8 +1066,51 @@ function isAndroidDevice() {
   return /Android/i.test(String(navigator.userAgent || ""));
 }
 
-function getSpreadsheetBaseUrl(sheetUrl) {
-  return String(sheetUrl || "").split("#")[0];
+function buildAndroidChromeIntentUrl(sheetUrl) {
+  const rawUrl = String(sheetUrl || "").trim();
+  if (!rawUrl) return "";
+
+  try {
+    const url = new URL(rawUrl);
+    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+    const gid = hashParams.get("gid") || "";
+
+    const targetUrl = `${url.origin}${url.pathname}${gid ? `?gid=${encodeURIComponent(gid)}&range=A1` : ""}`;
+    const intentTarget = targetUrl.replace(/^https:\/\//i, "intent://");
+
+    return `${intentTarget}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+  } catch (error) {
+    console.warn("Android向けChrome URLを作成できませんでした。", error);
+    return rawUrl;
+  }
+}
+
+function showAndroidChromeOpenButton(sheetUrl, monthLabel) {
+  if (!pdfLinkArea) return false;
+
+  const intentUrl = buildAndroidChromeIntentUrl(sheetUrl);
+  if (!intentUrl) return false;
+
+  pdfLinkArea.innerHTML = "";
+
+  const link = document.createElement("a");
+  link.href = intentUrl;
+  link.textContent = `Chromeで${monthLabel}の勤務表を開く`;
+  link.setAttribute("role", "button");
+  link.style.display = "inline-flex";
+  link.style.alignItems = "center";
+  link.style.justifyContent = "center";
+  link.style.minHeight = "46px";
+  link.style.padding = "0 18px";
+  link.style.borderRadius = "10px";
+  link.style.background = "#1a73e8";
+  link.style.color = "#fff";
+  link.style.fontWeight = "700";
+  link.style.textDecoration = "none";
+  link.style.marginTop = "10px";
+
+  pdfLinkArea.appendChild(link);
+  return true;
 }
 
 async function openStaffSheet() {
@@ -1106,10 +1149,16 @@ async function openStaffSheet() {
 
     if (result.sheetUrl) {
       const isAndroidSingleSelection = isAndroidDevice() && selectedEmployees.length === 1;
-      const openUrl = isAndroidSingleSelection
-        ? getSpreadsheetBaseUrl(result.sheetUrl)
-        : result.sheetUrl;
-      window.location.href = openUrl;
+
+      if (isAndroidSingleSelection) {
+        const buttonShown = showAndroidChromeOpenButton(result.sheetUrl, monthLabel);
+        if (buttonShown) {
+          showMessage("Androidでは、下の「Chromeで勤務表を開く」を押してください。", "ok");
+          return;
+        }
+      }
+
+      window.location.href = result.sheetUrl;
     }
   } catch (error) {
     handleError(error);
