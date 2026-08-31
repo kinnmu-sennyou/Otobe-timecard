@@ -1062,6 +1062,14 @@ function getSheetTargetMonthLabel() {
   return sheetTargetMonth && sheetTargetMonth.value === "previous" ? "先月分" : "当月分";
 }
 
+function isAndroidDevice() {
+  return /Android/i.test(String(navigator.userAgent || ""));
+}
+
+function getSpreadsheetBaseUrl(sheetUrl) {
+  return String(sheetUrl || "").split("#")[0];
+}
+
 async function openStaffSheet() {
   if (isSending) {
     showMessage("今処理中だから、少し待ってね。", "loading");
@@ -1097,7 +1105,11 @@ async function openStaffSheet() {
     handleResult(result, successText);
 
     if (result.sheetUrl) {
-      window.location.href = result.sheetUrl;
+      const isAndroidSingleSelection = isAndroidDevice() && selectedEmployees.length === 1;
+      const openUrl = isAndroidSingleSelection
+        ? getSpreadsheetBaseUrl(result.sheetUrl)
+        : result.sheetUrl;
+      window.location.href = openUrl;
     }
   } catch (error) {
     handleError(error);
