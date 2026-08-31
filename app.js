@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "punch-status-viewer-separate-20260831-52";
+const APP_VERSION = "punch-status-viewer-no-key-20260831-53";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -13,7 +13,6 @@ const BREAK_MODES = ["normal", "half", "none"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
 const SHEET_BROWSER_MEMO_KEY = "timecard:sheetBrowserMemo";
-const PUNCH_STATUS_VIEW_KEY_STORAGE = "timecard:punchStatusViewKey";
 
 let EMPLOYEES = [];
 let selectedEmployee = null;
@@ -1080,34 +1079,6 @@ function setupPunchStatusButton() {
   pdfButton.insertAdjacentElement("afterend", button);
 }
 
-function getPunchStatusViewKey() {
-  let saved = "";
-  try {
-    saved = String(localStorage.getItem(PUNCH_STATUS_VIEW_KEY_STORAGE) || "").trim();
-  } catch (error) {
-    console.warn("打刻状況確認キーを読み込めませんでした。", error);
-  }
-  if (saved) return saved;
-
-  const entered = String(window.prompt("打刻状況確認キーを入力してください。初回だけ必要です。") || "").trim();
-  if (!entered) return "";
-
-  try {
-    localStorage.setItem(PUNCH_STATUS_VIEW_KEY_STORAGE, entered);
-  } catch (error) {
-    console.warn("打刻状況確認キーを保存できませんでした。", error);
-  }
-  return entered;
-}
-
-function clearPunchStatusViewKey() {
-  try {
-    localStorage.removeItem(PUNCH_STATUS_VIEW_KEY_STORAGE);
-  } catch (error) {
-    console.warn("打刻状況確認キーを削除できませんでした。", error);
-  }
-}
-
 function ensurePunchStatusViewer() {
   let overlay = document.getElementById("punchStatusViewer");
   if (overlay) return overlay;
@@ -1405,12 +1376,6 @@ async function openPunchStatusViewer() {
     return;
   }
 
-  const viewKey = getPunchStatusViewKey();
-  if (!viewKey) {
-    showMessage("打刻状況確認キーが入力されていません。", "error");
-    return;
-  }
-
   const targetDate = getSheetTargetDate();
   const monthLabel = getSheetTargetMonthLabel();
   const punchStatusButton = document.getElementById("punchStatusButton");
@@ -1422,16 +1387,12 @@ async function openPunchStatusViewer() {
       mode: "getPunchStatus",
       employeeNos: selectedEmployees.map((emp) => emp.no),
       date: targetDate,
-      viewKey,
       appVersion: APP_VERSION,
     });
 
     handleResult(result, `${monthLabel}の打刻状況を読み込みました。`);
     showPunchStatusViewer(result, monthLabel);
   } catch (error) {
-    if (String(error && error.message || "").includes("打刻状況確認キー")) {
-      clearPunchStatusViewKey();
-    }
     handleError(error);
   } finally {
     stopSending(punchStatusButton);
