@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "business-trip-start-overwrite-20260807-51";
+const APP_VERSION = "punch-status-viewer-20260831-52";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -13,6 +13,7 @@ const BREAK_MODES = ["normal", "half", "none"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
 const SHEET_BROWSER_MEMO_KEY = "timecard:sheetBrowserMemo";
+const PUNCH_STATUS_VIEW_KEY_STORAGE = "timecard:punchStatusViewKey";
 
 let EMPLOYEES = [];
 let selectedEmployee = null;
@@ -148,7 +149,10 @@ async function init() {
   setupScrollToTopButton();
 
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
-  pdfButton.addEventListener("click", openStaffSheet);
+  if (pdfButton) {
+    pdfButton.textContent = "打刻状況を確認する";
+    pdfButton.addEventListener("click", openStaffSheet);
+  }
 
   const defaultNo = normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
   const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
@@ -1062,55 +1066,315 @@ function getSheetTargetMonthLabel() {
   return sheetTargetMonth && sheetTargetMonth.value === "previous" ? "先月分" : "当月分";
 }
 
-function isAndroidDevice() {
-  return /Android/i.test(String(navigator.userAgent || ""));
-}
+function getPunchStatusViewKey() {
+  let saved = "";
+  try {
+    saved = String(localStorage.getItem(PUNCH_STATUS_VIEW_KEY_STORAGE) || "").trim();
+  } catch (error) {
+    console.warn("打刻状況確認キーを読み込めませんでした。", error);
+  }
+  if (saved) return saved;
 
-function buildAndroidChromeIntentUrl(sheetUrl) {
-  const rawUrl = String(sheetUrl || "").trim();
-  if (!rawUrl) return "";
+  const entered = String(window.prompt("打刻状況確認キーを入力してください。初回だけ必要です。") || "").trim();
+  if (!entered) return "";
 
   try {
-    const url = new URL(rawUrl);
-    const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
-    const gid = hashParams.get("gid") || "";
-
-    const targetUrl = `${url.origin}${url.pathname}${gid ? `?gid=${encodeURIComponent(gid)}&range=A1` : ""}`;
-    const intentTarget = targetUrl.replace(/^https:\/\//i, "intent://");
-
-    return `${intentTarget}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+    localStorage.setItem(PUNCH_STATUS_VIEW_KEY_STORAGE, entered);
   } catch (error) {
-    console.warn("Android向けChrome URLを作成できませんでした。", error);
-    return rawUrl;
+    console.warn("打刻状況確認キーを保存できませんでした。", error);
+  }
+  return entered;
+}
+
+function clearPunchStatusViewKey() {
+  try {
+    localStorage.removeItem(PUNCH_STATUS_VIEW_KEY_STORAGE);
+  } catch (error) {
+    console.warn("打刻状況確認キーを削除できませんでした。", error);
   }
 }
 
-function showAndroidChromeOpenButton(sheetUrl, monthLabel) {
-  if (!pdfLinkArea) return false;
+function ensurePunchStatusViewer() {
+  let overlay = document.getElementById("punchStatusViewer");
+  if (overlay) return overlay;
 
-  const intentUrl = buildAndroidChromeIntentUrl(sheetUrl);
-  if (!intentUrl) return false;
+  overlay = document.createElement("div");
+  overlay.id = "punchStatusViewer";
+  overlay.hidden = true;
+  Object.assign(overlay.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "99999",
+    background: "rgba(0,0,0,.5)",
+    padding: "16px",
+    overflow: "auto"
+  });
 
-  pdfLinkArea.innerHTML = "";
+  const panel = document.createElement("div");
+  Object.assign(panel.style, {
+    maxWidth: "980px",
+    margin: "0 auto",
+    background: "#fff",
+    borderRadius: "14px",
+    boxShadow: "0 20px 60px rgba(0,0,0,.25)",
+    overflow: "hidden"
+  });
 
-  const link = document.createElement("a");
-  link.href = intentUrl;
-  link.textContent = `Chromeで${monthLabel}の勤務表を開く`;
-  link.setAttribute("role", "button");
-  link.style.display = "inline-flex";
-  link.style.alignItems = "center";
-  link.style.justifyContent = "center";
-  link.style.minHeight = "46px";
-  link.style.padding = "0 18px";
-  link.style.borderRadius = "10px";
-  link.style.background = "#1a73e8";
-  link.style.color = "#fff";
-  link.style.fontWeight = "700";
-  link.style.textDecoration = "none";
-  link.style.marginTop = "10px";
+  const header = document.createElement("div");
+  Object.assign(header.style, {
+    position: "sticky",
+    top: "0",
+    zIndex: "2",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    padding: "14px 16px",
+    background: "#fff",
+    borderBottom: "1px solid #ddd"
+  });
 
-  pdfLinkArea.appendChild(link);
-  return true;
+  const title = document.createElement("strong");
+  title.id = "punchStatusViewerTitle";
+  title.textContent = "打刻状況";
+  title.style.fontSize = "18px";
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "閉じる";
+  Object.assign(close.style, {
+    minHeight: "40px",
+    padding: "0 14px",
+    borderRadius: "8px",
+    border: "1px solid #aaa",
+    background: "#fff",
+    fontWeight: "700",
+    cursor: "pointer"
+  });
+  close.addEventListener("click", closePunchStatusViewer);
+
+  header.appendChild(title);
+  header.appendChild(close);
+
+  const controls = document.createElement("div");
+  controls.id = "punchStatusViewerControls";
+  Object.assign(controls.style, {
+    padding: "12px 16px 0",
+    background: "#fff"
+  });
+
+  const content = document.createElement("div");
+  content.id = "punchStatusViewerContent";
+  content.style.padding = "16px";
+
+  panel.appendChild(header);
+  panel.appendChild(controls);
+  panel.appendChild(content);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closePunchStatusViewer();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) closePunchStatusViewer();
+  });
+
+  return overlay;
+}
+
+function closePunchStatusViewer() {
+  const overlay = document.getElementById("punchStatusViewer");
+  if (overlay) overlay.hidden = true;
+  document.body.style.overflow = "";
+}
+
+function combinePunchStatusTime(hourValue, minuteValue) {
+  const hour = String(hourValue ?? "").trim();
+  const minute = String(minuteValue ?? "").trim();
+  if (!hour) return "";
+  if (hour === "有給" || hour === "出張") return hour;
+  if (!minute) return hour;
+  return `${hour}:${minute.padStart(2, "0")}`;
+}
+
+function renderPunchStatusEmployee(status, content) {
+  content.innerHTML = "";
+
+  const heading = document.createElement("div");
+  heading.style.marginBottom = "12px";
+
+  const name = document.createElement("div");
+  name.textContent = `${status.employeeNo} ${status.name}`;
+  name.style.fontSize = "20px";
+  name.style.fontWeight = "800";
+
+  const month = document.createElement("div");
+  month.textContent = status.periodLabel || status.targetKey || "";
+  month.style.marginTop = "3px";
+  month.style.color = "#555";
+
+  heading.appendChild(name);
+  heading.appendChild(month);
+  content.appendChild(heading);
+
+  if (!status.exists) {
+    const empty = document.createElement("div");
+    empty.textContent = "この月の勤務表はまだありません。";
+    Object.assign(empty.style, {
+      padding: "18px",
+      borderRadius: "10px",
+      background: "#f5f5f5",
+      fontWeight: "700"
+    });
+    content.appendChild(empty);
+    return;
+  }
+
+  const summary = document.createElement("div");
+  Object.assign(summary.style, {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    marginBottom: "14px"
+  });
+
+  [
+    ["出勤日数", status.workedDays],
+    ["有給", status.paidLeaveDays]
+  ].forEach(([label, value]) => {
+    if (String(value ?? "").trim() === "") return;
+    const chip = document.createElement("span");
+    chip.textContent = `${label}：${value}`;
+    Object.assign(chip.style, {
+      display: "inline-block",
+      padding: "7px 10px",
+      borderRadius: "999px",
+      background: "#f2f2f2",
+      fontWeight: "700"
+    });
+    summary.appendChild(chip);
+  });
+  content.appendChild(summary);
+
+  const scroller = document.createElement("div");
+  scroller.style.overflowX = "auto";
+  scroller.style.WebkitOverflowScrolling = "touch";
+
+  const table = document.createElement("table");
+  Object.assign(table.style, {
+    width: "100%",
+    minWidth: "760px",
+    borderCollapse: "collapse",
+    fontSize: "14px"
+  });
+
+  const headers = ["日付", "曜", "出勤", "退勤", "実働", "残業", "週40超", "不就労"];
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  headers.forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    Object.assign(th.style, {
+      position: "sticky",
+      top: "0",
+      padding: "9px 8px",
+      border: "1px solid #d9d9d9",
+      background: "#f7f7f7",
+      whiteSpace: "nowrap",
+      textAlign: "center"
+    });
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  (Array.isArray(status.rows) ? status.rows : []).forEach((row) => {
+    if (!String(row.date || "").trim()) return;
+    const tr = document.createElement("tr");
+    const values = [
+      row.date,
+      row.weekday,
+      combinePunchStatusTime(row.startHour, row.startMinute),
+      combinePunchStatusTime(row.endHour, row.endMinute),
+      row.workHours,
+      row.overtime,
+      row.week40Over,
+      row.nonWork
+    ];
+    values.forEach((value, index) => {
+      const td = document.createElement("td");
+      td.textContent = String(value ?? "");
+      Object.assign(td.style, {
+        padding: "8px",
+        border: "1px solid #e1e1e1",
+        whiteSpace: "nowrap",
+        textAlign: index < 2 ? "center" : "right"
+      });
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  scroller.appendChild(table);
+  content.appendChild(scroller);
+
+  const note = document.createElement("div");
+  note.textContent = "表示専用です。この画面から勤務データは変更できません。";
+  Object.assign(note.style, {
+    marginTop: "12px",
+    color: "#666",
+    fontSize: "12px"
+  });
+  content.appendChild(note);
+}
+
+function showPunchStatusViewer(result, monthLabel) {
+  const statuses = Array.isArray(result && result.statuses) ? result.statuses : [];
+  if (!statuses.length) throw new Error("表示できる打刻状況がありません。");
+
+  const overlay = ensurePunchStatusViewer();
+  const title = document.getElementById("punchStatusViewerTitle");
+  const controls = document.getElementById("punchStatusViewerControls");
+  const content = document.getElementById("punchStatusViewerContent");
+  if (!controls || !content) return;
+
+  if (title) title.textContent = `${monthLabel}の打刻状況`;
+  controls.innerHTML = "";
+
+  if (statuses.length > 1) {
+    const label = document.createElement("label");
+    label.textContent = "表示スタッフ：";
+    label.style.fontWeight = "700";
+
+    const select = document.createElement("select");
+    Object.assign(select.style, {
+      marginLeft: "8px",
+      minHeight: "42px",
+      maxWidth: "100%",
+      padding: "0 10px",
+      borderRadius: "8px",
+      border: "1px solid #aaa",
+      background: "#fff"
+    });
+    statuses.forEach((status, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = `${status.employeeNo} ${status.name}${status.exists ? "" : "（シートなし）"}`;
+      select.appendChild(option);
+    });
+    select.addEventListener("change", () => {
+      renderPunchStatusEmployee(statuses[Number(select.value)] || statuses[0], content);
+    });
+    label.appendChild(select);
+    controls.appendChild(label);
+  }
+
+  renderPunchStatusEmployee(statuses[0], content);
+  overlay.hidden = false;
+  document.body.style.overflow = "hidden";
 }
 
 async function openStaffSheet() {
@@ -1122,45 +1386,37 @@ async function openStaffSheet() {
   const selectedEmployees = EMPLOYEES.filter((emp) => selectedSheetEmployeeNos.has(emp.no));
 
   if (!selectedEmployees.length) {
-    showMessage("スプレッドシートを開くスタッフにチェックを入れてね。", "error");
+    showMessage("打刻状況を確認するスタッフにチェックを入れてね。", "error");
     updateSheetOpenSelectionState();
+    return;
+  }
+
+  const viewKey = getPunchStatusViewKey();
+  if (!viewKey) {
+    showMessage("打刻状況確認キーが入力されていません。", "error");
     return;
   }
 
   const targetDate = getSheetTargetDate();
   const monthLabel = getSheetTargetMonthLabel();
 
-  startSending(pdfButton, `${monthLabel}の勤務表を準備中...`);
+  startSending(pdfButton, `${monthLabel}の打刻状況を読み込み中...`);
 
   try {
     const result = await postToScript({
-      mode: "openSelectedSheets",
+      mode: "getPunchStatus",
       employeeNos: selectedEmployees.map((emp) => emp.no),
       date: targetDate,
+      viewKey,
       appVersion: APP_VERSION,
     });
 
-    const missingCount = Array.isArray(result.missingStaffNames) ? result.missingStaffNames.length : 0;
-    const successText = missingCount
-      ? `${monthLabel}：${result.shownCount}名分を表示します（シートなし ${missingCount}名）`
-      : `${monthLabel}：${result.shownCount}名分のシートだけ表示して開きます。`;
-
-    handleResult(result, successText);
-
-    if (result.sheetUrl) {
-      const isAndroidSingleSelection = isAndroidDevice() && selectedEmployees.length === 1;
-
-      if (isAndroidSingleSelection) {
-        const buttonShown = showAndroidChromeOpenButton(result.sheetUrl, monthLabel);
-        if (buttonShown) {
-          showMessage("Androidでは、下の「Chromeで勤務表を開く」を押してください。", "ok");
-          return;
-        }
-      }
-
-      window.location.href = result.sheetUrl;
-    }
+    handleResult(result, `${monthLabel}の打刻状況を読み込みました。`);
+    showPunchStatusViewer(result, monthLabel);
   } catch (error) {
+    if (String(error && error.message || "").includes("打刻状況確認キー")) {
+      clearPunchStatusViewKey();
+    }
     handleError(error);
   } finally {
     stopSending(pdfButton);
