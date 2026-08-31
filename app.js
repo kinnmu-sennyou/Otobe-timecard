@@ -1184,6 +1184,68 @@ function combinePunchStatusTime(hourValue, minuteValue) {
   return `${hour}:${minute.padStart(2, "0")}`;
 }
 
+function parsePunchStatusNumber(value) {
+  const text = String(value ?? "").trim().replace(/,/g, "");
+  if (!text) return null;
+  const number = Number(text);
+  return Number.isFinite(number) ? number : null;
+}
+
+function formatPunchStatusNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "0";
+  return String(Math.round(number * 100) / 100);
+}
+
+function getPunchStatusElapsedDayLimit(status) {
+  const match = String(status && status.targetKey || "").match(/^(\d{4})-(\d{2})$/);
+  if (!match) return Array.isArray(status && status.rows) ? status.rows.length : 0;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+
+  if (today.getFullYear() === year && today.getMonth() + 1 === month) {
+    return Math.min(today.getDate(), daysInMonth);
+  }
+
+  return daysInMonth;
+}
+
+function getPunchStatusNonAttendanceDays(status) {
+  const rows = Array.isArray(status && status.rows) ? status.rows : [];
+  const dayLimit = getPunchStatusElapsedDayLimit(status);
+  let count = 0;
+
+  rows.forEach((row, index) => {
+    if (index >= dayLimit || !String(row && row.date || "").trim()) return;
+    const startHour = String((row && row.startHour) ?? "").trim();
+    const hasAttendancePunch = parsePunchStatusNumber(startHour) !== null;
+    if (!hasAttendancePunch) count++;
+  });
+
+  return count;
+}
+
+function getPunchStatusTotals(status) {
+  const rows = Array.isArray(status && status.rows) ? status.rows : [];
+  let totalWorkHours = 0;
+  let totalOvertime = 0;
+
+  rows.forEach((row) => {
+    const workHours = parsePunchStatusNumber(row && row.workHours);
+    const overtime = parsePunchStatusNumber(row && row.overtime);
+    if (workHours !== null) totalWorkHours += workHours;
+    if (overtime !== null) totalOvertime += overtime;
+  });
+
+  return {
+    totalWorkHours: formatPunchStatusNumber(totalWorkHours),
+    totalOvertime: formatPunchStatusNumber(totalOvertime),
+  };
+}
+
 function renderPunchStatusEmployee(status, content) {
   content.innerHTML = "";
 
@@ -1219,25 +1281,26 @@ function renderPunchStatusEmployee(status, content) {
 
   const summary = document.createElement("div");
   Object.assign(summary.style, {
-    display: "flex",
-    flexWrap: "wrap",
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: "8px",
     marginBottom: "14px"
   });
 
   [
     ["出勤日数", status.workedDays],
-    ["有給", status.paidLeaveDays]
+    ["非出勤日数", getPunchStatusNonAttendanceDays(status)]
   ].forEach(([label, value]) => {
-    if (String(value ?? "").trim() === "") return;
     const chip = document.createElement("span");
-    chip.textContent = `${label}：${value}`;
+    chip.textContent = `${label}：${String(value ?? "").trim() || "0"}`;
     Object.assign(chip.style, {
-      display: "inline-block",
-      padding: "7px 10px",
+      display: "block",
+      padding: "7px 8px",
       borderRadius: "999px",
       background: "#f2f2f2",
-      fontWeight: "700"
+      fontWeight: "700",
+      textAlign: "center",
+      whiteSpace: "nowrap"
     });
     summary.appendChild(chip);
   });
@@ -1305,6 +1368,35 @@ function renderPunchStatusEmployee(status, content) {
   table.appendChild(tbody);
   scroller.appendChild(table);
   content.appendChild(scroller);
+
+  const totals = getPunchStatusTotals(status);
+  const bottomSummary = document.createElement("div");
+  Object.assign(bottomSummary.style, {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: "8px",
+    marginTop: "14px"
+  });
+
+  [
+    ["総労働時間", totals.totalWorkHours],
+    ["残業", totals.totalOvertime],
+    ["有給", String(status.paidLeaveDays ?? "").trim() || "0"]
+  ].forEach(([label, value]) => {
+    const chip = document.createElement("div");
+    chip.textContent = `${label}：${value}`;
+    Object.assign(chip.style, {
+      padding: "8px 5px",
+      borderRadius: "10px",
+      background: "#f2f2f2",
+      fontWeight: "700",
+      fontSize: "13px",
+      textAlign: "center",
+      lineHeight: "1.35"
+    });
+    bottomSummary.appendChild(chip);
+  });
+  content.appendChild(bottomSummary);
 
   const note = document.createElement("div");
   note.textContent = "表示専用です。この画面から勤務データは変更できません。";
