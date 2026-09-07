@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7b7c9">
   <title>勤務表　打刻</title>
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=business-trip-start-overwrite-20260807-51">
+  <link rel="stylesheet" href="./style.css?v=current-punch-in-out-preserve-start-20260907-52">
 </head>
 <body>
   <main class="page">
@@ -61,15 +61,16 @@
       <div id="updateStatus" class="update-status punch-update-status neutral" aria-live="polite">更新状況：待機中</div>
 
       <div class="card-block punch-card-block">
-        <div class="section-title punch-section-title">打刻内容(出勤・退勤・現時刻打刻・途中退社・有給は押下時に即反映致します)</div>
+        <div class="section-title punch-section-title">打刻内容(出勤・退勤・現刻出勤・現刻退勤・途中退社・有給は押下時に即反映致します)</div>
         <div class="punch-grid immediate-punch-grid" id="actionButtons" role="group" aria-label="押すと即時反映する打刻内容">
           <button type="button" data-action="出勤">出勤</button>
           <button type="button" data-action="退勤">退勤</button>
-          <button type="button" data-action="現時刻打刻">現時刻打刻</button>
+          <button type="button" data-action="現刻出勤">現刻出勤</button>
+          <button type="button" data-action="現刻退勤">現刻退勤</button>
           <button type="button" data-action="途中退社">途中退社</button>
           <button type="button" data-action="有給">有給</button>
         </div>
-        <p class="small immediate-punch-note">各ボタンは押した時点で即時反映します。通常の「出勤」は登録済みの出勤時刻、「現時刻打刻」は押した時刻を反映します。</p>
+        <p class="small immediate-punch-note">各ボタンは押した時点で即時反映します。通常の「出勤」は登録済みの出勤時刻、「現刻出勤」「現刻退勤」は押した時刻を反映します。「現刻出勤」の後に通常の「退勤」を押しても、現刻出勤の時刻は保持されます。</p>
 
         <div class="break-area compact-break-area" id="breakArea">
           <div class="section-title">休憩設定</div>
@@ -91,7 +92,8 @@
           <div id="correctionActionButtons" class="correction-action-grid" role="group" aria-label="修正する打刻内容を選択">
             <button type="button" data-correction-action="出勤">出勤</button>
             <button type="button" data-correction-action="退勤">退勤</button>
-            <button type="button" data-correction-action="現時刻打刻">現時刻打刻</button>
+            <button type="button" data-correction-action="現刻出勤">現刻出勤</button>
+            <button type="button" data-correction-action="現刻退勤">現刻退勤</button>
             <button type="button" data-correction-action="途中退社">途中退社</button>
             <button type="button" data-correction-action="有給">有給</button>
             <button type="button" data-correction-action="出張">出張</button>
@@ -444,6 +446,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=business-trip-start-overwrite-20260807-51"></script>
+<script src="./app.js?v=current-punch-in-out-preserve-start-20260907-52"></script>
 </body>
 </html>

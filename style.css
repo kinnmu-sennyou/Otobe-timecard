@@ -219,11 +219,13 @@ button {
   transform: translateY(-1px);
 }
 
-.punch-grid button[data-action="出勤"] {
+.punch-grid button[data-action="出勤"],
+.punch-grid button[data-action="現刻出勤"] {
   background: var(--green);
 }
 
-.punch-grid button[data-action="退勤"] {
+.punch-grid button[data-action="退勤"],
+.punch-grid button[data-action="現刻退勤"] {
   background: var(--blue);
 }
 
@@ -1186,21 +1188,20 @@ select:disabled,
   font-size: 10px;
 }
 
-/* ===== 打刻内容：現時刻打刻を中央1段で表示 ===== */
+/* ===== 2026-09-07：現時刻打刻を「現刻出勤」「現刻退勤」に分割 ===== */
 #actionButtons.punch-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-#actionButtons button[data-action="現時刻打刻"] {
-  grid-column: 1 / -1;
-  background: #f3efff;
-  color: #553f78;
-  border-color: #d9ccef;
+#actionButtons button[data-action="現刻出勤"],
+#actionButtons button[data-action="現刻退勤"] {
+  grid-column: auto;
 }
 
-#actionButtons button[data-action="現時刻打刻"].active {
-  border-color: #8066a8;
-  box-shadow: 0 8px 18px rgba(98, 76, 135, .18);
+#actionButtons button[data-action="現刻出勤"].active,
+#actionButtons button[data-action="現刻退勤"].active {
+  border-color: var(--pink-dark);
+  box-shadow: 0 8px 18px rgba(217, 109, 144, .18);
 }
 
 .current-time-punch-note {
@@ -1699,7 +1700,7 @@ body.time-picker-open {
 
 .correction-action-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
   width: 100%;
 }
@@ -1820,7 +1821,8 @@ body.time-picker-open {
 }
 
 /* 打刻ボタン内の長い名称を必ず1行表示 */
-#actionButtons button[data-action="現時刻打刻"],
+#actionButtons button[data-action="現刻出勤"],
+#actionButtons button[data-action="現刻退勤"],
 #actionButtons button[data-action="途中退社"] {
   min-width: 0;
   padding-inline: 5px;
@@ -1866,7 +1868,8 @@ body.time-picker-open {
   text-overflow: clip;
 }
 
-#actionButtons.immediate-punch-grid button[data-action="現時刻打刻"],
+#actionButtons.immediate-punch-grid button[data-action="現刻出勤"],
+#actionButtons.immediate-punch-grid button[data-action="現刻退勤"],
 #actionButtons.immediate-punch-grid button[data-action="途中退社"] {
   padding-inline: 2px;
   font-size: clamp(20px, 2.75vw, 24px);
@@ -2036,7 +2039,8 @@ body.time-picker-open {
     font-size: clamp(21px, 6vw, 24px);
   }
 
-  #actionButtons.immediate-punch-grid button[data-action="現時刻打刻"],
+  #actionButtons.immediate-punch-grid button[data-action="現刻出勤"],
+  #actionButtons.immediate-punch-grid button[data-action="現刻退勤"],
   #actionButtons.immediate-punch-grid button[data-action="途中退社"] {
     font-size: clamp(18px, 5.25vw, 22px);
     letter-spacing: -.065em;
