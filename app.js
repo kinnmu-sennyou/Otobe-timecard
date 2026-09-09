@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "current-punch-in-only-preserve-start-20260907-56";
+const APP_VERSION = "akugyo-mode-20260909-57";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -23,6 +23,14 @@ let isSending = false;
 let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
 let isSheetStaffListExpanded = false;
+
+const AKUGYO_TAP_COUNT = 20;
+let akugyoTapCounter = 0;
+let isAkugyoMode = false;
+let isAkugyoModeChanging = false;
+let akugyoGestureReady = false;
+let currentPunchStatusResult = null;
+let currentPunchStatusMonthLabel = "";
 
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
@@ -146,6 +154,7 @@ async function init() {
   setupSheetOpenSelection();
   setupAdminSheetOpen();
   setupScrollToTopButton();
+  setupAkugyoGesture();
 
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
   pdfButton.addEventListener("click", openStaffSheet);
@@ -173,6 +182,7 @@ async function init() {
   selectCorrectionAction(selectedCorrectionAction);
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
+  await syncAkugyoModeForDefaultEmployee(false);
 }
 
 function loadEmployees() {
@@ -377,6 +387,7 @@ function registerSelectedEmployeeAsDefault() {
   updateDefaultEmployeeRegistrationUi();
   updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに登録しました。`, "ok");
+  void syncAkugyoModeForDefaultEmployee(false);
 }
 
 function changeDefaultEmployee() {
@@ -406,6 +417,7 @@ ${nextText}
   updateDefaultEmployeeRegistrationUi();
   updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに変更しました。`, "ok");
+  void syncAkugyoModeForDefaultEmployee(false);
 }
 
 function returnToDefaultEmployeeSelection() {
@@ -718,6 +730,7 @@ function initEditDateTime() {
 }
 
 async function punchNow(triggerButton, action) {
+  resetAkugyoTapCounter();
   if (isRestrictedSelection()) {
     showMessage("デフォルト登録スタッフ以外は打刻できません。", "error");
     return;
@@ -760,6 +773,7 @@ async function punchNow(triggerButton, action) {
 }
 
 async function punchBySpecifiedDateTime() {
+  resetAkugyoTapCounter();
   if (isRestrictedSelection()) {
     showMessage("デフォルト登録スタッフ以外は打刻修正できません。", "error");
     return;
@@ -816,6 +830,408 @@ async function punchBySpecifiedDateTime() {
 function isSpecialCorrectionAction(action) {
   return action === "有給" || action === "出張";
 }
+
+
+// ===== 悪行モード ==========================================================
+function setupAkugyoGesture() {
+  if (akugyoGestureReady) return;
+  akugyoGestureReady = true;
+
+  document.addEventListener("pointerup", (event) => {
+    if (isAkugyoModeChanging || isSending) return;
+    const target = event.target;
+    if (!target || !target.closest) return;
+
+    // 普段のボタン操作・入力操作では回数を進めません。
+    // 画面の余白や見出し等へのタップだけを数えます。
+    if (target.closest("button,a,input,select,textarea,summary,label,[role='dialog'],#punchStatusViewer,.fixed-page-navigation")) return;
+
+    const defaultNo = getDefaultEmployeeNo();
+    if (!defaultNo || !EMPLOYEES.some((emp) => emp.no === defaultNo)) {
+      akugyoTapCounter = 0;
+      return;
+    }
+
+    akugyoTapCounter += 1;
+    if (akugyoTapCounter >= AKUGYO_TAP_COUNT) {
+      akugyoTapCounter = 0;
+      void toggleAkugyoMode();
+    }
+  }, true);
+}
+
+function resetAkugyoTapCounter() {
+  akugyoTapCounter = 0;
+}
+
+function getDefaultEmployeeForAkugyoMode() {
+  const defaultNo = getDefaultEmployeeNo();
+  return EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
+}
+
+async function syncAkugyoModeForDefaultEmployee(showFailure) {
+  const employee = getDefaultEmployeeForAkugyoMode();
+  if (!employee || !isEndpointSet()) {
+    applyAkugyoMode(false, false);
+    return;
+  }
+
+  try {
+    const result = await postToScript({
+      mode: "getAkugyoMode",
+      employeeNo: employee.no,
+      name: employee.name,
+      sheetName: employee.sheetName,
+      appVersion: APP_VERSION,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "状態を取得できませんでした。");
+    applyAkugyoMode(Boolean(result.enabled), false);
+  } catch (error) {
+    console.warn("mode sync failed", error);
+    applyAkugyoMode(false, false);
+    if (showFailure) showMessage(`切替状態を取得できませんでした：${error.message}`, "error");
+  }
+}
+
+async function toggleAkugyoMode() {
+  if (isAkugyoModeChanging) return;
+  const employee = getDefaultEmployeeForAkugyoMode();
+  if (!employee || !isEndpointSet()) return;
+
+  isAkugyoModeChanging = true;
+  const nextEnabled = !isAkugyoMode;
+  try {
+    const result = await postToScript({
+      mode: "setAkugyoMode",
+      employeeNo: employee.no,
+      name: employee.name,
+      sheetName: employee.sheetName,
+      enabled: nextEnabled,
+      appVersion: APP_VERSION,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "切り替えに失敗しました。");
+    applyAkugyoMode(Boolean(result.enabled), Boolean(result.enabled));
+
+    // 打刻状況画面を開いたまま切り替えた場合だけ、同じデータを表示し直します。
+    const viewer = document.getElementById("punchStatusViewer");
+    if (viewer && !viewer.hidden && currentPunchStatusResult) {
+      showPunchStatusViewer(currentPunchStatusResult, currentPunchStatusMonthLabel);
+    }
+  } catch (error) {
+    console.error(error);
+    showMessage(`切り替えできませんでした：${error.message}`, "error");
+  } finally {
+    isAkugyoModeChanging = false;
+  }
+}
+
+function applyAkugyoMode(enabled, showEntranceEffect) {
+  isAkugyoMode = Boolean(enabled);
+  document.body.classList.toggle("akugyo-mode", isAkugyoMode);
+
+  const theme = document.querySelector('meta[name="theme-color"]');
+  if (theme) theme.setAttribute("content", isAkugyoMode ? "#d60000" : "#f7b7c9");
+
+  if (isAkugyoMode && showEntranceEffect) showAkugyoEntranceEffect();
+}
+
+function showAkugyoEntranceEffect() {
+  document.querySelectorAll(".akugyo-mode-flash").forEach((node) => node.remove());
+  const flash = document.createElement("div");
+  flash.className = "akugyo-mode-flash";
+  flash.textContent = "悪行モード";
+  document.body.appendChild(flash);
+  window.setTimeout(() => flash.remove(), 2400);
+}
+
+function getAkugyoStatusDateKey(status, row, index) {
+  const direct = String(row && row.dateKey || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(direct)) return direct;
+  const targetKey = String(status && status.targetKey || "").trim();
+  return /^\d{4}-\d{2}$/.test(targetKey) ? `${targetKey}-${String(index + 1).padStart(2, "0")}` : "";
+}
+
+function normalizeAkugyoClientTime(value) {
+  const text = String(value || "").trim().replace(/[：﹕∶]/g, ":");
+  const match = text.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return "";
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return "";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function adjustAkugyoTime(value, deltaMinutes) {
+  const normalized = normalizeAkugyoClientTime(value);
+  if (!normalized) return "";
+  const [hour, minute] = normalized.split(":").map(Number);
+  let total = hour * 60 + minute + Number(deltaMinutes || 0);
+  total = Math.max(0, Math.min(23 * 60 + 59, total));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function createAkugyoTimeEditor(initialValue, onChange) {
+  const shell = document.createElement("div");
+  Object.assign(shell.style, {
+    display: "grid",
+    gridTemplateColumns: "48px 88px 48px",
+    gap: "4px",
+    alignItems: "center",
+    justifyContent: "center",
+  });
+
+  const minus = document.createElement("button");
+  minus.type = "button";
+  minus.textContent = "−30";
+  const input = document.createElement("input");
+  input.type = "time";
+  input.step = "60";
+  input.value = normalizeAkugyoClientTime(initialValue);
+  input.setAttribute("aria-label", "時刻を直接入力");
+  const plus = document.createElement("button");
+  plus.type = "button";
+  plus.textContent = "+30";
+
+  [minus, plus].forEach((button) => {
+    Object.assign(button.style, {
+      minHeight: "34px",
+      padding: "2px 5px",
+      border: "1px solid #b98d8d",
+      borderRadius: "7px",
+      background: "#fff3f3",
+      color: "#7c1111",
+      fontSize: "12px",
+      fontWeight: "800",
+      cursor: "pointer",
+    });
+  });
+  Object.assign(input.style, {
+    width: "88px",
+    minHeight: "34px",
+    padding: "2px 4px",
+    border: "1px solid #c8a0a0",
+    borderRadius: "7px",
+    background: "#fff",
+    fontSize: "13px",
+    fontWeight: "800",
+  });
+
+  function emit() {
+    const normalized = normalizeAkugyoClientTime(input.value);
+    onChange(normalized);
+  }
+  input.addEventListener("input", emit);
+  input.addEventListener("change", emit);
+  minus.addEventListener("click", () => {
+    const next = adjustAkugyoTime(input.value, -30);
+    if (!next) return;
+    input.value = next;
+    emit();
+  });
+  plus.addEventListener("click", () => {
+    const next = adjustAkugyoTime(input.value, 30);
+    if (!next) return;
+    input.value = next;
+    emit();
+  });
+
+  shell.append(minus, input, plus);
+  return shell;
+}
+
+function renderAkugyoPunchStatusEmployee(status, content) {
+  content.innerHTML = "";
+
+  const heading = document.createElement("div");
+  heading.style.marginBottom = "12px";
+  const name = document.createElement("div");
+  name.textContent = `${status.employeeNo} ${status.name}`;
+  name.style.fontSize = "20px";
+  name.style.fontWeight = "800";
+  const month = document.createElement("div");
+  month.textContent = status.periodLabel || status.targetKey || "";
+  month.style.marginTop = "3px";
+  month.style.color = "#555";
+  heading.append(name, month);
+  content.appendChild(heading);
+
+  if (!status.exists) {
+    const empty = document.createElement("div");
+    empty.textContent = "この月の勤務表はまだありません。";
+    Object.assign(empty.style, { padding: "18px", borderRadius: "10px", background: "#f5f5f5", fontWeight: "700" });
+    content.appendChild(empty);
+    return;
+  }
+
+  const summary = document.createElement("div");
+  Object.assign(summary.style, { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "14px" });
+  [["出勤日数", status.workedDays], ["非出勤日数", getPunchStatusNonAttendanceDays(status)]].forEach(([label, value]) => {
+    const chip = document.createElement("span");
+    chip.textContent = `${label}：${String(value ?? "").trim() || "0"}`;
+    Object.assign(chip.style, { display: "block", padding: "7px 8px", borderRadius: "999px", background: "#ffe8e8", fontWeight: "700", textAlign: "center", whiteSpace: "nowrap" });
+    summary.appendChild(chip);
+  });
+  content.appendChild(summary);
+
+  const edits = new Map();
+  const scroller = document.createElement("div");
+  scroller.style.overflowX = "auto";
+  scroller.style.WebkitOverflowScrolling = "touch";
+  const table = document.createElement("table");
+  Object.assign(table.style, { width: "100%", minWidth: "980px", borderCollapse: "collapse", fontSize: "14px" });
+  const thead = document.createElement("thead");
+  const headerRow = document.createElement("tr");
+  ["日付", "曜", "出勤", "退勤", "実働", "残業", "週40超", "不就労"].forEach((label) => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    Object.assign(th.style, { position: "sticky", top: "0", padding: "9px 8px", border: "1px solid #d9d9d9", background: "#ffe8e8", whiteSpace: "nowrap", textAlign: "center" });
+    headerRow.appendChild(th);
+  });
+  thead.appendChild(headerRow);
+  table.appendChild(thead);
+
+  let saveButton = null;
+  function updateEdit(dateKey, field, currentValue, initialValue) {
+    if (!dateKey) return;
+    const current = edits.get(dateKey) || { dateKey, startChanged: false, endChanged: false, startTime: "", endTime: "" };
+    const normalizedCurrent = normalizeAkugyoClientTime(currentValue);
+    const normalizedInitial = normalizeAkugyoClientTime(initialValue);
+    if (field === "start") {
+      current.startTime = normalizedCurrent;
+      current.startChanged = normalizedCurrent !== normalizedInitial;
+    } else {
+      current.endTime = normalizedCurrent;
+      current.endChanged = normalizedCurrent !== normalizedInitial;
+    }
+    if (!current.startChanged && !current.endChanged) edits.delete(dateKey);
+    else edits.set(dateKey, current);
+    if (saveButton) saveButton.disabled = edits.size === 0 || isSending;
+  }
+
+  const tbody = document.createElement("tbody");
+  (Array.isArray(status.rows) ? status.rows : []).forEach((row, index) => {
+    if (!String(row.date || "").trim()) return;
+    const tr = document.createElement("tr");
+    const dateKey = getAkugyoStatusDateKey(status, row, index);
+    const startText = combinePunchStatusTime(row.startHour, row.startMinute);
+    const endText = combinePunchStatusTime(row.endHour, row.endMinute);
+    const isSpecial = startText === "有給" || startText === "出張";
+
+    const simpleValues = [row.date, row.weekday];
+    simpleValues.forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value ?? "");
+      Object.assign(td.style, { padding: "8px", border: "1px solid #e1e1e1", whiteSpace: "nowrap", textAlign: "center" });
+      tr.appendChild(td);
+    });
+
+    const startTd = document.createElement("td");
+    const endTd = document.createElement("td");
+    [startTd, endTd].forEach((td) => Object.assign(td.style, { padding: "5px", border: "1px solid #e1e1e1", whiteSpace: "nowrap", textAlign: "center" }));
+
+    if (isSpecial) {
+      startTd.textContent = startText;
+      startTd.style.fontWeight = "800";
+      endTd.textContent = endText;
+    } else {
+      startTd.appendChild(createAkugyoTimeEditor(startText, (value) => updateEdit(dateKey, "start", value, startText)));
+      endTd.appendChild(createAkugyoTimeEditor(endText, (value) => updateEdit(dateKey, "end", value, endText)));
+    }
+    tr.append(startTd, endTd);
+
+    [row.workHours, row.overtime, row.week40Over, row.nonWork].forEach((value) => {
+      const td = document.createElement("td");
+      td.textContent = String(value ?? "");
+      Object.assign(td.style, { padding: "8px", border: "1px solid #e1e1e1", whiteSpace: "nowrap", textAlign: "right" });
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  scroller.appendChild(table);
+  content.appendChild(scroller);
+
+  const note = document.createElement("div");
+  note.textContent = "出勤・退勤は±30分または時刻の直接入力で変更し、最後にまとめて反映します。計算欄は反映後に更新されます。";
+  Object.assign(note.style, { marginTop: "10px", color: "#7c1111", fontSize: "12px", fontWeight: "700" });
+  content.appendChild(note);
+
+  saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.textContent = "変更する";
+  saveButton.disabled = true;
+  Object.assign(saveButton.style, {
+    width: "100%", minHeight: "52px", marginTop: "12px", border: "0", borderRadius: "12px",
+    background: "#b40000", color: "#fff", fontSize: "17px", fontWeight: "900", cursor: "pointer",
+  });
+  saveButton.addEventListener("click", () => saveAkugyoPunchStatusEdits(status, edits, saveButton));
+  content.appendChild(saveButton);
+
+  const totals = getPunchStatusTotals(status);
+  const bottomSummary = document.createElement("div");
+  Object.assign(bottomSummary.style, { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px", marginTop: "14px" });
+  [["総労働時間", totals.totalWorkHours], ["残業", totals.totalOvertime], ["有給", String(status.paidLeaveDays ?? "").trim() || "0"]].forEach(([label, value]) => {
+    const chip = document.createElement("div");
+    chip.textContent = `${label}：${value}`;
+    Object.assign(chip.style, { padding: "8px 5px", borderRadius: "10px", background: "#f2f2f2", fontWeight: "700", fontSize: "13px", textAlign: "center", lineHeight: "1.35" });
+    bottomSummary.appendChild(chip);
+  });
+  content.appendChild(bottomSummary);
+}
+
+async function saveAkugyoPunchStatusEdits(status, edits, triggerButton) {
+  if (!isAkugyoMode || isSending || !edits || edits.size === 0) return;
+  const employee = getDefaultEmployeeForAkugyoMode();
+  if (!employee || employee.no !== status.employeeNo) {
+    showMessage("編集対象を再読み込みしてください。", "error");
+    return;
+  }
+
+  const payloadEdits = Array.from(edits.values()).map((edit) => ({
+    dateKey: edit.dateKey,
+    startChanged: Boolean(edit.startChanged),
+    endChanged: Boolean(edit.endChanged),
+    startTime: edit.startTime,
+    endTime: edit.endTime,
+  }));
+  if (payloadEdits.some((edit) => (edit.startChanged && !edit.startTime) || (edit.endChanged && !edit.endTime))) {
+    showMessage("変更する時刻は空欄にせず、HH:mmで入力してください。", "error");
+    return;
+  }
+
+  resetAkugyoTapCounter();
+  startSending(triggerButton, "打刻時刻を一括変更中...");
+  try {
+    const targetDate = /^\d{4}-\d{2}$/.test(String(status.targetKey || "")) ? `${status.targetKey}-01` : getSheetTargetDate();
+    const result = await postToScript({
+      mode: "batchEditPunchStatus",
+      employeeNo: employee.no,
+      name: employee.name,
+      sheetName: employee.sheetName,
+      date: targetDate,
+      edits: payloadEdits,
+      appVersion: APP_VERSION,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "変更に失敗しました。");
+
+    const refreshed = await postToScript({
+      mode: "getPunchStatus",
+      employeeNos: [employee.no],
+      date: targetDate,
+      appVersion: APP_VERSION,
+    });
+    if (!refreshed || !refreshed.ok) throw new Error((refreshed && refreshed.message) || "変更後の状態を取得できませんでした。");
+
+    handleResult(result, `${result.changedDays || payloadEdits.length}日分の打刻時刻を変更しました。`);
+    showPunchStatusViewer(refreshed, currentPunchStatusMonthLabel || getSheetTargetMonthLabel());
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(triggerButton);
+  }
+}
+
+// ===== 悪行モードここまで ==================================================
 
 function setupSheetOpenSelection() {
   if (selectAllSheetStaffButton) {
@@ -1270,6 +1686,11 @@ function getPunchStatusTotals(status) {
 }
 
 function renderPunchStatusEmployee(status, content) {
+  if (isAkugyoMode) {
+    renderAkugyoPunchStatusEmployee(status, content);
+    return;
+  }
+
   content.innerHTML = "";
 
   const heading = document.createElement("div");
@@ -1432,6 +1853,8 @@ function renderPunchStatusEmployee(status, content) {
 }
 
 function showPunchStatusViewer(result, monthLabel) {
+  currentPunchStatusResult = result || null;
+  currentPunchStatusMonthLabel = monthLabel || "";
   const statuses = Array.isArray(result && result.statuses) ? result.statuses : [];
   if (!statuses.length) throw new Error("表示できる打刻状況がありません。");
 
