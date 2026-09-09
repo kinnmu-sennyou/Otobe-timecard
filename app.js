@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-mode-20260909-57";
+const APP_VERSION = "akugyo-leave-calendar-20260909-58";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -31,6 +31,12 @@ let isAkugyoModeChanging = false;
 let akugyoGestureReady = false;
 let currentPunchStatusResult = null;
 let currentPunchStatusMonthLabel = "";
+let akugyoLeaveCalendarYear = new Date().getFullYear();
+let akugyoLeaveCalendarEntries = {};
+let akugyoLeaveCalendarSavedEntries = {};
+let akugyoLeaveCalendarScheduledOffWeekdays = [];
+let akugyoLeaveCalendarEditMode = "休暇日";
+let akugyoLeaveCalendarDirty = false;
 
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
@@ -501,6 +507,8 @@ function isAllowedWhileRestricted(target) {
     "#defaultEmployeeRegisteredArea",
     "#returnToDefaultEmployeeButton",
     "#punchStatusButton",
+    "#akugyoLeaveCalendarButton",
+    "#akugyoLeaveCalendarViewer",
     ".sheet-area",
     ".add-staff-area",
     ".registration-edit-area",
@@ -543,6 +551,8 @@ function updateSelectedEmployeeAccessLock() {
     "#changeDefaultEmployeeButton",
     "#returnToDefaultEmployeeButton",
     "#punchStatusButton",
+    "#akugyoLeaveCalendarButton",
+    "#akugyoLeaveCalendarViewer",
     ".sheet-area button",
     ".sheet-area input",
     ".sheet-area select",
@@ -932,6 +942,8 @@ function applyAkugyoMode(enabled, showEntranceEffect) {
   const theme = document.querySelector('meta[name="theme-color"]');
   if (theme) theme.setAttribute("content", isAkugyoMode ? "#d60000" : "#f7b7c9");
 
+  updateAkugyoLeaveCalendarButtonState();
+  if (!isAkugyoMode) closeAkugyoLeaveCalendarViewer(true);
   if (isAkugyoMode && showEntranceEffect) showAkugyoEntranceEffect();
 }
 
@@ -1231,6 +1243,375 @@ async function saveAkugyoPunchStatusEdits(status, edits, triggerButton) {
   }
 }
 
+
+// ===== 悪行モード：休暇カレンダー =========================================
+function cloneAkugyoLeaveEntries(source) {
+  return Object.assign({}, source && typeof source === "object" ? source : {});
+}
+
+function getAkugyoLeaveEntriesSignature(source) {
+  const entries = source && typeof source === "object" ? source : {};
+  return Object.keys(entries).sort().map((dateKey) => `${dateKey}:${entries[dateKey]}`).join("|");
+}
+
+function buildAkugyoLeaveCompactPayload(entries) {
+  const leave = [];
+  const paid = [];
+  Object.keys(entries || {}).sort().forEach((dateKey) => {
+    const compactDate = String(dateKey).slice(5).replace("-", "");
+    if (!/^\d{4}$/.test(compactDate)) return;
+    if (entries[dateKey] === "休暇日") leave.push(compactDate);
+    if (entries[dateKey] === "有給") paid.push(compactDate);
+  });
+  return { leave: leave.join(","), paid: paid.join(",") };
+}
+
+function getAkugyoLeaveDateKey(year, monthIndex, day) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function getAkugyoLeaveWeekdayKey(date) {
+  return ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][date.getDay()] || "mon";
+}
+
+function getAkugyoLeaveDisplayType(dateKey, date) {
+  const manual = String(akugyoLeaveCalendarEntries[dateKey] || "").trim();
+  if (manual === "有給" || manual === "休暇日") return manual;
+  return akugyoLeaveCalendarScheduledOffWeekdays.includes(getAkugyoLeaveWeekdayKey(date)) ? "定休日" : "";
+}
+
+function setAkugyoLeaveCalendarDirty(dirty) {
+  akugyoLeaveCalendarDirty = Boolean(dirty);
+  const saveButton = document.getElementById("akugyoLeaveCalendarSaveButton");
+  if (saveButton) saveButton.disabled = Boolean(!akugyoLeaveCalendarDirty || isSending);
+  const status = document.getElementById("akugyoLeaveCalendarSaveStatus");
+  if (status) status.textContent = akugyoLeaveCalendarDirty ? "未保存の変更があります" : "保存済み";
+}
+
+function updateAkugyoLeaveCalendarButtonState() {
+  const button = document.getElementById("akugyoLeaveCalendarButton");
+  if (!button) return;
+  const employee = getDefaultEmployeeForAkugyoMode();
+  button.hidden = !isAkugyoMode;
+  button.disabled = Boolean(!isAkugyoMode || isSending || !employee);
+  button.title = employee
+    ? `${employee.no} ${employee.name} の年間休暇設定`
+    : "先にこの端末のデフォルトスタッフを登録してください";
+}
+
+function setupAkugyoLeaveCalendarButton() {
+  if (document.getElementById("akugyoLeaveCalendarButton")) {
+    updateAkugyoLeaveCalendarButtonState();
+    return;
+  }
+  const punchStatusButton = document.getElementById("punchStatusButton");
+  if (!punchStatusButton || !punchStatusButton.parentElement) return;
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.id = "akugyoLeaveCalendarButton";
+  button.className = "sheet-button akugyo-leave-calendar-button";
+  button.textContent = "休暇カレンダー";
+  button.hidden = true;
+  button.addEventListener("click", () => void openAkugyoLeaveCalendar());
+  punchStatusButton.insertAdjacentElement("afterend", button);
+  updateAkugyoLeaveCalendarButtonState();
+}
+
+function ensureAkugyoLeaveCalendarViewer() {
+  let overlay = document.getElementById("akugyoLeaveCalendarViewer");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "akugyoLeaveCalendarViewer";
+  overlay.className = "akugyo-leave-calendar-viewer";
+  overlay.hidden = true;
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+
+  const panel = document.createElement("div");
+  panel.className = "akugyo-leave-calendar-panel";
+
+  const header = document.createElement("div");
+  header.className = "akugyo-leave-calendar-header";
+  const headingWrap = document.createElement("div");
+  const title = document.createElement("strong");
+  title.textContent = "休暇カレンダー";
+  title.className = "akugyo-leave-calendar-title";
+  const staff = document.createElement("div");
+  staff.id = "akugyoLeaveCalendarStaff";
+  staff.className = "akugyo-leave-calendar-staff";
+  headingWrap.append(title, staff);
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "akugyo-leave-calendar-close";
+  close.textContent = "閉じる";
+  close.addEventListener("click", () => closeAkugyoLeaveCalendarViewer(false));
+  header.append(headingWrap, close);
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "akugyo-leave-calendar-toolbar";
+
+  const yearNav = document.createElement("div");
+  yearNav.className = "akugyo-leave-calendar-year-nav";
+  const prev = document.createElement("button");
+  prev.type = "button";
+  prev.textContent = "‹";
+  prev.setAttribute("aria-label", "前年");
+  const yearLabel = document.createElement("strong");
+  yearLabel.id = "akugyoLeaveCalendarYearLabel";
+  const next = document.createElement("button");
+  next.type = "button";
+  next.textContent = "›";
+  next.setAttribute("aria-label", "翌年");
+  yearNav.append(prev, yearLabel, next);
+
+  const modeArea = document.createElement("div");
+  modeArea.className = "akugyo-leave-calendar-mode-area";
+  ["休暇日", "有給", "解除"].forEach((mode) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.akugyoLeaveMode = mode;
+    button.textContent = mode;
+    button.addEventListener("click", () => {
+      akugyoLeaveCalendarEditMode = mode;
+      updateAkugyoLeaveModeButtons();
+    });
+    modeArea.appendChild(button);
+  });
+  toolbar.append(yearNav, modeArea);
+
+  const legend = document.createElement("div");
+  legend.className = "akugyo-leave-calendar-legend";
+  [["定休日", "scheduled-off"], ["休暇日", "leave"], ["有給", "paid"]].forEach(([label, type]) => {
+    const item = document.createElement("span");
+    item.className = `akugyo-leave-calendar-legend-item is-${type}`;
+    item.textContent = label;
+    legend.appendChild(item);
+  });
+
+  const note = document.createElement("div");
+  note.className = "akugyo-leave-calendar-note";
+  note.textContent = "上で「休暇日」「有給」「解除」を選んで日付をタップし、最後に保存してください。定休日は勤務予定から自動表示されます。";
+
+  const months = document.createElement("div");
+  months.id = "akugyoLeaveCalendarMonths";
+  months.className = "akugyo-leave-calendar-months";
+
+  const footer = document.createElement("div");
+  footer.className = "akugyo-leave-calendar-footer";
+  const saveStatus = document.createElement("span");
+  saveStatus.id = "akugyoLeaveCalendarSaveStatus";
+  saveStatus.textContent = "保存済み";
+  const save = document.createElement("button");
+  save.type = "button";
+  save.id = "akugyoLeaveCalendarSaveButton";
+  save.textContent = "年間設定を保存";
+  save.disabled = true;
+  save.addEventListener("click", () => void saveAkugyoLeaveCalendar());
+  footer.append(saveStatus, save);
+
+  panel.append(header, toolbar, legend, note, months, footer);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  prev.addEventListener("click", () => void changeAkugyoLeaveCalendarYear(-1));
+  next.addEventListener("click", () => void changeAkugyoLeaveCalendarYear(1));
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeAkugyoLeaveCalendarViewer(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !overlay.hidden) closeAkugyoLeaveCalendarViewer(false);
+  });
+
+  return overlay;
+}
+
+function updateAkugyoLeaveModeButtons() {
+  document.querySelectorAll("[data-akugyo-leave-mode]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.akugyoLeaveMode === akugyoLeaveCalendarEditMode);
+  });
+}
+
+function renderAkugyoLeaveCalendar() {
+  const yearLabel = document.getElementById("akugyoLeaveCalendarYearLabel");
+  if (yearLabel) yearLabel.textContent = `${akugyoLeaveCalendarYear}年`;
+  updateAkugyoLeaveModeButtons();
+
+  const root = document.getElementById("akugyoLeaveCalendarMonths");
+  if (!root) return;
+  root.innerHTML = "";
+  const todayKey = formatDateInput(new Date());
+  const weekdayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+
+  for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+    const monthCard = document.createElement("section");
+    monthCard.className = "akugyo-leave-month";
+    const monthTitle = document.createElement("h3");
+    monthTitle.textContent = `${monthIndex + 1}月`;
+    monthCard.appendChild(monthTitle);
+
+    const grid = document.createElement("div");
+    grid.className = "akugyo-leave-month-grid";
+    weekdayLabels.forEach((weekday, index) => {
+      const cell = document.createElement("div");
+      cell.className = `akugyo-leave-weekday${index === 0 ? " is-sun" : index === 6 ? " is-sat" : ""}`;
+      cell.textContent = weekday;
+      grid.appendChild(cell);
+    });
+
+    const firstDay = new Date(akugyoLeaveCalendarYear, monthIndex, 1).getDay();
+    for (let blank = 0; blank < firstDay; blank++) {
+      const spacer = document.createElement("span");
+      spacer.className = "akugyo-leave-day-spacer";
+      grid.appendChild(spacer);
+    }
+
+    const daysInMonth = new Date(akugyoLeaveCalendarYear, monthIndex + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(akugyoLeaveCalendarYear, monthIndex, day);
+      const dateKey = getAkugyoLeaveDateKey(akugyoLeaveCalendarYear, monthIndex, day);
+      const type = getAkugyoLeaveDisplayType(dateKey, date);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "akugyo-leave-day";
+      if (type === "定休日") button.classList.add("is-scheduled-off");
+      if (type === "休暇日") button.classList.add("is-leave");
+      if (type === "有給") button.classList.add("is-paid");
+      if (dateKey === todayKey) button.classList.add("is-today");
+      button.dataset.dateKey = dateKey;
+      button.title = type ? `${dateKey} ${type}` : dateKey;
+
+      const number = document.createElement("span");
+      number.className = "akugyo-leave-day-number";
+      number.textContent = String(day);
+      button.appendChild(number);
+      if (type) {
+        const badge = document.createElement("small");
+        badge.className = "akugyo-leave-day-badge";
+        badge.textContent = type;
+        button.appendChild(badge);
+      }
+
+      button.addEventListener("click", () => {
+        if (akugyoLeaveCalendarEditMode === "解除") delete akugyoLeaveCalendarEntries[dateKey];
+        else akugyoLeaveCalendarEntries[dateKey] = akugyoLeaveCalendarEditMode;
+        setAkugyoLeaveCalendarDirty(
+          getAkugyoLeaveEntriesSignature(akugyoLeaveCalendarEntries) !== getAkugyoLeaveEntriesSignature(akugyoLeaveCalendarSavedEntries)
+        );
+        renderAkugyoLeaveCalendar();
+      });
+      grid.appendChild(button);
+    }
+
+    monthCard.appendChild(grid);
+    root.appendChild(monthCard);
+  }
+  setAkugyoLeaveCalendarDirty(akugyoLeaveCalendarDirty);
+}
+
+async function loadAkugyoLeaveCalendarYear(year, triggerButton) {
+  const employee = getDefaultEmployeeForAkugyoMode();
+  if (!isAkugyoMode || !employee) throw new Error("悪行モードのデフォルトスタッフを確認してください。");
+  startSending(triggerButton, `${year}年の休暇カレンダーを読み込み中...`);
+  try {
+    const result = await postToScript({
+      mode: "getAkugyoLeaveCalendar",
+      employeeNo: employee.no,
+      name: employee.name,
+      sheetName: employee.sheetName,
+      year,
+      appVersion: APP_VERSION,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "休暇設定を取得できませんでした。");
+    akugyoLeaveCalendarYear = Number(result.year || year);
+    akugyoLeaveCalendarEntries = cloneAkugyoLeaveEntries(result.entries);
+    akugyoLeaveCalendarSavedEntries = cloneAkugyoLeaveEntries(result.entries);
+    akugyoLeaveCalendarScheduledOffWeekdays = Array.isArray(result.scheduledOffWeekdays) ? [...result.scheduledOffWeekdays] : [];
+    akugyoLeaveCalendarDirty = false;
+    const staffLabel = document.getElementById("akugyoLeaveCalendarStaff");
+    if (staffLabel) staffLabel.textContent = `${employee.no} ${employee.name}`;
+    renderAkugyoLeaveCalendar();
+  } finally {
+    stopSending(triggerButton);
+    updateAkugyoLeaveCalendarButtonState();
+  }
+}
+
+async function openAkugyoLeaveCalendar() {
+  if (isSending || !isAkugyoMode) return;
+  const employee = getDefaultEmployeeForAkugyoMode();
+  if (!employee) {
+    showMessage("この端末にデフォルトスタッフが登録されていません。", "error");
+    return;
+  }
+  resetAkugyoTapCounter();
+  const overlay = ensureAkugyoLeaveCalendarViewer();
+  const button = document.getElementById("akugyoLeaveCalendarButton");
+  try {
+    await loadAkugyoLeaveCalendarYear(new Date().getFullYear(), button);
+    overlay.hidden = false;
+    document.body.style.overflow = "hidden";
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+function closeAkugyoLeaveCalendarViewer(forceClose) {
+  const overlay = document.getElementById("akugyoLeaveCalendarViewer");
+  if (!overlay || overlay.hidden) return true;
+  if (!forceClose && akugyoLeaveCalendarDirty && !window.confirm("未保存の休暇設定があります。保存せず閉じますか？")) return false;
+  overlay.hidden = true;
+  document.body.style.overflow = "";
+  akugyoLeaveCalendarDirty = false;
+  return true;
+}
+
+async function changeAkugyoLeaveCalendarYear(delta) {
+  if (isSending) return;
+  if (akugyoLeaveCalendarDirty && !window.confirm("未保存の変更があります。保存せず年を移動しますか？")) return;
+  const nextYear = Math.max(2020, Math.min(2100, akugyoLeaveCalendarYear + Number(delta || 0)));
+  if (nextYear === akugyoLeaveCalendarYear) return;
+  try {
+    await loadAkugyoLeaveCalendarYear(nextYear, null);
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function saveAkugyoLeaveCalendar() {
+  if (isSending || !isAkugyoMode || !akugyoLeaveCalendarDirty) return;
+  const employee = getDefaultEmployeeForAkugyoMode();
+  const button = document.getElementById("akugyoLeaveCalendarSaveButton");
+  if (!employee) return;
+  resetAkugyoTapCounter();
+  startSending(button, `${akugyoLeaveCalendarYear}年の休暇設定を保存中...`);
+  try {
+    const result = await postToScript({
+      mode: "saveAkugyoLeaveCalendar",
+      employeeNo: employee.no,
+      name: employee.name,
+      sheetName: employee.sheetName,
+      year: akugyoLeaveCalendarYear,
+      calendar: buildAkugyoLeaveCompactPayload(akugyoLeaveCalendarEntries),
+      appVersion: APP_VERSION,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "休暇設定を保存できませんでした。");
+    akugyoLeaveCalendarEntries = cloneAkugyoLeaveEntries(result.entries);
+    akugyoLeaveCalendarSavedEntries = cloneAkugyoLeaveEntries(result.entries);
+    akugyoLeaveCalendarDirty = false;
+    renderAkugyoLeaveCalendar();
+    handleResult(result, `${akugyoLeaveCalendarYear}年の休暇設定を保存しました。`);
+  } catch (error) {
+    handleError(error);
+  } finally {
+    stopSending(button);
+    updateAkugyoLeaveCalendarButtonState();
+    setAkugyoLeaveCalendarDirty(akugyoLeaveCalendarDirty);
+  }
+}
+
 // ===== 悪行モードここまで ==================================================
 
 function setupSheetOpenSelection() {
@@ -1500,7 +1881,9 @@ function setupPunchStatusButton() {
   button.style.marginTop = "14px";
   button.addEventListener("click", openPunchStatusViewer);
   punchCard.appendChild(button);
+  setupAkugyoLeaveCalendarButton();
   updatePunchStatusButtonState();
+  updateAkugyoLeaveCalendarButtonState();
 }
 
 function updatePunchStatusButtonState() {
@@ -1513,6 +1896,7 @@ function updatePunchStatusButtonState() {
   punchStatusButton.title = defaultEmployee
     ? `デフォルト登録スタッフ：${defaultEmployee.no} ${defaultEmployee.name}`
     : "先にこの端末のデフォルトスタッフを登録してください";
+  updateAkugyoLeaveCalendarButtonState();
 }
 
 function ensurePunchStatusViewer() {
@@ -3178,6 +3562,7 @@ function canSend(action) {
 function startSending(button, text) {
   isSending = true;
   setControlsDisabled(true);
+  updateAkugyoLeaveCalendarButtonState();
   setButtonLoading(button, true);
   showMessage(text, "loading");
 }
@@ -3193,6 +3578,7 @@ function stopSending(button) {
   updateSelectedEmployeeAccessLock();
   updateNewStaffParkingFieldState();
   updateRegistrationEditControlsState();
+  updateAkugyoLeaveCalendarButtonState();
 }
 
 function setControlsDisabled(disabled) {

@@ -2792,3 +2792,156 @@ body.akugyo-mode .panel {
   }
 }
 
+
+
+/* ===== 悪行モード：年間休暇カレンダー ===== */
+.akugyo-leave-calendar-button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.akugyo-leave-calendar-viewer[hidden] { display: none !important; }
+.akugyo-leave-calendar-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 120000;
+  overflow: auto;
+  padding: 14px;
+  background: rgba(0, 0, 0, .58);
+}
+
+.akugyo-leave-calendar-panel {
+  width: min(1320px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+  overflow: hidden;
+}
+
+.akugyo-leave-calendar-header {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.akugyo-leave-calendar-title { font-size: 20px; }
+.akugyo-leave-calendar-staff { margin-top: 2px; color: #666; font-size: 12px; font-weight: 800; }
+.akugyo-leave-calendar-close,
+.akugyo-leave-calendar-year-nav button,
+.akugyo-leave-calendar-mode-area button,
+#akugyoLeaveCalendarSaveButton {
+  border: 1px solid #aaa;
+  border-radius: 9px;
+  background: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+.akugyo-leave-calendar-close { min-height: 40px; padding: 0 14px; }
+
+.akugyo-leave-calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px 8px;
+}
+.akugyo-leave-calendar-year-nav { display: flex; align-items: center; gap: 8px; }
+.akugyo-leave-calendar-year-nav button { width: 42px; min-height: 40px; font-size: 24px; }
+#akugyoLeaveCalendarYearLabel { min-width: 82px; text-align: center; font-size: 18px; }
+.akugyo-leave-calendar-mode-area { display: flex; gap: 6px; flex-wrap: wrap; }
+.akugyo-leave-calendar-mode-area button { min-height: 40px; padding: 0 14px; }
+.akugyo-leave-calendar-mode-area button.is-active { border-color: #8a0000; background: #b40000; color: #fff; }
+
+.akugyo-leave-calendar-legend {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 0 16px 8px;
+}
+.akugyo-leave-calendar-legend-item {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid transparent;
+}
+.akugyo-leave-calendar-legend-item.is-scheduled-off { background: #ececec; border-color: #c7c7c7; color: #555; }
+.akugyo-leave-calendar-legend-item.is-leave { background: #e5f1ff; border-color: #8ab7ea; color: #174d80; }
+.akugyo-leave-calendar-legend-item.is-paid { background: #e6f7ea; border-color: #83c995; color: #17632b; }
+.akugyo-leave-calendar-note { padding: 0 16px 10px; color: #666; font-size: 12px; font-weight: 700; }
+
+.akugyo-leave-calendar-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(275px, 1fr));
+  gap: 12px;
+  padding: 8px 16px 18px;
+}
+.akugyo-leave-month {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background: #fff;
+}
+.akugyo-leave-month h3 { margin: 0 0 8px; text-align: center; font-size: 16px; }
+.akugyo-leave-month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.akugyo-leave-weekday { padding: 3px 0; text-align: center; color: #666; font-size: 11px; font-weight: 900; }
+.akugyo-leave-weekday.is-sun { color: #b40000; }
+.akugyo-leave-weekday.is-sat { color: #245e9c; }
+.akugyo-leave-day-spacer { min-height: 48px; }
+.akugyo-leave-day {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  padding: 4px 2px;
+  border: 1px solid #ddd;
+  border-radius: 7px;
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+  overflow: hidden;
+}
+.akugyo-leave-day:hover { border-color: #9b5c5c; transform: translateY(-1px); }
+.akugyo-leave-day.is-today { outline: 2px solid #d60000; outline-offset: 1px; }
+.akugyo-leave-day.is-scheduled-off { background: #eeeeee; border-color: #c7c7c7; color: #555; }
+.akugyo-leave-day.is-leave { background: #e5f1ff; border-color: #8ab7ea; color: #174d80; }
+.akugyo-leave-day.is-paid { background: #e6f7ea; border-color: #83c995; color: #17632b; }
+.akugyo-leave-day-number { display: block; font-size: 13px; font-weight: 900; line-height: 1.1; }
+.akugyo-leave-day-badge { display: block; margin-top: 3px; font-size: 9px; font-weight: 900; line-height: 1.1; white-space: nowrap; }
+
+.akugyo-leave-calendar-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,.97);
+  border-top: 1px solid #ddd;
+}
+#akugyoLeaveCalendarSaveStatus { color: #666; font-size: 12px; font-weight: 800; }
+#akugyoLeaveCalendarSaveButton { min-height: 46px; padding: 0 18px; border: 0; background: #b40000; color: #fff; font-size: 15px; }
+#akugyoLeaveCalendarSaveButton:disabled { opacity: .45; cursor: default; }
+
+@media (max-width: 680px) {
+  .akugyo-leave-calendar-viewer { padding: 6px; }
+  .akugyo-leave-calendar-toolbar { align-items: stretch; flex-direction: column; }
+  .akugyo-leave-calendar-year-nav { justify-content: center; }
+  .akugyo-leave-calendar-mode-area { justify-content: center; }
+  .akugyo-leave-calendar-months { grid-template-columns: 1fr; padding: 6px 8px 14px; }
+  .akugyo-leave-calendar-footer { align-items: stretch; flex-direction: column; }
+  #akugyoLeaveCalendarSaveButton { width: 100%; }
+}
