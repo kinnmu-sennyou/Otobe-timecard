@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-leave-calendar-20260909-59";
+const APP_VERSION = "akugyo-leave-calendar-20260909-60";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -848,13 +848,16 @@ function setupAkugyoGesture() {
   akugyoGestureReady = true;
 
   document.addEventListener("pointerup", (event) => {
-    if (isAkugyoModeChanging || isSending) return;
+    if (isAkugyoModeChanging) return;
     const target = event.target;
     if (!target || !target.closest) return;
 
-    // 普段のボタン操作・入力操作では回数を進めません。
-    // 画面の余白や見出し等へのタップだけを数えます。
-    if (target.closest("button,a,input,select,textarea,summary,label,[role='dialog'],#punchStatusViewer,.fixed-page-navigation")) return;
+    // 打刻ボタンと修正打刻の「変更する」は、押した時点で必ずカウントを0へ戻す。
+    // 20回目が打刻操作だった場合にモード切替が先に走らないよう、ここで先に除外する。
+    if (target.closest("[data-action],#editUpdateButton")) {
+      resetAkugyoTapCounter();
+      return;
+    }
 
     const defaultNo = getDefaultEmployeeNo();
     if (!defaultNo || !EMPLOYEES.some((emp) => emp.no === defaultNo)) {
@@ -862,6 +865,7 @@ function setupAkugyoGesture() {
       return;
     }
 
+    // ボタン・入力欄・見出し・余白・ダイアログ内など、画面上のタップを基本すべて数える。
     akugyoTapCounter += 1;
     if (akugyoTapCounter >= AKUGYO_TAP_COUNT) {
       akugyoTapCounter = 0;
