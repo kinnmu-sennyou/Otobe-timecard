@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-leave-calendar-20260909-60";
+const APP_VERSION = "akugyo-hold5-20260910-60";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -24,8 +24,13 @@ let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
 let isSheetStaffListExpanded = false;
 
-const AKUGYO_TAP_COUNT = 20;
-let akugyoTapCounter = 0;
+const AKUGYO_HOLD_MS = 5000;
+const AKUGYO_HOLD_MOVE_CANCEL_PX = 18;
+let akugyoHoldTimer = null;
+let akugyoHoldPointerId = null;
+let akugyoHoldStartX = 0;
+let akugyoHoldStartY = 0;
+let akugyoHoldArmed = false;
 let isAkugyoMode = false;
 let isAkugyoModeChanging = false;
 let akugyoGestureReady = false;
@@ -847,35 +852,79 @@ function setupAkugyoGesture() {
   if (akugyoGestureReady) return;
   akugyoGestureReady = true;
 
-  document.addEventListener("pointerup", (event) => {
-    if (isAkugyoModeChanging) return;
-    const target = event.target;
-    if (!target || !target.closest) return;
+  const blockedSelector = "button,a,input,select,textarea,summary,label,[role='dialog'],#punchStatusViewer,#akugyoLeaveCalendarViewer,.fixed-page-navigation";
 
-    // 打刻ボタンと修正打刻の「変更する」は、押した時点で必ずカウントを0へ戻す。
-    // 20回目が打刻操作だった場合にモード切替が先に走らないよう、ここで先に除外する。
-    if (target.closest("[data-action],#editUpdateButton")) {
-      resetAkugyoTapCounter();
-      return;
-    }
+  function canStartAkugyoHold(event) {
+    if (isAkugyoModeChanging || isSending) return false;
+    if (event.pointerType === "mouse" && event.button !== 0) return false;
+    const target = event.target;
+    if (!target || !target.closest) return false;
+    if (target.closest(blockedSelector)) return false;
 
     const defaultNo = getDefaultEmployeeNo();
-    if (!defaultNo || !EMPLOYEES.some((emp) => emp.no === defaultNo)) {
-      akugyoTapCounter = 0;
-      return;
-    }
+    return Boolean(defaultNo && EMPLOYEES.some((emp) => emp.no === defaultNo));
+  }
 
-    // ボタン・入力欄・見出し・余白・ダイアログ内など、画面上のタップを基本すべて数える。
-    akugyoTapCounter += 1;
-    if (akugyoTapCounter >= AKUGYO_TAP_COUNT) {
-      akugyoTapCounter = 0;
-      void toggleAkugyoMode();
+  function cancelAkugyoHold() {
+    if (akugyoHoldTimer !== null) {
+      window.clearTimeout(akugyoHoldTimer);
+      akugyoHoldTimer = null;
     }
+    akugyoHoldPointerId = null;
+    akugyoHoldArmed = false;
+    document.body.classList.remove("akugyo-hold-arming");
+  }
+
+  document.addEventListener("pointerdown", (event) => {
+    cancelAkugyoHold();
+    if (!canStartAkugyoHold(event)) return;
+
+    akugyoHoldPointerId = event.pointerId;
+    akugyoHoldStartX = event.clientX;
+    akugyoHoldStartY = event.clientY;
+    akugyoHoldArmed = true;
+    document.body.classList.add("akugyo-hold-arming");
+
+    akugyoHoldTimer = window.setTimeout(() => {
+      if (!akugyoHoldArmed || akugyoHoldPointerId !== event.pointerId) return;
+      akugyoHoldTimer = null;
+      akugyoHoldArmed = false;
+      akugyoHoldPointerId = null;
+      document.body.classList.remove("akugyo-hold-arming");
+      void toggleAkugyoMode();
+    }, AKUGYO_HOLD_MS);
+  }, true);
+
+  document.addEventListener("pointermove", (event) => {
+    if (!akugyoHoldArmed || event.pointerId !== akugyoHoldPointerId) return;
+    const dx = event.clientX - akugyoHoldStartX;
+    const dy = event.clientY - akugyoHoldStartY;
+    if (Math.hypot(dx, dy) > AKUGYO_HOLD_MOVE_CANCEL_PX) cancelAkugyoHold();
+  }, true);
+
+  document.addEventListener("pointerup", (event) => {
+    if (event.pointerId === akugyoHoldPointerId) cancelAkugyoHold();
+  }, true);
+
+  document.addEventListener("pointercancel", (event) => {
+    if (event.pointerId === akugyoHoldPointerId) cancelAkugyoHold();
+  }, true);
+
+  document.addEventListener("contextmenu", (event) => {
+    if (!akugyoHoldArmed) return;
+    event.preventDefault();
   }, true);
 }
 
 function resetAkugyoTapCounter() {
-  akugyoTapCounter = 0;
+  // 既存の呼び出し箇所を変えず、打刻・修正時には長押し判定を確実に解除します。
+  if (akugyoHoldTimer !== null) {
+    window.clearTimeout(akugyoHoldTimer);
+    akugyoHoldTimer = null;
+  }
+  akugyoHoldPointerId = null;
+  akugyoHoldArmed = false;
+  document.body.classList.remove("akugyo-hold-arming");
 }
 
 function getDefaultEmployeeForAkugyoMode() {

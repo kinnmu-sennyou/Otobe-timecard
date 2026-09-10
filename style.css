@@ -2950,3 +2950,12 @@ body.akugyo-mode .panel {
   .akugyo-leave-month-modes { gap: 2px; }
   .akugyo-leave-month-modes button { padding: 0 6px; font-size: 9px; }
 }
+
+
+/* 悪行モード切替：5秒長押し中だけ、長押し選択・コールアウトを抑制 */
+body.akugyo-hold-arming,
+body.akugyo-hold-arming * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
