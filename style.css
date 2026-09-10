@@ -2959,3 +2959,62 @@ body.akugyo-hold-arming * {
   user-select: none !important;
   -webkit-touch-callout: none !important;
 }
+
+
+/* 悪行モード入口：データ初期化に見せた二段階確認（実データ操作は一切しない） */
+.akugyo-fake-reset-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 300000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .48);
+}
+
+.akugyo-fake-reset-confirm-panel {
+  width: min(92vw, 420px);
+  padding: 24px 20px 18px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+}
+
+.akugyo-fake-reset-confirm-message {
+  color: #222;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.akugyo-fake-reset-confirm-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.akugyo-fake-reset-confirm-choices button {
+  min-height: 48px;
+  border: 1px solid #aaa;
+  border-radius: 10px;
+  background: #fff;
+  color: #222;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.akugyo-fake-reset-confirm-yes {
+  border-color: #bdbdbd !important;
+  background: #f6f6f6 !important;
+}
+
+.akugyo-fake-reset-confirm-no {
+  border-color: #888 !important;
+}
+
+body.akugyo-confirm-open {
+  overflow: hidden;
+}

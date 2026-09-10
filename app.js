@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-hold5-20260910-60";
+const APP_VERSION = "akugyo-hold5-confirm2-20260910-61";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -891,7 +891,16 @@ function setupAkugyoGesture() {
       akugyoHoldArmed = false;
       akugyoHoldPointerId = null;
       document.body.classList.remove("akugyo-hold-arming");
-      void toggleAkugyoMode();
+
+      // 悪行モードから通常モードへ戻る時は、5秒長押しだけで即OFF。
+      if (isAkugyoMode) {
+        void toggleAkugyoMode();
+        return;
+      }
+
+      // 通常モードから悪行モードへ入る時だけ、偽装の二段階確認を表示します。
+      // この確認UIはデータ削除・初期化処理とは一切接続しません。
+      void requestAkugyoModeEntrance();
     }, AKUGYO_HOLD_MS);
   }, true);
 
@@ -914,6 +923,98 @@ function setupAkugyoGesture() {
     if (!akugyoHoldArmed) return;
     event.preventDefault();
   }, true);
+}
+
+async function requestAkugyoModeEntrance() {
+  if (isAkugyoMode || isAkugyoModeChanging || isSending) return;
+
+  const firstYes = await showAkugyoFakeResetConfirm({
+    message: "データを全てリセットしますか？",
+    confirmLabel: "はい",
+    cancelLabel: "いいえ",
+  });
+  if (!firstYes) {
+    resetAkugyoTapCounter();
+    return;
+  }
+
+  const secondYes = await showAkugyoFakeResetConfirm({
+    message: "本当にリセットしますか？",
+    confirmLabel: "はい",
+    cancelLabel: "いいえ",
+  });
+  if (!secondYes) {
+    resetAkugyoTapCounter();
+    return;
+  }
+
+  // 厳守：ここで行うのは悪行モードONだけ。データの削除・初期化は絶対に実行しません。
+  if (!isAkugyoMode) await toggleAkugyoMode();
+}
+
+function showAkugyoFakeResetConfirm({ message, confirmLabel = "はい", cancelLabel = "いいえ" }) {
+  return new Promise((resolve) => {
+    const old = document.getElementById("akugyoFakeResetConfirm");
+    if (old) old.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "akugyoFakeResetConfirm";
+    overlay.className = "akugyo-fake-reset-confirm";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", message);
+
+    const panel = document.createElement("div");
+    panel.className = "akugyo-fake-reset-confirm-panel";
+
+    const text = document.createElement("div");
+    text.className = "akugyo-fake-reset-confirm-message";
+    text.textContent = message;
+
+    const choices = document.createElement("div");
+    choices.className = "akugyo-fake-reset-confirm-choices";
+
+    const yes = document.createElement("button");
+    yes.type = "button";
+    yes.className = "akugyo-fake-reset-confirm-yes";
+    yes.textContent = confirmLabel;
+
+    const no = document.createElement("button");
+    no.type = "button";
+    no.className = "akugyo-fake-reset-confirm-no";
+    no.textContent = cancelLabel;
+
+    let finished = false;
+    function finish(answer) {
+      if (finished) return;
+      finished = true;
+      document.removeEventListener("keydown", onKeyDown, true);
+      overlay.remove();
+      document.body.classList.remove("akugyo-confirm-open");
+      resolve(Boolean(answer));
+    }
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      }
+    }
+
+    yes.addEventListener("click", () => finish(true));
+    no.addEventListener("click", () => finish(false));
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) finish(false);
+    });
+    document.addEventListener("keydown", onKeyDown, true);
+
+    choices.append(yes, no);
+    panel.append(text, choices);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+    document.body.classList.add("akugyo-confirm-open");
+    no.focus();
+  });
 }
 
 function resetAkugyoTapCounter() {
