@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-priority-sync-progress-punchfast-20260911-68";
+const APP_VERSION = "akugyo-parallel-background-fast-20260911-69";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -21,13 +21,10 @@ let selectedCorrectionAction = "出勤";
 let selectedBreakMode = "normal";
 let isSending = false;
 
-// 起動時などの裏情報取得だけを端末内で1本ずつ実行します。
-// 打刻・修正・モード切替・打刻状況確認などの通常操作は、
-// 裏取得キューを待たずApps Scriptへ直接送信します。
-const backgroundScriptRequestQueue = [];
+// 起動時の裏情報取得は軽量処理だけを並列実行します。
+// 通常操作も裏処理待ちにせずApps Scriptへ直接送信します。
 const FOREGROUND_SCRIPT_TIMEOUT_MS = 195000; // サーバー側の最大3分Lock待機より少し長く待つ
 const BACKGROUND_SCRIPT_TIMEOUT_MS = 30000;
-let isBackgroundScriptRequestRunning = false;
 
 let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
@@ -198,8 +195,8 @@ async function init() {
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
 
-  // 起動は端末内キャッシュで即操作可能にし、サーバー情報は裏で1本ずつ取得します。
-  // 待機中に打刻などの通常操作が入った場合は、次の裏取得より通常操作を優先します。
+  // 起動は端末内キャッシュで即操作可能にし、軽量なサーバー情報は裏で並列取得します。
+  // listStaffは起動時skipMaintenance=trueなので、重い勤務表保守処理は実行しません。
   void runStartupInformationSync();
 }
 
@@ -217,19 +214,21 @@ async function runStartupInformationSync() {
   ];
 
   showStartupSyncProgress(0, steps.length, "情報取得中...");
+  let completed = 0;
   let failedCount = 0;
 
-  for (let i = 0; i < steps.length; i++) {
+  await Promise.all(steps.map(async (step) => {
     try {
-      const succeeded = await steps[i].run();
+      const succeeded = await step.run();
       if (succeeded === false) failedCount += 1;
     } catch (error) {
       failedCount += 1;
-      console.warn(`${steps[i].label}のバックグラウンド取得に失敗しました。`, error);
+      console.warn(`${step.label}のバックグラウンド取得に失敗しました。`, error);
     } finally {
-      showStartupSyncProgress(i + 1, steps.length, "情報取得中...");
+      completed += 1;
+      showStartupSyncProgress(completed, steps.length, "情報取得中...");
     }
-  }
+  }));
 
   finishStartupSyncProgress(failedCount === 0);
 }
@@ -898,7 +897,6 @@ async function punchNow(triggerButton, action) {
     setUpdateStatus(`反映完了：${selectedEmployee.name}：${punchAction}`, "ok");
     if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${punchAction}を反映しました。`;
     initEditDateTime();
-    checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
   } catch (error) {
     setUpdateStatus(`反映失敗：${error.message}`, "error");
     handleError(error);
@@ -953,7 +951,9 @@ async function punchBySpecifiedDateTime() {
     handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新しました。`);
     setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${correctionAction}`, "ok");
     if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を反映しました。`;
-    checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
+    if (editDate.value === getYesterdayDateKey()) {
+      checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
+    }
   } catch (error) {
     setUpdateStatus(`修正反映失敗：${error.message}`, "error");
     handleError(error);
@@ -3973,31 +3973,13 @@ function setButtonLoading(button, isLoading) {
 function postToScript(payload, options) {
   const isBackground = Boolean(options && options.priority === "background");
 
-  // 通常操作は裏取得の完了を待たせない。
+  // 裏取得も直列キューには入れず直接送信します。
+  // 起動時listStaffはskipMaintenance=trueで軽量化済みです。
   // 複数端末・同時書込の排他制御はApps Script側のScriptLockで行います。
-  if (!isBackground) {
-    return executeScriptRequest(payload, FOREGROUND_SCRIPT_TIMEOUT_MS);
-  }
-
-  return new Promise((resolve, reject) => {
-    backgroundScriptRequestQueue.push({ payload, resolve, reject });
-    pumpBackgroundScriptRequestQueue();
-  });
-}
-
-function pumpBackgroundScriptRequestQueue() {
-  if (isBackgroundScriptRequestRunning) return;
-
-  const next = backgroundScriptRequestQueue.shift();
-  if (!next) return;
-
-  isBackgroundScriptRequestRunning = true;
-  executeScriptRequest(next.payload, BACKGROUND_SCRIPT_TIMEOUT_MS)
-    .then(next.resolve, next.reject)
-    .finally(() => {
-      isBackgroundScriptRequestRunning = false;
-      window.setTimeout(pumpBackgroundScriptRequestQueue, 0);
-    });
+  return executeScriptRequest(
+    payload,
+    isBackground ? BACKGROUND_SCRIPT_TIMEOUT_MS : FOREGROUND_SCRIPT_TIMEOUT_MS
+  );
 }
 
 function executeScriptRequest(payload, timeoutMs) {
