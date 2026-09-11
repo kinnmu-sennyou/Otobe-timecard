@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-priority-sync-progress-modefast-20260911-67";
+const APP_VERSION = "akugyo-priority-sync-progress-punchfast-20260911-68";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -21,13 +21,13 @@ let selectedCorrectionAction = "出勤";
 let selectedBreakMode = "normal";
 let isSending = false;
 
-// Apps Script通信は端末内で1本ずつ実行します。
-// 通常操作をforeground、起動時の情報取得をbackgroundとして、
-// 待機中は必ずforegroundを先に処理します。
-const scriptRequestQueues = { foreground: [], background: [] };
+// 起動時などの裏情報取得だけを端末内で1本ずつ実行します。
+// 打刻・修正・モード切替・打刻状況確認などの通常操作は、
+// 裏取得キューを待たずApps Scriptへ直接送信します。
+const backgroundScriptRequestQueue = [];
 const FOREGROUND_SCRIPT_TIMEOUT_MS = 195000; // サーバー側の最大3分Lock待機より少し長く待つ
 const BACKGROUND_SCRIPT_TIMEOUT_MS = 30000;
-let isScriptRequestRunning = false;
+let isBackgroundScriptRequestRunning = false;
 
 let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
@@ -3971,26 +3971,32 @@ function setButtonLoading(button, isLoading) {
 }
 
 function postToScript(payload, options) {
-  const priority = options && options.priority === "background" ? "background" : "foreground";
+  const isBackground = Boolean(options && options.priority === "background");
+
+  // 通常操作は裏取得の完了を待たせない。
+  // 複数端末・同時書込の排他制御はApps Script側のScriptLockで行います。
+  if (!isBackground) {
+    return executeScriptRequest(payload, FOREGROUND_SCRIPT_TIMEOUT_MS);
+  }
+
   return new Promise((resolve, reject) => {
-    scriptRequestQueues[priority].push({ payload, priority, resolve, reject });
-    pumpScriptRequestQueue();
+    backgroundScriptRequestQueue.push({ payload, resolve, reject });
+    pumpBackgroundScriptRequestQueue();
   });
 }
 
-function pumpScriptRequestQueue() {
-  if (isScriptRequestRunning) return;
+function pumpBackgroundScriptRequestQueue() {
+  if (isBackgroundScriptRequestRunning) return;
 
-  const next = scriptRequestQueues.foreground.shift() || scriptRequestQueues.background.shift();
+  const next = backgroundScriptRequestQueue.shift();
   if (!next) return;
 
-  isScriptRequestRunning = true;
-  executeScriptRequest(next.payload, next.priority === "background" ? BACKGROUND_SCRIPT_TIMEOUT_MS : FOREGROUND_SCRIPT_TIMEOUT_MS)
+  isBackgroundScriptRequestRunning = true;
+  executeScriptRequest(next.payload, BACKGROUND_SCRIPT_TIMEOUT_MS)
     .then(next.resolve, next.reject)
     .finally(() => {
-      isScriptRequestRunning = false;
-      // 同じ瞬間に通常操作と裏取得が待っている場合、必ず通常操作から流します。
-      window.setTimeout(pumpScriptRequestQueue, 0);
+      isBackgroundScriptRequestRunning = false;
+      window.setTimeout(pumpBackgroundScriptRequestQueue, 0);
     });
 }
 
