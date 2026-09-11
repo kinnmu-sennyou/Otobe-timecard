@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-priority-sync-progress-20260911-65";
+const APP_VERSION = "akugyo-priority-sync-progress-modefix-20260911-66";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -1011,15 +1011,8 @@ function setupAkugyoGesture() {
       akugyoHoldPointerId = null;
       document.body.classList.remove("akugyo-hold-arming");
 
-      // 悪行モードから通常モードへ戻る時は、5秒長押しだけで即OFF。
-      if (isAkugyoMode) {
-        void toggleAkugyoMode();
-        return;
-      }
-
-      // 通常モードから悪行モードへ入る時だけ、偽装の二段階確認を表示します。
-      // この確認UIはデータ削除・初期化処理とは一切接続しません。
-      void requestAkugyoModeEntrance();
+      // 別端末や起動直後の古い表示状態を信じず、長押し成立時にサーバーの現在状態を確認してから切り替えます。
+      void handleAkugyoHoldCompleted();
     }, AKUGYO_HOLD_MS);
   }, true);
 
@@ -1042,6 +1035,25 @@ function setupAkugyoGesture() {
     if (!akugyoHoldArmed) return;
     event.preventDefault();
   }, true);
+}
+
+
+async function handleAkugyoHoldCompleted() {
+  if (isAkugyoModeChanging || isSending) return;
+
+  // 悪行モードは端末共通のサーバー状態なので、切替直前に必ず最新状態を取得します。
+  // 起動直後や別端末で切り替えた直後でも、古いローカル状態を基準に逆方向へ送らないための保険です。
+  const synced = await syncAkugyoModeForDefaultEmployee(true);
+  if (!synced) return;
+
+  // サーバー上でONなら、従来どおり確認なしでOFF。
+  if (isAkugyoMode) {
+    await toggleAkugyoMode();
+    return;
+  }
+
+  // サーバー上でOFFなら、従来どおり偽装の二段階確認後にON。
+  await requestAkugyoModeEntrance();
 }
 
 async function requestAkugyoModeEntrance() {
