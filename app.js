@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-priority-sync-progress-punchfast-offgesture-20260911-69";
+const APP_VERSION = "akugyo-priority-sync-progress-punchfast-20260911-68";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -35,7 +35,6 @@ let isSheetStaffListExpanded = false;
 
 const AKUGYO_HOLD_MS = 5000;
 const AKUGYO_HOLD_MOVE_CANCEL_PX = 18;
-const AKUGYO_HOLD_MOVE_CANCEL_PX_WHILE_ON = 44;
 let akugyoHoldTimer = null;
 let akugyoHoldPointerId = null;
 let akugyoHoldStartX = 0;
@@ -1022,8 +1021,7 @@ function setupAkugyoGesture() {
     if (!akugyoHoldArmed || event.pointerId !== akugyoHoldPointerId) return;
     const dx = event.clientX - akugyoHoldStartX;
     const dy = event.clientY - akugyoHoldStartY;
-    const moveCancelPx = isAkugyoMode ? AKUGYO_HOLD_MOVE_CANCEL_PX_WHILE_ON : AKUGYO_HOLD_MOVE_CANCEL_PX;
-    if (Math.hypot(dx, dy) > moveCancelPx) cancelAkugyoHold();
+    if (Math.hypot(dx, dy) > AKUGYO_HOLD_MOVE_CANCEL_PX) cancelAkugyoHold();
   }, true);
 
   document.addEventListener("pointerup", (event) => {
@@ -1052,7 +1050,6 @@ async function handleAkugyoHoldCompleted() {
   }
 
   if (isAkugyoMode) {
-    showMessage("通常モードへ切替中...", "loading");
     await toggleAkugyoMode();
     return;
   }
