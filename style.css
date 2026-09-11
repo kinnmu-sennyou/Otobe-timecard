@@ -3018,3 +3018,55 @@ body.akugyo-hold-arming * {
 body.akugyo-confirm-open {
   overflow: hidden;
 }
+
+
+/* 起動時バックグラウンド情報取得：左下の小型進捗表示 */
+.startup-sync-indicator {
+  position: fixed;
+  left: max(10px, env(safe-area-inset-left));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  z-index: 250000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 20px);
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 0, 0, .14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .14);
+  color: #333;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+}
+
+.startup-sync-indicator[hidden] { display: none !important; }
+.startup-sync-indicator.is-finishing { opacity: .82; }
+.startup-sync-indicator.has-warning { color: #765400; }
+
+.startup-sync-ring {
+  --startup-sync-progress: 0%;
+  position: relative;
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: conic-gradient(currentColor var(--startup-sync-progress), rgba(0, 0, 0, .12) 0);
+}
+
+.startup-sync-ring::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.startup-sync-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

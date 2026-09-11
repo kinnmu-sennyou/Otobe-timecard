@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-hold5-confirm2-fastinit3-20260911-64";
+const APP_VERSION = "akugyo-priority-sync-progress-20260911-65";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -20,6 +20,15 @@ let selectedAction = "出勤";
 let selectedCorrectionAction = "出勤";
 let selectedBreakMode = "normal";
 let isSending = false;
+
+// Apps Script通信は端末内で1本ずつ実行します。
+// 通常操作をforeground、起動時の情報取得をbackgroundとして、
+// 待機中は必ずforegroundを先に処理します。
+const scriptRequestQueues = { foreground: [], background: [] };
+const FOREGROUND_SCRIPT_TIMEOUT_MS = 195000; // サーバー側の最大3分Lock待機より少し長く待つ
+const BACKGROUND_SCRIPT_TIMEOUT_MS = 30000;
+let isScriptRequestRunning = false;
+
 let selectedSheetEmployeeNos = new Set();
 let hasInitializedSheetSelection = false;
 let isSheetStaffListExpanded = false;
@@ -169,8 +178,8 @@ async function init() {
   const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
 
   if (initialEmployee) {
-    // デフォルト登録済み端末は、今までどおり登録スタッフを自動選択します。
-    selectEmployee(initialEmployee);
+    // 起動時の昨日確認は、他の初期情報とまとめて順番に取得します。
+    selectEmployee(initialEmployee, { skipYesterdayAlert: true });
   } else {
     // デフォルト未登録端末は、初回を必ず未選択にします。
     selectedEmployee = null;
@@ -188,17 +197,98 @@ async function init() {
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
 
-  // 起動をApps Script通信で待たせない。端末内キャッシュで先に操作可能にし、
-  // 最新スタッフ一覧と悪行モード状態はバックグラウンドで同期する。
-  void refreshEmployeesAfterStartup();
-  void syncAkugyoModeForDefaultEmployee(false);
+  // 起動は端末内キャッシュで即操作可能にし、サーバー情報は裏で1本ずつ取得します。
+  // 待機中に打刻などの通常操作が入った場合は、次の裏取得より通常操作を優先します。
+  void runStartupInformationSync();
 }
 
-async function refreshEmployeesAfterStartup() {
+async function runStartupInformationSync() {
+  const steps = [
+    { label: "スタッフ情報", run: () => refreshEmployeesAfterStartup({ priority: "background" }) },
+    { label: "モード情報", run: () => syncAkugyoModeForDefaultEmployee(false, { priority: "background" }) },
+    {
+      label: "前日打刻情報",
+      run: () => {
+        const employee = getDefaultEmployeeForAkugyoMode();
+        return checkYesterdayPunchAlert(employee, { priority: "background" });
+      },
+    },
+  ];
+
+  showStartupSyncProgress(0, steps.length, "情報取得中...");
+  let failedCount = 0;
+
+  for (let i = 0; i < steps.length; i++) {
+    try {
+      const succeeded = await steps[i].run();
+      if (succeeded === false) failedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.warn(`${steps[i].label}のバックグラウンド取得に失敗しました。`, error);
+    } finally {
+      showStartupSyncProgress(i + 1, steps.length, "情報取得中...");
+    }
+  }
+
+  finishStartupSyncProgress(failedCount === 0);
+}
+
+function ensureStartupSyncIndicator() {
+  let indicator = document.getElementById("startupSyncIndicator");
+  if (indicator) return indicator;
+
+  indicator = document.createElement("div");
+  indicator.id = "startupSyncIndicator";
+  indicator.className = "startup-sync-indicator";
+  indicator.hidden = true;
+  indicator.setAttribute("role", "status");
+  indicator.setAttribute("aria-live", "polite");
+
+  const ring = document.createElement("span");
+  ring.className = "startup-sync-ring";
+  ring.setAttribute("aria-hidden", "true");
+
+  const text = document.createElement("span");
+  text.className = "startup-sync-text";
+
+  indicator.append(ring, text);
+  document.body.appendChild(indicator);
+  return indicator;
+}
+
+function showStartupSyncProgress(completed, total, messageText) {
+  const indicator = ensureStartupSyncIndicator();
+  const ring = indicator.querySelector(".startup-sync-ring");
+  const text = indicator.querySelector(".startup-sync-text");
+  const safeTotal = Math.max(1, Number(total) || 1);
+  const safeCompleted = Math.max(0, Math.min(safeTotal, Number(completed) || 0));
+  const percent = Math.round((safeCompleted / safeTotal) * 100);
+
+  if (ring) ring.style.setProperty("--startup-sync-progress", `${percent}%`);
+  if (text) text.textContent = `${messageText || "情報取得中..."} ${safeCompleted}/${safeTotal}`;
+  indicator.classList.remove("is-finishing", "has-warning");
+  indicator.hidden = false;
+}
+
+function finishStartupSyncProgress(success) {
+  const indicator = ensureStartupSyncIndicator();
+  const text = indicator.querySelector(".startup-sync-text");
+  const ring = indicator.querySelector(".startup-sync-ring");
+  if (ring) ring.style.setProperty("--startup-sync-progress", "100%");
+  if (text) text.textContent = success ? "情報取得完了" : "情報取得終了";
+  indicator.classList.toggle("has-warning", !success);
+  indicator.classList.add("is-finishing");
+  window.setTimeout(() => {
+    indicator.hidden = true;
+    indicator.classList.remove("is-finishing", "has-warning");
+  }, success ? 900 : 1800);
+}
+
+async function refreshEmployeesAfterStartup(requestOptions) {
   const selectedNo = selectedEmployee ? selectedEmployee.no : "";
 
   try {
-    await refreshEmployeesFromScript(false, true);
+    await refreshEmployeesFromScript(false, true, requestOptions);
 
     if (selectedNo) {
       const refreshedSelected = EMPLOYEES.find((emp) => emp.no === selectedNo) || null;
@@ -215,8 +305,10 @@ async function refreshEmployeesAfterStartup() {
     updateSelectedEmployeeAccessLock();
     updatePunchStatusButtonState();
     updateAkugyoLeaveCalendarButtonState();
+    return true;
   } catch (error) {
     console.warn("スタッフ一覧のバックグラウンド更新に失敗したため、端末内の情報を継続して使用します。", error);
+    return false;
   }
 }
 
@@ -251,12 +343,12 @@ function sortEmployeesByEmployeeNo(employees) {
 }
 
 
-async function refreshEmployeesFromScript(showStatus, skipMaintenance) {
+async function refreshEmployeesFromScript(showStatus, skipMaintenance, requestOptions) {
   const result = await postToScript({
     mode: "listStaff",
     skipMaintenance: Boolean(skipMaintenance),
     appVersion: APP_VERSION,
-  });
+  }, requestOptions);
 
   if (!result || !result.ok || !Array.isArray(result.employees)) {
     throw new Error((result && result.message) || "スタッフ一覧を取得できませんでした。");
@@ -423,7 +515,7 @@ function registerSelectedEmployeeAsDefault() {
   updateDefaultEmployeeRegistrationUi();
   updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに登録しました。`, "ok");
-  void syncAkugyoModeForDefaultEmployee(false);
+  void syncAkugyoModeForDefaultEmployee(false, { priority: "background" });
 }
 
 function changeDefaultEmployee() {
@@ -453,7 +545,7 @@ ${nextText}
   updateDefaultEmployeeRegistrationUi();
   updateSelectedEmployeeAccessLock();
   showMessage(`${selectedEmployee.name}を、このブラウザの初期スタッフに変更しました。`, "ok");
-  void syncAkugyoModeForDefaultEmployee(false);
+  void syncAkugyoModeForDefaultEmployee(false, { priority: "background" });
 }
 
 function returnToDefaultEmployeeSelection() {
@@ -661,7 +753,7 @@ function selectCorrectionAction(action) {
   });
 }
 
-function selectEmployee(emp) {
+function selectEmployee(emp, options) {
   selectedEmployee = emp;
   selectedEmployeeText.textContent = `${emp.no} ${emp.name}`;
 
@@ -675,7 +767,7 @@ function selectEmployee(emp) {
 
   if (todayStatus) todayStatus.textContent = `${emp.name} を選択中です。`;
   showMessage(`${emp.name}を選択しました。`, "ok");
-  checkYesterdayPunchAlert(emp);
+  if (!(options && options.skipYesterdayAlert)) checkYesterdayPunchAlert(emp, { priority: "background" });
   resetRegistrationEditView(emp);
   updateSelectedEmployeeAccessLock();
 }
@@ -730,10 +822,10 @@ function getYesterdayDateKey() {
   return formatDateInput(date);
 }
 
-async function checkYesterdayPunchAlert(emp) {
+async function checkYesterdayPunchAlert(emp, requestOptions) {
   if (!emp || !isEndpointSet()) {
     setYesterdayAlertVisible(false);
-    return;
+    return true;
   }
 
   const checkedNo = emp.no;
@@ -746,7 +838,7 @@ async function checkYesterdayPunchAlert(emp) {
       sheetName: emp.sheetName,
       date: getYesterdayDateKey(),
       appVersion: APP_VERSION,
-    });
+    }, requestOptions);
 
     if (!selectedEmployee || selectedEmployee.no !== checkedNo) return;
 
@@ -755,11 +847,13 @@ async function checkYesterdayPunchAlert(emp) {
     } else {
       setYesterdayAlertVisible(false);
     }
+    return true;
   } catch (error) {
     console.warn("昨日の打刻忘れ確認に失敗しました。", error);
     if (selectedEmployee && selectedEmployee.no === checkedNo) {
       setYesterdayAlertVisible(false);
     }
+    return false;
   }
 }
 
@@ -803,7 +897,7 @@ async function punchNow(triggerButton, action) {
     setUpdateStatus(`反映完了：${selectedEmployee.name}：${punchAction}`, "ok");
     if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${punchAction}を反映しました。`;
     initEditDateTime();
-    checkYesterdayPunchAlert(selectedEmployee);
+    checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
   } catch (error) {
     setUpdateStatus(`反映失敗：${error.message}`, "error");
     handleError(error);
@@ -858,7 +952,7 @@ async function punchBySpecifiedDateTime() {
     handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新しました。`);
     setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${correctionAction}`, "ok");
     if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を反映しました。`;
-    checkYesterdayPunchAlert(selectedEmployee);
+    checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
   } catch (error) {
     setUpdateStatus(`修正反映失敗：${error.message}`, "error");
     handleError(error);
@@ -1058,11 +1152,11 @@ function getDefaultEmployeeForAkugyoMode() {
   return EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
 }
 
-async function syncAkugyoModeForDefaultEmployee(showFailure) {
+async function syncAkugyoModeForDefaultEmployee(showFailure, requestOptions) {
   const employee = getDefaultEmployeeForAkugyoMode();
   if (!employee || !isEndpointSet()) {
     applyAkugyoMode(false, false);
-    return;
+    return true;
   }
 
   try {
@@ -1072,13 +1166,15 @@ async function syncAkugyoModeForDefaultEmployee(showFailure) {
       name: employee.name,
       sheetName: employee.sheetName,
       appVersion: APP_VERSION,
-    });
+    }, requestOptions);
     if (!result || !result.ok) throw new Error((result && result.message) || "状態を取得できませんでした。");
     applyAkugyoMode(Boolean(result.enabled), false);
+    return true;
   } catch (error) {
     console.warn("mode sync failed", error);
     applyAkugyoMode(false, false);
     if (showFailure) showMessage(`切替状態を取得できませんでした：${error.message}`, "error");
+    return false;
   }
 }
 
@@ -3858,14 +3954,38 @@ function setButtonLoading(button, isLoading) {
   button.classList.toggle("is-loading", isLoading);
 }
 
-function postToScript(payload) {
+function postToScript(payload, options) {
+  const priority = options && options.priority === "background" ? "background" : "foreground";
+  return new Promise((resolve, reject) => {
+    scriptRequestQueues[priority].push({ payload, priority, resolve, reject });
+    pumpScriptRequestQueue();
+  });
+}
+
+function pumpScriptRequestQueue() {
+  if (isScriptRequestRunning) return;
+
+  const next = scriptRequestQueues.foreground.shift() || scriptRequestQueues.background.shift();
+  if (!next) return;
+
+  isScriptRequestRunning = true;
+  executeScriptRequest(next.payload, next.priority === "background" ? BACKGROUND_SCRIPT_TIMEOUT_MS : FOREGROUND_SCRIPT_TIMEOUT_MS)
+    .then(next.resolve, next.reject)
+    .finally(() => {
+      isScriptRequestRunning = false;
+      // 同じ瞬間に通常操作と裏取得が待っている場合、必ず通常操作から流します。
+      window.setTimeout(pumpScriptRequestQueue, 0);
+    });
+}
+
+function executeScriptRequest(payload, timeoutMs) {
   return new Promise((resolve, reject) => {
     const callbackName = `timecardCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
     const timer = window.setTimeout(() => {
       cleanup();
       reject(new Error("Apps Scriptから応答がありませんでした。デプロイURLと公開設定を確認してね。"));
-    }, 30000);
+    }, Math.max(30000, Number(timeoutMs) || 30000));
 
     function cleanup() {
       window.clearTimeout(timer);
