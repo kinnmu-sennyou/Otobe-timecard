@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-hold5-confirm2-fastinit-20260911-62";
+const APP_VERSION = "akugyo-hold5-confirm2-fastinit2-20260911-63";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -144,12 +144,6 @@ init();
 async function init() {
   loadEmployees();
 
-  try {
-    await refreshEmployeesFromScript(false);
-  } catch (error) {
-    console.warn("スタッフ一覧の取得に失敗したため、端末内の情報で表示します。", error);
-  }
-
   setupEmployeeSearchEvents();
   setupDefaultEmployeeRegistration();
   setupRestrictedSelectionGuard();
@@ -193,7 +187,37 @@ async function init() {
   selectCorrectionAction(selectedCorrectionAction);
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
+
+  // 起動をApps Script通信で待たせない。端末内キャッシュで先に操作可能にし、
+  // 最新スタッフ一覧と悪行モード状態はバックグラウンドで同期する。
+  void refreshEmployeesAfterStartup();
   void syncAkugyoModeForDefaultEmployee(false);
+}
+
+async function refreshEmployeesAfterStartup() {
+  const selectedNo = selectedEmployee ? selectedEmployee.no : "";
+
+  try {
+    await refreshEmployeesFromScript(false);
+
+    if (selectedNo) {
+      const refreshedSelected = EMPLOYEES.find((emp) => emp.no === selectedNo) || null;
+      if (refreshedSelected) {
+        selectedEmployee = refreshedSelected;
+        if (selectedEmployeeText) selectedEmployeeText.textContent = `${refreshedSelected.no} ${refreshedSelected.name}`;
+        if (retireTargetEmployee) retireTargetEmployee.textContent = `${refreshedSelected.no} ${refreshedSelected.name}`;
+      }
+    }
+
+    buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
+    renderSheetStaffChecklist();
+    updateDefaultEmployeeRegistrationUi();
+    updateSelectedEmployeeAccessLock();
+    updatePunchStatusButtonState();
+    updateAkugyoLeaveCalendarButtonState();
+  } catch (error) {
+    console.warn("スタッフ一覧のバックグラウンド更新に失敗したため、端末内の情報を継続して使用します。", error);
+  }
 }
 
 function loadEmployees() {
