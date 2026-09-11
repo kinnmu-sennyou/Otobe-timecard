@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-priority-sync-progress-modefix-20260911-66";
+const APP_VERSION = "akugyo-priority-sync-progress-modefast-20260911-67";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -42,6 +42,7 @@ let akugyoHoldStartY = 0;
 let akugyoHoldArmed = false;
 let isAkugyoMode = false;
 let isAkugyoModeChanging = false;
+let hasConfirmedAkugyoModeState = false;
 let akugyoGestureReady = false;
 let currentPunchStatusResult = null;
 let currentPunchStatusMonthLabel = "";
@@ -1041,18 +1042,18 @@ function setupAkugyoGesture() {
 async function handleAkugyoHoldCompleted() {
   if (isAkugyoModeChanging || isSending) return;
 
-  // 悪行モードは端末共通のサーバー状態なので、切替直前に必ず最新状態を取得します。
-  // 起動直後や別端末で切り替えた直後でも、古いローカル状態を基準に逆方向へ送らないための保険です。
-  const synced = await syncAkugyoModeForDefaultEmployee(true);
-  if (!synced) return;
+  // 起動後に一度もモード状態を正常取得できていない時だけ、切替前に確認します。
+  // 通常時は取得済みの状態を使い、余計なApps Script往復を増やしません。
+  if (!hasConfirmedAkugyoModeState) {
+    const synced = await syncAkugyoModeForDefaultEmployee(true);
+    if (!synced) return;
+  }
 
-  // サーバー上でONなら、従来どおり確認なしでOFF。
   if (isAkugyoMode) {
     await toggleAkugyoMode();
     return;
   }
 
-  // サーバー上でOFFなら、従来どおり偽装の二段階確認後にON。
   await requestAkugyoModeEntrance();
 }
 
@@ -1181,9 +1182,11 @@ async function syncAkugyoModeForDefaultEmployee(showFailure, requestOptions) {
     }, requestOptions);
     if (!result || !result.ok) throw new Error((result && result.message) || "状態を取得できませんでした。");
     applyAkugyoMode(Boolean(result.enabled), false);
+    hasConfirmedAkugyoModeState = true;
     return true;
   } catch (error) {
     console.warn("mode sync failed", error);
+    hasConfirmedAkugyoModeState = false;
     applyAkugyoMode(false, false);
     if (showFailure) showMessage(`切替状態を取得できませんでした：${error.message}`, "error");
     return false;
@@ -1208,6 +1211,7 @@ async function toggleAkugyoMode() {
     });
     if (!result || !result.ok) throw new Error((result && result.message) || "切り替えに失敗しました。");
     applyAkugyoMode(Boolean(result.enabled), Boolean(result.enabled));
+    hasConfirmedAkugyoModeState = true;
 
     // 打刻状況画面を開いたまま切り替えた場合だけ、同じデータを表示し直します。
     const viewer = document.getElementById("punchStatusViewer");
