@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-parallel-background-fast-20260911-69";
+const APP_VERSION = "akugyo-prod-safe-yesterday-cache-20260916-70";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -61,6 +61,7 @@ const defaultEmployeeUnregisteredArea = document.getElementById("defaultEmployee
 const defaultEmployeeRegisteredArea = document.getElementById("defaultEmployeeRegisteredArea");
 const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
 const returnToDefaultEmployeeButton = document.getElementById("returnToDefaultEmployeeButton");
+const refreshStaffListButton = document.getElementById("refreshStaffListButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
 const correctionActionButtons = document.getElementById("correctionActionButtons");
 const correctionWeek40OverInput = document.getElementById("correctionWeek40OverInput");
@@ -153,6 +154,7 @@ async function init() {
 
   setupEmployeeSearchEvents();
   setupDefaultEmployeeRegistration();
+  setupStaffListRefresh();
   setupRestrictedSelectionGuard();
   buildEmployeeSelector("");
   buildActionEvents();
@@ -176,7 +178,7 @@ async function init() {
   const initialEmployee = EMPLOYEES.find((emp) => emp.no === defaultNo) || null;
 
   if (initialEmployee) {
-    // 起動時の昨日確認は、他の初期情報とまとめて順番に取得します。
+    // 起動時の昨日確認は、悪行モード状態と一緒にバックグラウンド取得します。
     selectEmployee(initialEmployee, { skipYesterdayAlert: true });
   } else {
     // デフォルト未登録端末は、初回を必ず未選択にします。
@@ -195,14 +197,13 @@ async function init() {
   selectBreakMode(selectedBreakMode);
   setUpdateStatus("更新状況：待機中", "neutral");
 
-  // 起動は端末内キャッシュで即操作可能にし、軽量なサーバー情報は裏で並列取得します。
-  // listStaffは起動時skipMaintenance=trueなので、重い勤務表保守処理は実行しません。
+  // 起動時は端末内キャッシュのスタッフ一覧をそのまま使います。
+  // サーバー同期は、悪行モード状態と前日打刻忘れ確認だけを裏で取得します。
   void runStartupInformationSync();
 }
 
 async function runStartupInformationSync() {
   const steps = [
-    { label: "スタッフ情報", run: () => refreshEmployeesAfterStartup({ priority: "background" }) },
     { label: "モード情報", run: () => syncAkugyoModeForDefaultEmployee(false, { priority: "background" }) },
     {
       label: "前日打刻情報",
@@ -212,6 +213,12 @@ async function runStartupInformationSync() {
       },
     },
   ];
+
+  // 新しい端末など、スタッフ一覧キャッシュがまだ無い場合だけ初回同期します。
+  // 一度取得した後は、起動のたびに自動同期しません。
+  if (!hasUsableStaffListCache()) {
+    steps.unshift({ label: "スタッフ情報", run: () => refreshEmployeesAfterStartup({ priority: "background" }) });
+  }
 
   showStartupSyncProgress(0, steps.length, "情報取得中...");
   let completed = 0;
@@ -312,6 +319,17 @@ async function refreshEmployeesAfterStartup(requestOptions) {
   }
 }
 
+function hasUsableStaffListCache() {
+  try {
+    const raw = localStorage.getItem(EXTRA_EMPLOYEES_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.some((emp) => emp && emp.no && emp.name);
+  } catch (error) {
+    return false;
+  }
+}
+
 function loadEmployees() {
   const extras = readExtraEmployees();
   const map = new Map();
@@ -366,6 +384,53 @@ async function refreshEmployeesFromScript(showStatus, skipMaintenance, requestOp
 
   if (showStatus) {
     showMessage(result.message || "スタッフ一覧を更新しました。", "ok");
+  }
+}
+
+function setupStaffListRefresh() {
+  if (!refreshStaffListButton) return;
+  refreshStaffListButton.addEventListener("click", refreshStaffListManually);
+}
+
+async function refreshStaffListManually() {
+  if (!refreshStaffListButton || isSending) return;
+
+  const selectedNo = selectedEmployee ? selectedEmployee.no : "";
+  refreshStaffListButton.disabled = true;
+  refreshStaffListButton.textContent = "更新中...";
+
+  try {
+    // 手動更新はスタッフ一覧だけを取得し、重い勤務表保守処理は走らせません。
+    await refreshEmployeesFromScript(false, true);
+
+    if (selectedNo) {
+      const refreshedSelected = EMPLOYEES.find((emp) => emp.no === selectedNo) || null;
+      if (refreshedSelected) {
+        selectedEmployee = refreshedSelected;
+        if (selectedEmployeeText) selectedEmployeeText.textContent = `${refreshedSelected.no} ${refreshedSelected.name}`;
+        if (retireTargetEmployee) retireTargetEmployee.textContent = `${refreshedSelected.no} ${refreshedSelected.name}`;
+      } else {
+        selectedEmployee = null;
+        if (selectedEmployeeText) selectedEmployeeText.textContent = "未選択";
+        if (retireTargetEmployee) retireTargetEmployee.textContent = "未選択";
+        if (todayStatus) todayStatus.textContent = "スタッフを選択してください。";
+        resetRegistrationEditView(null);
+        setYesterdayAlertVisible(false);
+      }
+    }
+
+    buildEmployeeSelector(employeeSearchInput ? employeeSearchInput.value : "");
+    renderSheetStaffChecklist();
+    updateDefaultEmployeeRegistrationUi();
+    updateSelectedEmployeeAccessLock();
+    updatePunchStatusButtonState();
+    updateAkugyoLeaveCalendarButtonState();
+    showMessage("スタッフ一覧を最新情報に更新しました。", "ok");
+  } catch (error) {
+    handleError(error);
+  } finally {
+    refreshStaffListButton.disabled = false;
+    refreshStaffListButton.textContent = "スタッフ一覧更新";
   }
 }
 
