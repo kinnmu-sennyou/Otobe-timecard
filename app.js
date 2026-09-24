@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-prod-safe-yesterday-cache-20260916-70";
+const APP_VERSION = "akugyo-punch-delete-20260924-71";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -63,6 +63,7 @@ const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
 const returnToDefaultEmployeeButton = document.getElementById("returnToDefaultEmployeeButton");
 const refreshStaffListButton = document.getElementById("refreshStaffListButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
+const editDeleteButton = document.getElementById("editDeleteButton");
 const correctionActionButtons = document.getElementById("correctionActionButtons");
 const correctionWeek40OverInput = document.getElementById("correctionWeek40OverInput");
 const pdfButton = document.getElementById("pdfButton");
@@ -171,6 +172,7 @@ async function init() {
   setupAkugyoGesture();
 
   editUpdateButton.addEventListener("click", punchBySpecifiedDateTime);
+  if (editDeleteButton) editDeleteButton.addEventListener("click", deletePunchBySpecifiedDate);
   pdfButton.addEventListener("click", openStaffSheet);
   setupPunchStatusButton();
 
@@ -1027,6 +1029,56 @@ async function punchBySpecifiedDateTime() {
   }
 }
 
+async function deletePunchBySpecifiedDate() {
+  resetAkugyoTapCounter();
+  if (isRestrictedSelection()) {
+    showMessage("デフォルト登録スタッフ以外は打刻削除できません。", "error");
+    return;
+  }
+  if (!selectedEmployee || !isEndpointSet()) {
+    setUpdateStatus("削除失敗：スタッフ選択・接続設定を確認してください。", "error");
+    return;
+  }
+  if (!editDate.value) {
+    showMessage("削除する日付を指定してね。", "error");
+    setUpdateStatus("削除失敗：日付を指定してください。", "error");
+    return;
+  }
+
+  const targetDate = editDate.value;
+  const confirmed = window.confirm(`${selectedEmployee.name}：${targetDate} の打刻をすべて削除します。\n出勤・退勤・有給・出張など、その日の打刻記録が対象です。\nよろしいですか？`);
+  if (!confirmed) return;
+
+  startSending(editDeleteButton, "打刻削除中...");
+  setUpdateStatus(`${selectedEmployee.name}：${targetDate} の打刻を削除中...`, "loading");
+  pdfLinkArea.innerHTML = "";
+
+  try {
+    const result = await postToScript({
+      mode: "deletePunchDay",
+      name: selectedEmployee.name,
+      employeeNo: selectedEmployee.no,
+      sheetName: selectedEmployee.sheetName,
+      date: targetDate,
+      appVersion: APP_VERSION,
+      userAgent: navigator.userAgent,
+    });
+    if (!result || !result.ok) throw new Error((result && result.message) || "削除に失敗しました。");
+
+    handleResult(result, `${selectedEmployee.name}：${targetDate} の打刻を削除しました。`);
+    setUpdateStatus(`削除完了：${selectedEmployee.name}：${targetDate}`, "ok");
+    if (todayStatus) todayStatus.textContent = `${selectedEmployee.name}：${targetDate} の打刻を削除しました。`;
+    if (targetDate === getYesterdayDateKey()) {
+      checkYesterdayPunchAlert(selectedEmployee, { priority: "background" });
+    }
+  } catch (error) {
+    setUpdateStatus(`削除失敗：${error.message}`, "error");
+    handleError(error);
+  } finally {
+    stopSending(editDeleteButton);
+  }
+}
+
 function isSpecialCorrectionAction(action) {
   return action === "有給" || action === "出張";
 }
@@ -1299,6 +1351,7 @@ function applyAkugyoMode(enabled, showEntranceEffect) {
   if (theme) theme.setAttribute("content", isAkugyoMode ? "#d60000" : "#f7b7c9");
 
   updateAkugyoLeaveCalendarButtonState();
+  if (editDeleteButton) editDeleteButton.hidden = isAkugyoMode;
   if (!isAkugyoMode) closeAkugyoLeaveCalendarViewer(true);
   if (isAkugyoMode && showEntranceEffect) showAkugyoEntranceEffect();
 }
@@ -1338,11 +1391,13 @@ function adjustAkugyoTime(value, deltaMinutes) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-function createAkugyoTimeEditor(initialValue, onChange) {
+function createAkugyoTimeEditor(initialValue, onChange, options) {
+  const opts = options && typeof options === "object" ? options : {};
+  const hasDelete = typeof opts.onDeleteToggle === "function";
   const shell = document.createElement("div");
   Object.assign(shell.style, {
     display: "grid",
-    gridTemplateColumns: "48px 88px 48px",
+    gridTemplateColumns: hasDelete ? "48px 48px 88px 48px" : "48px 88px 48px",
     gap: "4px",
     alignItems: "center",
     justifyContent: "center",
@@ -1359,6 +1414,12 @@ function createAkugyoTimeEditor(initialValue, onChange) {
   const plus = document.createElement("button");
   plus.type = "button";
   plus.textContent = "+30";
+  const deleteButton = hasDelete ? document.createElement("button") : null;
+  if (deleteButton) {
+    deleteButton.type = "button";
+    deleteButton.textContent = "削除";
+    deleteButton.setAttribute("aria-label", "この日の打刻を削除");
+  }
 
   [minus, plus].forEach((button) => {
     Object.assign(button.style, {
@@ -1373,6 +1434,19 @@ function createAkugyoTimeEditor(initialValue, onChange) {
       cursor: "pointer",
     });
   });
+  if (deleteButton) {
+    Object.assign(deleteButton.style, {
+      minHeight: "34px",
+      padding: "2px 5px",
+      border: "1px solid #8d2b2b",
+      borderRadius: "7px",
+      background: "#8d2b2b",
+      color: "#fff",
+      fontSize: "12px",
+      fontWeight: "900",
+      cursor: "pointer",
+    });
+  }
   Object.assign(input.style, {
     width: "88px",
     minHeight: "34px",
@@ -1388,6 +1462,22 @@ function createAkugyoTimeEditor(initialValue, onChange) {
     const normalized = normalizeAkugyoClientTime(input.value);
     onChange(normalized);
   }
+  function setDeletedState(deleted) {
+    const isDeleted = Boolean(deleted);
+    input.value = isDeleted ? "" : normalizeAkugyoClientTime(initialValue);
+    minus.disabled = isDeleted;
+    input.disabled = isDeleted;
+    plus.disabled = isDeleted;
+    minus.style.opacity = isDeleted ? "0.4" : "1";
+    input.style.opacity = isDeleted ? "0.55" : "1";
+    plus.style.opacity = isDeleted ? "0.4" : "1";
+    if (deleteButton) {
+      deleteButton.dataset.deleted = isDeleted ? "true" : "false";
+      deleteButton.textContent = isDeleted ? "取消" : "削除";
+      deleteButton.style.background = isDeleted ? "#666" : "#8d2b2b";
+      deleteButton.style.borderColor = isDeleted ? "#666" : "#8d2b2b";
+    }
+  }
   input.addEventListener("input", emit);
   input.addEventListener("change", emit);
   minus.addEventListener("click", () => {
@@ -1402,8 +1492,46 @@ function createAkugyoTimeEditor(initialValue, onChange) {
     input.value = next;
     emit();
   });
+  if (deleteButton) {
+    deleteButton.addEventListener("click", () => {
+      const nextDeleted = deleteButton.dataset.deleted !== "true";
+      opts.onDeleteToggle(nextDeleted);
+    });
+  }
 
-  shell.append(minus, input, plus);
+  if (deleteButton) shell.append(minus, deleteButton, input, plus);
+  else shell.append(minus, input, plus);
+  shell.setDeletedState = setDeletedState;
+  return shell;
+}
+
+function createAkugyoSpecialDayDeleteEditor(initialLabel, onDeleteToggle) {
+  const shell = document.createElement("div");
+  Object.assign(shell.style, { display: "flex", gap: "6px", alignItems: "center", justifyContent: "center" });
+  const label = document.createElement("span");
+  label.textContent = initialLabel;
+  label.style.fontWeight = "800";
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = "削除";
+  Object.assign(button.style, {
+    minHeight: "34px", padding: "2px 8px", border: "1px solid #8d2b2b", borderRadius: "7px",
+    background: "#8d2b2b", color: "#fff", fontSize: "12px", fontWeight: "900", cursor: "pointer",
+  });
+  function setDeletedState(deleted) {
+    const isDeleted = Boolean(deleted);
+    label.textContent = isDeleted ? "" : initialLabel;
+    button.dataset.deleted = isDeleted ? "true" : "false";
+    button.textContent = isDeleted ? "取消" : "削除";
+    button.style.background = isDeleted ? "#666" : "#8d2b2b";
+    button.style.borderColor = isDeleted ? "#666" : "#8d2b2b";
+  }
+  button.addEventListener("click", () => {
+    const nextDeleted = button.dataset.deleted !== "true";
+    onDeleteToggle(nextDeleted);
+  });
+  shell.append(label, button);
+  shell.setDeletedState = setDeletedState;
   return shell;
 }
 
@@ -1461,7 +1589,8 @@ function renderAkugyoPunchStatusEmployee(status, content) {
   let saveButton = null;
   function updateEdit(dateKey, field, currentValue, initialValue) {
     if (!dateKey) return;
-    const current = edits.get(dateKey) || { dateKey, startChanged: false, endChanged: false, startTime: "", endTime: "" };
+    const current = edits.get(dateKey) || { dateKey, deleteDay: false, startChanged: false, endChanged: false, startTime: "", endTime: "" };
+    if (current.deleteDay) return;
     const normalizedCurrent = normalizeAkugyoClientTime(currentValue);
     const normalizedInitial = normalizeAkugyoClientTime(initialValue);
     if (field === "start") {
@@ -1473,6 +1602,16 @@ function renderAkugyoPunchStatusEmployee(status, content) {
     }
     if (!current.startChanged && !current.endChanged) edits.delete(dateKey);
     else edits.set(dateKey, current);
+    if (saveButton) saveButton.disabled = edits.size === 0 || isSending;
+  }
+
+  function updateDeleteEdit(dateKey, deleted) {
+    if (!dateKey) return;
+    if (deleted) {
+      edits.set(dateKey, { dateKey, deleteDay: true, startChanged: false, endChanged: false, startTime: "", endTime: "" });
+    } else {
+      edits.delete(dateKey);
+    }
     if (saveButton) saveButton.disabled = edits.size === 0 || isSending;
   }
 
@@ -1498,12 +1637,29 @@ function renderAkugyoPunchStatusEmployee(status, content) {
     [startTd, endTd].forEach((td) => Object.assign(td.style, { padding: "5px", border: "1px solid #e1e1e1", whiteSpace: "nowrap", textAlign: "center" }));
 
     if (isSpecial) {
-      startTd.textContent = startText;
-      startTd.style.fontWeight = "800";
+      const specialEditor = createAkugyoSpecialDayDeleteEditor(startText, (deleted) => {
+        updateDeleteEdit(dateKey, deleted);
+        specialEditor.setDeletedState(deleted);
+        endTd.textContent = deleted ? "" : endText;
+      });
+      startTd.appendChild(specialEditor);
       endTd.textContent = endText;
     } else {
-      startTd.appendChild(createAkugyoTimeEditor(startText, (value) => updateEdit(dateKey, "start", value, startText)));
-      endTd.appendChild(createAkugyoTimeEditor(endText, (value) => updateEdit(dateKey, "end", value, endText)));
+      let startEditor = null;
+      let endEditor = null;
+      const toggleDayDelete = (deleted) => {
+        updateDeleteEdit(dateKey, deleted);
+        if (startEditor && typeof startEditor.setDeletedState === "function") startEditor.setDeletedState(deleted);
+        if (endEditor && typeof endEditor.setDeletedState === "function") endEditor.setDeletedState(deleted);
+      };
+      startEditor = createAkugyoTimeEditor(
+        startText,
+        (value) => updateEdit(dateKey, "start", value, startText),
+        { onDeleteToggle: toggleDayDelete }
+      );
+      endEditor = createAkugyoTimeEditor(endText, (value) => updateEdit(dateKey, "end", value, endText));
+      startTd.appendChild(startEditor);
+      endTd.appendChild(endEditor);
     }
     tr.append(startTd, endTd);
 
@@ -1520,7 +1676,7 @@ function renderAkugyoPunchStatusEmployee(status, content) {
   content.appendChild(scroller);
 
   const note = document.createElement("div");
-  note.textContent = "出勤・退勤は±30分または時刻の直接入力で変更し、最後にまとめて反映します。計算欄は反映後に更新されます。";
+  note.textContent = "出勤・退勤は±30分または時刻の直接入力で変更できます。削除を押すとその日は未打刻表示になり、最後に「変更する」でまとめて反映します。計算欄は反映後に更新されます。";
   Object.assign(note.style, { marginTop: "10px", color: "#7c1111", fontSize: "12px", fontWeight: "700" });
   content.appendChild(note);
 
@@ -1557,12 +1713,13 @@ async function saveAkugyoPunchStatusEdits(status, edits, triggerButton) {
 
   const payloadEdits = Array.from(edits.values()).map((edit) => ({
     dateKey: edit.dateKey,
+    deleteDay: Boolean(edit.deleteDay),
     startChanged: Boolean(edit.startChanged),
     endChanged: Boolean(edit.endChanged),
     startTime: edit.startTime,
     endTime: edit.endTime,
   }));
-  if (payloadEdits.some((edit) => (edit.startChanged && !edit.startTime) || (edit.endChanged && !edit.endTime))) {
+  if (payloadEdits.some((edit) => !edit.deleteDay && ((edit.startChanged && !edit.startTime) || (edit.endChanged && !edit.endTime)))) {
     showMessage("変更する時刻は空欄にせず、HH:mmで入力してください。", "error");
     return;
   }
@@ -1590,8 +1747,11 @@ async function saveAkugyoPunchStatusEdits(status, edits, triggerButton) {
     });
     if (!refreshed || !refreshed.ok) throw new Error((refreshed && refreshed.message) || "変更後の状態を取得できませんでした。");
 
-    handleResult(result, `${result.changedDays || payloadEdits.length}日分の打刻時刻を変更しました。`);
+    handleResult(result, `${result.changedDays || payloadEdits.length}日分の打刻内容を変更しました。`);
     showPunchStatusViewer(refreshed, currentPunchStatusMonthLabel || getSheetTargetMonthLabel());
+    if (payloadEdits.some((edit) => edit.dateKey === getYesterdayDateKey())) {
+      checkYesterdayPunchAlert(employee, { priority: "background" });
+    }
   } catch (error) {
     handleError(error);
   } finally {
@@ -3978,6 +4138,7 @@ function setControlsDisabled(disabled) {
   actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
   editUpdateButton.disabled = disabled;
+  if (editDeleteButton) editDeleteButton.disabled = disabled;
   editDate.disabled = disabled;
   editTime.disabled = disabled;
 
