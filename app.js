@@ -1499,7 +1499,7 @@ function createAkugyoTimeEditor(initialValue, onChange, options) {
     });
   }
 
-  if (deleteButton) shell.append(minus, deleteButton, input, plus);
+  if (deleteButton) shell.append(deleteButton, minus, input, plus);
   else shell.append(minus, input, plus);
   shell.setDeletedState = setDeletedState;
   return shell;
