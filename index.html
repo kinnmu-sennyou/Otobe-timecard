@@ -202,13 +202,28 @@
 
           <div class="parking-location-fields">
             <label class="add-staff-field add-staff-parking-field">
-              駐車場番号
+              基本の駐車場番号
               <input type="text" id="newParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2">
             </label>
             <label class="warehouse-under-field">
               <input type="checkbox" id="newWarehouseUnder" class="warehouse-under-checkbox">
               <span>乙部在庫倉庫下</span>
             </label>
+          </div>
+          <div class="parking-weekday-setting">
+            <button type="button" id="newParkingWeekdayToggle" class="parking-weekday-toggle" aria-expanded="false">駐車場番号を曜日ごとに設定</button>
+            <div id="newParkingWeekdayPanel" class="parking-weekday-panel" hidden>
+              <p class="small parking-weekday-note">未入力の曜日は上の基本の駐車場番号を使用します。</p>
+              <div class="parking-weekday-grid" aria-label="新規スタッフの曜日別駐車場番号">
+                <label><span>月</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="mon" placeholder="基本"></label>
+                <label><span>火</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="tue" placeholder="基本"></label>
+                <label><span>水</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="wed" placeholder="基本"></label>
+                <label><span>木</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="thu" placeholder="基本"></label>
+                <label><span>金</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="fri" placeholder="基本"></label>
+                <label><span>土</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="sat" placeholder="基本"></label>
+                <label><span>日</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="sun" placeholder="基本"></label>
+              </div>
+            </div>
           </div>
 
           <label class="add-staff-field add-staff-start-field">
@@ -295,13 +310,28 @@
 
           <div class="parking-location-fields">
             <label class="add-staff-field add-staff-parking-field">
-              駐車場番号
+              基本の駐車場番号
               <input type="text" id="editRegistrationParkingNumber" inputmode="numeric" placeholder="例：13" maxlength="2">
             </label>
             <label class="warehouse-under-field">
               <input type="checkbox" id="editRegistrationWarehouseUnder" class="warehouse-under-checkbox">
               <span>乙部在庫倉庫下</span>
             </label>
+          </div>
+          <div class="parking-weekday-setting">
+            <button type="button" id="editParkingWeekdayToggle" class="parking-weekday-toggle" aria-expanded="false">駐車場番号を曜日ごとに設定</button>
+            <div id="editParkingWeekdayPanel" class="parking-weekday-panel" hidden>
+              <p class="small parking-weekday-note">未入力の曜日は上の基本の駐車場番号を使用します。</p>
+              <div class="parking-weekday-grid" aria-label="登録内容変更の曜日別駐車場番号">
+                <label><span>月</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="mon" placeholder="基本"></label>
+                <label><span>火</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="tue" placeholder="基本"></label>
+                <label><span>水</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="wed" placeholder="基本"></label>
+                <label><span>木</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="thu" placeholder="基本"></label>
+                <label><span>金</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="fri" placeholder="基本"></label>
+                <label><span>土</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="sat" placeholder="基本"></label>
+                <label><span>日</span><input type="text" inputmode="numeric" maxlength="2" data-parking-day="sun" placeholder="基本"></label>
+              </div>
+            </div>
           </div>
 
           <label class="add-staff-field add-staff-start-field">
@@ -447,6 +477,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=akugyo-punch-special-20260924-72"></script>
+<script src="./app.js?v=parking-by-weekday-20260928-73"></script>
 </body>
 </html>

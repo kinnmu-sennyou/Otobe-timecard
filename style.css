@@ -3070,3 +3070,99 @@ body.akugyo-confirm-open {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+
+/* ===== 2026-09-28: 駐車場番号の曜日別設定 ===== */
+.parking-weekday-setting {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.parking-weekday-toggle {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #d8c0ca;
+  border-radius: 12px;
+  background: #fffafd;
+  color: #64283b;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.parking-weekday-toggle[aria-expanded="true"] {
+  border-color: #c98ba5;
+  background: #fff1f6;
+}
+
+.parking-weekday-toggle:disabled {
+  opacity: .55;
+  cursor: default;
+}
+
+.parking-weekday-panel {
+  padding: 10px;
+  border: 1px dashed #d8c0ca;
+  border-radius: 14px;
+  background: #fffafd;
+}
+
+.parking-weekday-panel[hidden] {
+  display: none !important;
+}
+
+.parking-weekday-note {
+  margin: 0 0 8px;
+  text-align: left;
+}
+
+.parking-weekday-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(62px, 1fr));
+  gap: 6px;
+}
+
+.parking-weekday-grid label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: #64283b;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.parking-weekday-grid input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 5px;
+  border: 1px solid #d8c0ca;
+  border-radius: 9px;
+  background: #fff;
+  color: #443940;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.parking-weekday-grid input:disabled {
+  background: #f3eff1;
+  opacity: .7;
+}
+
+@media (max-width: 720px) {
+  .parking-weekday-grid {
+    grid-template-columns: repeat(4, minmax(58px, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .parking-weekday-grid {
+    grid-template-columns: repeat(3, minmax(58px, 1fr));
+  }
+}

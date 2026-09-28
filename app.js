@@ -1,5 +1,5 @@
 const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbykqf1T967tzrQ_A63vHsMfrNp_QBuoaRAfOvchF0MEpZ1ob5xgGXeNbglUvTj-rw8uKg/exec";
-const APP_VERSION = "akugyo-punch-special-20260924-72";
+const APP_VERSION = "parking-by-weekday-20260928-73";
 
 const BASE_EMPLOYEES = [
   { name: "手塚　慎之介", no: "022", sheetName: "手塚　慎之介", sheetUrl: "https://docs.google.com/spreadsheets/d/1m4tl85YA7-5f_qj8oxV2WRgyseEx1P_Jzfrb4Kr6YAg/edit?gid=330057484#gid=330057484" },
@@ -90,6 +90,8 @@ const newEmployeeNo = document.getElementById("newEmployeeNo");
 const newCommuteMethod = document.getElementById("newCommuteMethod");
 const newParkingNumber = document.getElementById("newParkingNumber");
 const newWarehouseUnder = document.getElementById("newWarehouseUnder");
+const newParkingWeekdayToggle = document.getElementById("newParkingWeekdayToggle");
+const newParkingWeekdayPanel = document.getElementById("newParkingWeekdayPanel");
 const newStartTime = document.getElementById("newStartTime");
 const newEndTime = document.getElementById("newEndTime");
 const newBreakMinutes = document.getElementById("newBreakMinutes");
@@ -104,6 +106,8 @@ const editRegistrationEmployeeNo = document.getElementById("editRegistrationEmpl
 const editRegistrationCommuteMethod = document.getElementById("editRegistrationCommuteMethod");
 const editRegistrationParkingNumber = document.getElementById("editRegistrationParkingNumber");
 const editRegistrationWarehouseUnder = document.getElementById("editRegistrationWarehouseUnder");
+const editParkingWeekdayToggle = document.getElementById("editParkingWeekdayToggle");
+const editParkingWeekdayPanel = document.getElementById("editParkingWeekdayPanel");
 const editRegistrationStartTime = document.getElementById("editRegistrationStartTime");
 const editRegistrationEndTime = document.getElementById("editRegistrationEndTime");
 const editRegistrationBreakMinutes = document.getElementById("editRegistrationBreakMinutes");
@@ -3653,6 +3657,7 @@ function setupAddStaffForm() {
       newParkingNumber.value = normalizeParkingNumberInput(newParkingNumber.value);
     });
   }
+  setupParkingWeekdayPanel(newParkingWeekdayToggle, newParkingWeekdayPanel, newParkingNumber);
   updateNewStaffParkingFieldState();
   updateRegistrationEditControlsState();
 }
@@ -3669,6 +3674,7 @@ function updateNewStaffParkingFieldState() {
   newParkingNumber.required = isCar && !usesWarehouseUnder;
   if (!isCar || usesWarehouseUnder) newParkingNumber.value = "";
   newParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
+  setParkingWeekdayControlState(newParkingWeekdayToggle, newParkingWeekdayPanel, newParkingNumber, isCar && !usesWarehouseUnder);
 }
 
 function normalizeParkingNumberInput(value) {
@@ -3676,6 +3682,86 @@ function normalizeParkingNumberInput(value) {
     .replace(/[０-９]/g, (char) => String(char.charCodeAt(0) - 0xFEE0))
     .replace(/\D/g, "")
     .slice(0, 2);
+}
+
+
+const PARKING_WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+function getParkingWeekdayInputs(panel) {
+  if (!panel) return [];
+  return Array.from(panel.querySelectorAll("input[data-parking-day]"));
+}
+
+function setupParkingWeekdayPanel(toggleButton, panel, baseInput) {
+  if (!toggleButton || !panel) return;
+  toggleButton.addEventListener("click", () => {
+    if (toggleButton.disabled) return;
+    const nextOpen = panel.hidden;
+    panel.hidden = !nextOpen;
+    toggleButton.setAttribute("aria-expanded", nextOpen ? "true" : "false");
+    if (nextOpen) updateParkingWeekdayPlaceholders(panel, baseInput && baseInput.value);
+  });
+  getParkingWeekdayInputs(panel).forEach((input) => {
+    input.addEventListener("input", () => {
+      input.value = normalizeParkingNumberInput(input.value);
+    });
+  });
+  if (baseInput) {
+    baseInput.addEventListener("input", () => updateParkingWeekdayPlaceholders(panel, baseInput.value));
+  }
+}
+
+function updateParkingWeekdayPlaceholders(panel, baseValue) {
+  const base = normalizeParkingNumberInput(baseValue);
+  getParkingWeekdayInputs(panel).forEach((input) => {
+    input.placeholder = base ? `基本:${base}` : "基本";
+  });
+}
+
+function setParkingWeekdayValues(panel, values) {
+  const source = values && typeof values === "object" ? values : {};
+  getParkingWeekdayInputs(panel).forEach((input) => {
+    const dayKey = String(input.dataset.parkingDay || "");
+    input.value = normalizeParkingNumberInput(source[dayKey] || "");
+  });
+}
+
+function collectParkingByDay(panel) {
+  const result = {};
+  getParkingWeekdayInputs(panel).forEach((input) => {
+    const dayKey = String(input.dataset.parkingDay || "");
+    if (!PARKING_WEEKDAY_KEYS.includes(dayKey)) return;
+    const value = normalizeParkingNumberInput(input.value);
+    if (value) result[dayKey] = value;
+  });
+  return result;
+}
+
+function validateParkingByDay(panel) {
+  const inputs = getParkingWeekdayInputs(panel);
+  for (const input of inputs) {
+    const value = normalizeParkingNumberInput(input.value);
+    if (!value) continue;
+    const number = Number(value);
+    if (!Number.isInteger(number) || number < 1 || number > 32) {
+      return { ok: false, input, dayKey: String(input.dataset.parkingDay || "") };
+    }
+  }
+  return { ok: true };
+}
+
+function setParkingWeekdayControlState(toggleButton, panel, baseInput, enabled) {
+  if (toggleButton) toggleButton.disabled = !enabled || isSending;
+  getParkingWeekdayInputs(panel).forEach((input) => {
+    input.disabled = !enabled || isSending;
+  });
+  updateParkingWeekdayPlaceholders(panel, baseInput && baseInput.value);
+}
+
+function resetParkingWeekdayPanel(toggleButton, panel) {
+  setParkingWeekdayValues(panel, {});
+  if (panel) panel.hidden = true;
+  if (toggleButton) toggleButton.setAttribute("aria-expanded", "false");
 }
 
 function isParkingConflictMessage(messageText) {
@@ -3709,6 +3795,7 @@ function setupRegistrationEditForm() {
       editRegistrationParkingNumber.value = normalizeParkingNumberInput(editRegistrationParkingNumber.value);
     });
   }
+  setupParkingWeekdayPanel(editParkingWeekdayToggle, editParkingWeekdayPanel, editRegistrationParkingNumber);
 
   updateRegistrationParkingFieldState();
   updateRegistrationEditControlsState();
@@ -3736,6 +3823,7 @@ function resetRegistrationEditView(emp) {
   if (editRegistrationCommuteMethod) editRegistrationCommuteMethod.value = "";
   if (editRegistrationParkingNumber) editRegistrationParkingNumber.value = "";
   if (editRegistrationWarehouseUnder) editRegistrationWarehouseUnder.checked = false;
+  resetParkingWeekdayPanel(editParkingWeekdayToggle, editParkingWeekdayPanel);
   if (editRegistrationStartTime) editRegistrationStartTime.value = "08:00";
   if (editRegistrationEndTime) editRegistrationEndTime.value = "17:00";
   if (editRegistrationBreakMinutes) editRegistrationBreakMinutes.value = "60";
@@ -3785,6 +3873,10 @@ async function loadSelectedRegistration(emp, showResultMessage) {
     if (editRegistrationCommuteMethod) editRegistrationCommuteMethod.value = registration.commuteMethod || (registration.parkingNumber ? "車" : "");
     if (editRegistrationParkingNumber) editRegistrationParkingNumber.value = normalizeParkingNumberInput(registration.parkingNumber || "");
     if (editRegistrationWarehouseUnder) editRegistrationWarehouseUnder.checked = Boolean(registration.warehouseUnder);
+    setParkingWeekdayValues(editParkingWeekdayPanel, registration.parkingByDay || {});
+    const hasParkingDayOverrides = Object.keys(registration.parkingByDay || {}).some((key) => Boolean(registration.parkingByDay[key]));
+    if (editParkingWeekdayPanel) editParkingWeekdayPanel.hidden = !hasParkingDayOverrides;
+    if (editParkingWeekdayToggle) editParkingWeekdayToggle.setAttribute("aria-expanded", hasParkingDayOverrides ? "true" : "false");
     if (editRegistrationStartTime) editRegistrationStartTime.value = normalizeScheduleTimeForDisplay(registration.startTime) || "08:00";
     if (editRegistrationEndTime) editRegistrationEndTime.value = normalizeScheduleTimeForDisplay(registration.endTime) || "17:00";
     if (editRegistrationBreakMinutes) editRegistrationBreakMinutes.value = String(registration.breakMinutes ?? 60);
@@ -3824,6 +3916,7 @@ function updateRegistrationParkingFieldState() {
   editRegistrationParkingNumber.required = isCar && !usesWarehouseUnder;
   if (!isCar || usesWarehouseUnder) editRegistrationParkingNumber.value = "";
   editRegistrationParkingNumber.placeholder = !isCar ? "車通勤以外は入力不要" : usesWarehouseUnder ? "乙部在庫倉庫下を使用" : "例：13";
+  setParkingWeekdayControlState(editParkingWeekdayToggle, editParkingWeekdayPanel, editRegistrationParkingNumber, hasTarget && isCar && !usesWarehouseUnder);
 }
 
 function updateRegistrationEditControlsState() {
@@ -3869,6 +3962,7 @@ async function saveRegistrationDetails() {
   const commuteMethod = String(editRegistrationCommuteMethod && editRegistrationCommuteMethod.value || "").trim();
   const warehouseUnder = Boolean(editRegistrationWarehouseUnder && editRegistrationWarehouseUnder.checked);
   const parkingNumber = normalizeParkingNumberInput(editRegistrationParkingNumber && editRegistrationParkingNumber.value);
+  const parkingByDay = collectParkingByDay(editParkingWeekdayPanel);
   const startTime = String(editRegistrationStartTime && editRegistrationStartTime.value || "").trim();
   const endTime = String(editRegistrationEndTime && editRegistrationEndTime.value || "").trim();
   const breakMinutes = normalizeBreakMinutes(editRegistrationBreakMinutes && editRegistrationBreakMinutes.value);
@@ -3895,6 +3989,12 @@ async function saveRegistrationDetails() {
     if (!parkingNumber || !Number.isInteger(no) || no < 1 || no > 32) {
       showMessage("車通勤は、駐車場番号1～32または乙部在庫倉庫下を選んでね。", "error");
       if (editRegistrationParkingNumber) editRegistrationParkingNumber.focus();
+      return;
+    }
+    const parkingByDayValidation = validateParkingByDay(editParkingWeekdayPanel);
+    if (!parkingByDayValidation.ok) {
+      showMessage("曜日別の駐車場番号は1～32で入力してね。", "error");
+      if (parkingByDayValidation.input) parkingByDayValidation.input.focus();
       return;
     }
   }
@@ -3939,6 +4039,7 @@ async function saveRegistrationDetails() {
       employeeNo,
       commuteMethod,
       parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
+      parkingByDay: commuteMethod === "車" && !warehouseUnder ? parkingByDay : {},
       warehouseUnder: commuteMethod === "車" && warehouseUnder,
       startTime,
       endTime,
@@ -4075,6 +4176,7 @@ async function addStaff() {
   const commuteMethod = newCommuteMethod ? newCommuteMethod.value : "車";
   const warehouseUnder = Boolean(newWarehouseUnder && newWarehouseUnder.checked);
   const parkingNumber = normalizeParkingNumberInput(newParkingNumber ? newParkingNumber.value : "");
+  const parkingByDay = collectParkingByDay(newParkingWeekdayPanel);
   const startTime = newStartTime.value;
   const endTime = newEndTime.value;
   const breakMinutes = normalizeBreakMinutes(newBreakMinutes ? newBreakMinutes.value : "60");
@@ -4105,6 +4207,12 @@ async function addStaff() {
     if (!parkingNumber || !Number.isInteger(parkingNo) || parkingNo < 1 || parkingNo > 32) {
       showMessage("車通勤は、駐車場番号1～32または乙部在庫倉庫下を選んでね。", "error");
       if (newParkingNumber) newParkingNumber.focus();
+      return;
+    }
+    const parkingByDayValidation = validateParkingByDay(newParkingWeekdayPanel);
+    if (!parkingByDayValidation.ok) {
+      showMessage("曜日別の駐車場番号は1～32で入力してね。", "error");
+      if (parkingByDayValidation.input) parkingByDayValidation.input.focus();
       return;
     }
   }
@@ -4146,6 +4254,7 @@ async function addStaff() {
       employeeNo,
       commuteMethod,
       parkingNumber: commuteMethod === "車" && !warehouseUnder ? parkingNumber : "",
+      parkingByDay: commuteMethod === "車" && !warehouseUnder ? parkingByDay : {},
       warehouseUnder: commuteMethod === "車" && warehouseUnder,
       startTime,
       endTime,
@@ -4181,6 +4290,7 @@ async function addStaff() {
     if (newCommuteMethod) newCommuteMethod.value = "車";
     if (newWarehouseUnder) newWarehouseUnder.checked = false;
     if (newParkingNumber) newParkingNumber.value = "";
+    resetParkingWeekdayPanel(newParkingWeekdayToggle, newParkingWeekdayPanel);
     newStartTime.value = "08:00";
     newEndTime.value = "17:00";
     if (newBreakMinutes) newBreakMinutes.value = "60";
@@ -4299,6 +4409,7 @@ function setControlsDisabled(disabled) {
   if (adminOpenKeyInput) adminOpenKeyInput.disabled = disabled;
   if (showAllSheetsButton) showAllSheetsButton.disabled = disabled || (adminOpenKeyInput && adminOpenKeyInput.value.trim() !== "open");
   updateSheetOpenSelectionState();
+  updateNewStaffParkingFieldState();
   updateRegistrationEditControlsState();
   updateSelectedEmployeeAccessLock();
 }
