@@ -26,7 +26,7 @@
   let history = [];
   let chosenNo = '';
   let loadSequence = 0;
-  const WHEEL_ROW_HEIGHT = 36;
+  const WHEEL_ROW_HEIGHT = 30;
   const DATE_PARTS = ['year', 'month', 'day', 'hour', 'minute'];
   const wheelValues = { year: [], month: [], day: [], hour: [], minute: [] };
   const wheelSelection = { year: 'all', month: 'all', day: 'all', hour: 'all', minute: 'all' };
@@ -230,20 +230,20 @@
   function publicActionLabel(row) {
     const action = String(row.action || '不明');
     const kind = String(row.kind || '');
-    return row.source === 'current' && (kind === '通常' || kind === '修正')
-      ? `${action}（${kind}）` : action;
+    return row.source === 'current' && kind === '通常'
+      ? `${action}（通常）` : action.replace(/（修正）/g, '');
   }
   function publicResultLabel(row) {
     const raw = String(row.result || '—');
     if (row.kind === 'akugyo-auto' || row.kind === 'akugyo-leave-paid' || /自動|悪行|akugyo|auto/i.test(raw)) {
       return row.action === '有給' ? '有給を記録' : '記録完了';
     }
-    return raw;
+    return raw.replace(/（修正）/g, '');
   }
   function publicDetailLabel(row) {
     const raw = String(row.detail || '');
     // 念のため内部処理の文字列が追加されても、画面に露出させない。
-    return raw.replace(/(?:悪行)?自動(?:打刻|有給登録)?|akugyo[-_a-z0-9]*|auto[-_a-z0-9]*/gi, '').trim();
+    return raw.replace(/（修正）/g, '').replace(/(?:悪行)?自動(?:打刻|有給登録)?|akugyo[-_a-z0-9]*|auto[-_a-z0-9]*/gi, '').trim();
   }
   DATE_PARTS.forEach(part => {
     const list = elements.wheel[part];

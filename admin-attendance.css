@@ -31,3 +31,41 @@
 .history-filter-side label select{margin-top:3px}
 @media(max-width:750px){.history-filter-controls{gap:8px}.date-filter-panel{flex-basis:100%;padding:9px}.history-filter-side{flex:1 1 100%;flex-direction:row}.history-filter-side label{flex:1;min-width:0}.date-wheel-group{gap:4px}.date-wheel-option{font-size:12px}.date-filter-title span{display:block;margin-left:0}.date-filter-actions{width:100%;justify-content:space-between}}
 @media(max-width:390px){.registration-grid{grid-template-columns:1fr 1fr}.registration-grid dd{font-size:12px}.date-reset-button{padding:6px 7px;font-size:11px}}
+
+
+/* 2026-11-04: 管理者ページの日時指定だけを小型化。
+   年/月/日/時/分のホイールを一体型にし、機能・保存データは変更しない。 */
+.history-filter-controls{gap:8px;margin:8px 0}
+.date-filter-panel{flex:0 1 545px;width:min(100%,545px);padding:7px 9px;border-radius:10px}
+.date-filter-head{gap:5px;margin-bottom:4px}
+.date-filter-title{font-size:12px;line-height:1.35}
+.date-filter-title span{margin-left:4px;font-size:10px}
+.date-filter-actions{gap:5px;flex-wrap:nowrap}
+.date-basis-label{font-size:10px;gap:4px;white-space:nowrap}
+.date-basis-label select{min-width:88px;padding:4px 5px;font-size:11px}
+.date-reset-button{padding:4px 7px;font-size:11px}
+.date-wheel-group{gap:0;grid-template-columns:1.12fr repeat(4,minmax(0,1fr));max-width:335px;padding:3px;border:1px solid #ecd0dc;border-radius:9px;background:#fff}
+.date-wheel-field + .date-wheel-field{border-left:1px solid #f1d9e3}
+.date-wheel-field>span{font-size:10px;line-height:12px;margin-bottom:2px}
+.date-wheel-list{height:90px;border:0;border-radius:0;background:linear-gradient(to bottom,#fff9fb,#fff 33%,#fff 67%,#fff9fb)}
+.date-wheel-field::after{left:1px;right:1px;top:44px;height:30px;border-radius:3px}
+.date-wheel-spacer,.date-wheel-option{height:30px;min-height:30px}
+.date-wheel-option{font-size:12px}
+.date-wheel-group.date-only{grid-template-columns:1.12fr repeat(2,minmax(0,1fr));max-width:215px}
+.date-selection-summary{font-size:10px;margin:3px 0 0;min-height:14px}
+.history-filter-side{flex:0 1 150px;gap:6px}
+.history-filter-side label{font-size:11px}
+.history-filter-side label select{padding:5px 7px;font-size:11px}
+@media(max-width:750px){
+  .date-filter-panel{flex:1 1 100%;width:100%;max-width:none;padding:7px 9px}
+  .date-filter-title span{display:inline;margin-left:4px}
+  .date-filter-actions{width:auto;justify-content:flex-start}
+  .date-wheel-group{gap:0;max-width:335px}
+  .date-wheel-option{font-size:12px}
+  .history-filter-side{gap:8px}
+}
+@media(max-width:450px){
+  .date-filter-head{align-items:flex-start}
+  .date-filter-actions{width:100%;justify-content:flex-start}
+  .date-wheel-group{max-width:100%}
+}
