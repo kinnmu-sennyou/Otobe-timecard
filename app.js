@@ -1907,8 +1907,39 @@ function createPunchStatusMetricButton(status, metric, label, value, top, akugyo
     ? { display: "block", padding: "7px 8px", borderRadius: "999px", background: akugyo ? "#ffe8e8" : "#f2f2f2", fontWeight: "700", textAlign: "center", whiteSpace: "nowrap" }
     : { padding: "8px 5px", borderRadius: "10px", background: "#f2f2f2", fontWeight: "700", fontSize: "13px", textAlign: "center", lineHeight: "1.35" };
   Object.assign(button.style, styles, {
-    border: "0", color: "inherit", fontFamily: "inherit", cursor: "pointer", width: "100%",
+    // この7項目だけを押せるボタンとして分かりやすくする（他のUIには影響させない）。
+    border: "1px solid #aab9cb", color: "inherit", fontFamily: "inherit", cursor: "pointer", width: "100%",
+    boxShadow: "0 2px 0 rgba(70,90,110,.25), 0 3px 6px rgba(0,0,0,.08)",
+    transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
     boxSizing: "border-box", ...(top ? { whiteSpace: "normal", overflowWrap: "anywhere", minHeight: "38px" } : {})
+  });
+  const restShadow = button.style.boxShadow;
+  button.addEventListener("mouseenter", () => {
+    button.style.borderColor = "#6889af";
+    button.style.boxShadow = "0 3px 0 rgba(70,90,110,.28), 0 5px 9px rgba(0,0,0,.12)";
+  });
+  button.addEventListener("mouseleave", () => {
+    button.style.transform = "";
+    button.style.borderColor = "#aab9cb";
+    button.style.boxShadow = restShadow;
+  });
+  button.addEventListener("pointerdown", () => {
+    button.style.transform = "translateY(2px)";
+    button.style.boxShadow = "0 0 0 rgba(0,0,0,0)";
+  });
+  button.addEventListener("pointerup", () => {
+    button.style.transform = "";
+    button.style.boxShadow = restShadow;
+  });
+  button.addEventListener("pointercancel", () => {
+    button.style.transform = "";
+    button.style.boxShadow = restShadow;
+  });
+  button.addEventListener("focus", () => { button.style.outline = "2px solid #7198c5"; });
+  button.addEventListener("blur", () => {
+    button.style.outline = "";
+    button.style.transform = "";
+    button.style.boxShadow = restShadow;
   });
   button.addEventListener("click", () => showPunchStatusMetricDetail(status, metric, label, value));
   return button;
