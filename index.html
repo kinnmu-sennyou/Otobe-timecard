@@ -385,6 +385,19 @@
         <p class="small">社員番号やスタッフ名を変更した場合は、勤務予定・勤務表・打刻データ側の識別情報も同時に更新します。</p>
       </details>
 
+      <!-- 管理者専用の閲覧画面への入口。既存の打刻UI・動作とは独立。 -->
+      <details class="admin-sheet-area" id="adminAttendanceEntryArea">
+        <summary>管理者用：打刻状況確認</summary>
+        <p class="small">登録スタッフの月別集計と打刻履歴を読み取り専用で確認します。</p>
+        <div class="admin-sheet-box">
+          <label class="admin-key-label">合言葉
+            <input type="password" id="adminAttendanceEntryKey" placeholder="合言葉を入力" autocomplete="off">
+          </label>
+          <button type="button" id="adminAttendanceEntryButton" class="sub-button" disabled>打刻状況を確認</button>
+        </div>
+        <p class="small" id="adminAttendanceEntryMessage" aria-live="polite"></p>
+      </details>
+
       <details class="admin-sheet-area">
         <summary>管理者用：全シート表示</summary>
         <p class="small">管理者のみの仕様としてください</p>
@@ -555,5 +568,6 @@
   </div>
 
 <script src="./app.js?v=parking-by-weekday-20260928-73-break-confirm-20261104-default-staff-summary-20261104"></script>
+<script src="./admin-attendance-entry.js?v=20261104"></script>
 </body>
 </html>

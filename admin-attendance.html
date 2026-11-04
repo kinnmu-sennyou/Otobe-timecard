@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>管理者用：打刻状況確認</title>
+  <link rel="stylesheet" href="./admin-attendance.css?v=20261104">
+</head>
+<body>
+  <main class="admin-page">
+    <header class="header">
+      <div><div class="eyebrow">TIME CARD / ADMIN VIEW</div><h1>管理者用：打刻状況確認</h1><p class="small">閲覧専用。打刻データ・勤務表は変更しません。</p></div>
+      <button id="logoutAdmin" type="button" class="back-button">打刻画面へ戻る</button>
+    </header>
+    <div id="adminStatus" class="status" role="status" aria-live="polite">読み込み中...</div>
+    <section class="card">
+      <div class="section-title-row"><h2>スタッフ選択</h2><label class="search-label">絞り込み<input id="staffSearch" type="search" placeholder="スタッフ名・社員番号"></label></div>
+      <div id="adminStaffList" class="staff-list" aria-label="スタッフ一覧"></div>
+    </section>
+    <section class="card" aria-labelledby="selectedStaffName">
+      <h2>登録内容 <small>（現在の情報）</small></h2>
+      <h3 id="selectedStaffName">スタッフを選んでね</h3>
+      <dl id="registrationDetails" class="registration-grid"><dt>表示内容</dt><dd>スタッフ選択後に読み込みます。</dd></dl>
+    </section>
+    <section class="card">
+      <h2>★月別総合データ★</h2>
+      <p class="small muted">月別勤務表が現在存在する月を表示します。勤務時間の変更回数は出退勤時刻で判定し、休憩変更だけによる実働差は含めません。</p>
+      <div id="monthlySummaries" class="months"><p class="muted">スタッフ選択後に表示します。</p></div>
+    </section>
+    <section class="card">
+      <h2>★打刻履歴★</h2>
+      <p class="small muted">処理ログと現存する打刻記録を区別して表示します。処理ログには削除・修正履歴が含まれます。</p>
+      <div class="filters">
+        <label>対象月<select id="monthFilter"><option value="all">全月</option></select></label>
+        <label>記録区分<select id="sourceFilter"><option value="all">すべて</option><option value="log">処理ログ</option><option value="current">現存記録</option></select></label>
+        <label>打刻種類<select id="actionFilter"><option value="all">打刻の種類：すべて</option></select></label>
+        <label>並び順<select id="sortOrder"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
+        <label>検索<input id="historySearch" type="search" placeholder="日時・結果など"></label>
+      </div>
+      <p class="small muted" id="historyCount">スタッフ選択後に表示します。</p>
+      <div class="history-scroll"><table><thead><tr><th scope="col">日時</th><th scope="col">打刻の種類</th><th scope="col">結果</th></tr></thead><tbody id="historyBody"><tr><td colspan="3" class="muted">スタッフを選んでね。</td></tr></tbody></table></div>
+      <p class="small muted">※保存されている範囲の履歴です。古いログや削除済み打刻の詳細は保存上限のため表示できないことがあります。月別の休憩差・有給時間は、現在の勤務予定との比較による参考値です。</p>
+    </section>
+  </main>
+  <script src="./admin-attendance.js?v=20261104"></script>
+</body>
+</html>
