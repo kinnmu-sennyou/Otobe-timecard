@@ -869,6 +869,95 @@ function getSelectedBreakMode() {
   return BREAK_MODES.includes(selectedBreakMode) ? selectedBreakMode : "normal";
 }
 
+// 打刻前にApps Scriptへ読み取り専用の試算を依頼する。
+// 登録内容・勤務表の比較ロジックはサーバー側と統一し、実行処理には触れない。
+async function confirmPunchBeforeSending(payload) {
+  if (["有給", "出張"].includes(payload.action)) return true;
+
+  const check = await postToScript({
+    mode: "punchPreflight",
+    targetMode: payload.mode,
+    action: payload.action,
+    name: payload.name,
+    employeeNo: payload.employeeNo,
+    sheetName: payload.sheetName,
+    date: payload.date,
+    time: payload.time,
+    breakMode: payload.breakMode,
+    appVersion: APP_VERSION,
+  });
+  if (!check || !check.ok) {
+    throw new Error((check && check.message) || "休憩・勤務時間の事前確認ができませんでした。");
+  }
+
+  const messages = [];
+  const breakDiff = Number(check.breakDifferenceMinutes);
+  if (Number.isFinite(breakDiff) && breakDiff !== 0) {
+    messages.push(`この打刻は通常の休憩時間より【${Math.abs(breakDiff)}】分${breakDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
+  }
+
+  if (check.workDifferenceMinutes !== null && check.workDifferenceMinutes !== undefined) {
+    const workDiff = Number(check.workDifferenceMinutes);
+    if (Number.isFinite(workDiff) && workDiff !== 0) {
+      messages.push(`この打刻は通常の勤務時間より【${Math.abs(workDiff)}】分${workDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
+    }
+  }
+
+  return messages.length ? showPunchConfirmationDialog(messages) : true;
+}
+
+function showPunchConfirmationDialog(messages) {
+  const overlay = document.getElementById("punchConfirmOverlay");
+  const area = document.getElementById("punchConfirmMessages");
+  const yesButton = document.getElementById("punchConfirmYes");
+  const editButton = document.getElementById("punchConfirmEdit");
+  if (!overlay || !area || !yesButton || !editButton) {
+    throw new Error("打刻確認画面を表示できませんでした。index.htmlを新しい版へ更新してください。");
+  }
+
+  return new Promise((resolve) => {
+    const previousFocus = document.activeElement;
+    area.replaceChildren();
+    messages.forEach((line) => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = line;
+      area.appendChild(paragraph);
+    });
+
+    function finish(accepted) {
+      overlay.hidden = true;
+      yesButton.removeEventListener("click", onYes);
+      editButton.removeEventListener("click", onEdit);
+      document.removeEventListener("keydown", onKeyDown, true);
+      if (previousFocus && typeof previousFocus.focus === "function") previousFocus.focus();
+      resolve(accepted);
+    }
+    function onYes() { finish(true); }
+    function onEdit() { finish(false); }
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        finish(false);
+      } else if (event.key === "Tab") {
+        // ダイアログ外へフォーカスが抜けないようにする。
+        if (event.shiftKey && document.activeElement === yesButton) {
+          event.preventDefault();
+          editButton.focus();
+        } else if (!event.shiftKey && document.activeElement === editButton) {
+          event.preventDefault();
+          yesButton.focus();
+        }
+      }
+    }
+
+    yesButton.addEventListener("click", onYes);
+    editButton.addEventListener("click", onEdit);
+    document.addEventListener("keydown", onKeyDown, true);
+    overlay.hidden = false;
+    editButton.focus();
+  });
+}
+
 function getCorrectionWeek40OverValue() {
   if (!correctionWeek40OverInput) return "";
   return String(correctionWeek40OverInput.value || "").trim();
@@ -938,23 +1027,32 @@ async function punchNow(triggerButton, action) {
     return;
   }
 
-  startSending(triggerButton, `${punchAction}を更新中...`);
-  setUpdateStatus(`${selectedEmployee.name}：${punchAction}を更新中...`, "loading");
+  const punchPayload = {
+    mode: "punch",
+    action: punchAction,
+    name: selectedEmployee.name,
+    employeeNo: selectedEmployee.no,
+    sheetName: selectedEmployee.sheetName,
+    breakMode: getSelectedBreakMode(),
+    week40Over: "",
+    timestamp: new Date().toISOString(),
+    appVersion: APP_VERSION,
+    userAgent: navigator.userAgent,
+  };
+  startSending(triggerButton, `${punchAction}の打刻内容を確認中...`);
+  setUpdateStatus(`${selectedEmployee.name}：${punchAction}の打刻内容を確認中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
-    const result = await postToScript({
-      mode: "punch",
-      action: punchAction,
-      name: selectedEmployee.name,
-      employeeNo: selectedEmployee.no,
-      sheetName: selectedEmployee.sheetName,
-      breakMode: getSelectedBreakMode(),
-      week40Over: "",
-      timestamp: new Date().toISOString(),
-      appVersion: APP_VERSION,
-      userAgent: navigator.userAgent,
-    });
+    const confirmed = await confirmPunchBeforeSending(punchPayload);
+    if (!confirmed) {
+      showMessage("打刻を中止しました。休憩時間や打刻内容を修正してください。", "neutral");
+      setUpdateStatus("更新状況：確認画面から修正へ戻りました（未送信）", "neutral");
+      return;
+    }
+    showMessage(`${punchAction}を更新中...`, "loading");
+    setUpdateStatus(`${selectedEmployee.name}：${punchAction}を更新中...`, "loading");
+    const result = await postToScript(punchPayload);
 
     handleResult(result, `${selectedEmployee.name}：${punchAction}を更新しました。`);
     setUpdateStatus(`反映完了：${selectedEmployee.name}：${punchAction}`, "ok");
@@ -992,24 +1090,33 @@ async function punchBySpecifiedDateTime() {
     return;
   }
 
-  startSending(editUpdateButton, "修正更新中...");
-  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新中...`, "loading");
+  const correctionPayload = {
+    mode: "correction",
+    action: correctionAction,
+    name: selectedEmployee.name,
+    employeeNo: selectedEmployee.no,
+    sheetName: selectedEmployee.sheetName,
+    date: editDate.value,
+    time: isSpecialCorrectionAction(correctionAction) ? "00:00" : editTime.value,
+    breakMode: getSelectedBreakMode(),
+    week40Over: getCorrectionWeek40OverValue(),
+    appVersion: APP_VERSION,
+    userAgent: navigator.userAgent,
+  };
+  startSending(editUpdateButton, "修正内容を確認中...");
+  setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${correctionAction}の修正内容を確認中...`, "loading");
   pdfLinkArea.innerHTML = "";
 
   try {
-    const result = await postToScript({
-      mode: "correction",
-      action: correctionAction,
-      name: selectedEmployee.name,
-      employeeNo: selectedEmployee.no,
-      sheetName: selectedEmployee.sheetName,
-      date: editDate.value,
-      time: isSpecialCorrectionAction(correctionAction) ? "00:00" : editTime.value,
-      breakMode: getSelectedBreakMode(),
-      week40Over: getCorrectionWeek40OverValue(),
-      appVersion: APP_VERSION,
-      userAgent: navigator.userAgent,
-    });
+    const confirmed = await confirmPunchBeforeSending(correctionPayload);
+    if (!confirmed) {
+      showMessage("修正打刻を中止しました。休憩時間や日時を修正してください。", "neutral");
+      setUpdateStatus("更新状況：確認画面から修正へ戻りました（未送信）", "neutral");
+      return;
+    }
+    showMessage("修正更新中...", "loading");
+    setUpdateStatus(`${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新中...`, "loading");
+    const result = await postToScript(correctionPayload);
 
     handleResult(result, `${selectedEmployee.name}：${editDate.value} の ${correctionAction}を修正更新しました。`);
     setUpdateStatus(`修正反映完了：${selectedEmployee.name}：${editDate.value} の ${correctionAction}`, "ok");

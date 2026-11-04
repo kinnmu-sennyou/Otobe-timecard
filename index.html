@@ -479,6 +479,78 @@
     </section>
   </div>
 
-<script src="./app.js?v=parking-by-weekday-20260928-73-break-minutes-20261104"></script>
+  <!-- 打刻確認専用ダイアログ（既存の他の画面には適用しない） -->
+  <style>
+    #punchConfirmOverlay[hidden] { display: none !important; }
+    #punchConfirmOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      box-sizing: border-box;
+      background: rgba(26, 24, 30, 0.60);
+    }
+    #punchConfirmDialog {
+      width: min(100%, 490px);
+      max-height: min(88vh, 700px);
+      overflow-y: auto;
+      box-sizing: border-box;
+      background: #fff;
+      color: #26232b;
+      border-radius: 18px;
+      padding: 24px 22px;
+      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.26);
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    #punchConfirmTitle {
+      color: #b52c53;
+      font-size: 21px;
+      font-weight: 800;
+      margin: 0 0 12px;
+    }
+    #punchConfirmMessages p {
+      margin: 0 0 13px;
+      white-space: pre-wrap;
+    }
+    #punchConfirmActions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 22px;
+    }
+    #punchConfirmActions button {
+      min-width: 0;
+      min-height: 50px;
+      border: 1px solid #eab6c5;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #fff5f8;
+      color: #8d2847;
+    }
+    #punchConfirmYes { background: #fbdce6 !important; }
+    #punchConfirmEdit { background: #fff !important; }
+    @media (max-width: 400px) {
+      #punchConfirmDialog { padding: 18px 16px; }
+      #punchConfirmActions { gap: 8px; }
+    }
+  </style>
+  <div id="punchConfirmOverlay" hidden>
+    <section id="punchConfirmDialog" role="dialog" aria-modal="true" aria-labelledby="punchConfirmTitle" aria-describedby="punchConfirmMessages" tabindex="-1">
+      <h2 id="punchConfirmTitle">※注意※</h2>
+      <div id="punchConfirmMessages"></div>
+      <div id="punchConfirmActions">
+        <button type="button" id="punchConfirmYes">はい</button>
+        <button type="button" id="punchConfirmEdit">修正する</button>
+      </div>
+    </section>
+  </div>
+
+<script src="./app.js?v=parking-by-weekday-20260928-73-break-confirm-20261104"></script>
 </body>
 </html>
