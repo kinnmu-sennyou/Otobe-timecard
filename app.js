@@ -1729,6 +1729,191 @@ function createAkugyoSpecialDayDeleteEditor(initialLabel, onDeleteToggle) {
   return shell;
 }
 
+// 「当月分の打刻状況」の7項目に共通する詳細一覧（表示専用）。
+function getPunchStatusMetricRows(status, metric) {
+  const rows = Array.isArray(status && status.rows) ? status.rows : [];
+  const elapsed = getPunchStatusElapsedDayLimit(status);
+  return rows.map((row, index) => ({ row, index })).filter(({ row, index }) => {
+    if (!String(row && row.date || "").trim()) return false;
+    const first = String(row.startHour ?? "").trim();
+    const hasStart = parsePunchStatusNumber(first) !== null;
+    const isSpecial = first === "有給" || first === "出張";
+    if (metric === "worked") return hasStart;
+    if (metric === "absent") return index < elapsed && !hasStart && !isSpecial;
+    if (metric === "break") return row.breakChanged === true;
+    if (metric === "time") return row.timeChanged === true;
+    if (metric === "hours") return (parsePunchStatusNumber(row.workHours) || 0) > 0;
+    if (metric === "overtime") return (parsePunchStatusNumber(row.overtime) || 0) > 0;
+    if (metric === "paid") return first === "有給";
+    return false;
+  });
+}
+
+function getPunchStatusMetricDayLabel(status, row, index) {
+  const dayKey = String(row.dateKey || "");
+  const match = dayKey.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  if (match) return `${Number(match[1])}/${Number(match[2])}（${row.weekday || "-"}）`;
+  return `${row.date || index + 1}（${row.weekday || "-"}）`;
+}
+
+function closePunchStatusMetricDetail() {
+  const popup = document.getElementById("punchStatusMetricDetail");
+  if (popup) popup.style.display = "none";
+}
+
+function ensurePunchStatusMetricDetail() {
+  let popup = document.getElementById("punchStatusMetricDetail");
+  if (popup) return popup;
+  popup = document.createElement("div");
+  popup.id = "punchStatusMetricDetail";
+  popup.setAttribute("role", "dialog");
+  popup.setAttribute("aria-modal", "true");
+  popup.setAttribute("aria-label", "打刻状況の項目詳細");
+  Object.assign(popup.style, {
+    position: "fixed", inset: "0", zIndex: "100010", background: "rgba(0,0,0,.55)",
+    padding: "16px", overflowY: "auto", display: "none", boxSizing: "border-box"
+  });
+  const panel = document.createElement("div");
+  Object.assign(panel.style, {
+    maxWidth: "760px", margin: "min(6vh, 46px) auto 0", background: "#fff", borderRadius: "14px",
+    boxShadow: "0 20px 60px rgba(0,0,0,.25)", overflow: "hidden"
+  });
+  const head = document.createElement("div");
+  Object.assign(head.style, {
+    position: "sticky", top: "0", zIndex: "1", display: "flex", alignItems: "center",
+    justifyContent: "space-between", gap: "12px", padding: "14px 16px",
+    background: "#fff", borderBottom: "1px solid #ddd"
+  });
+  const heading = document.createElement("strong");
+  heading.id = "punchStatusMetricDetailTitle";
+  heading.style.fontSize = "18px";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "閉じる";
+  Object.assign(close.style, {
+    minHeight: "40px", padding: "0 14px", borderRadius: "8px", border: "1px solid #aaa",
+    background: "#fff", fontWeight: "700", cursor: "pointer"
+  });
+  close.addEventListener("click", closePunchStatusMetricDetail);
+  head.append(heading, close);
+  const body = document.createElement("div");
+  body.id = "punchStatusMetricDetailBody";
+  Object.assign(body.style, { padding: "16px", maxHeight: "min(70vh, 640px)", overflowY: "auto" });
+  panel.append(head, body);
+  popup.appendChild(panel);
+  document.body.appendChild(popup);
+  popup.addEventListener("click", (event) => { if (event.target === popup) closePunchStatusMetricDetail(); });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || popup.style.display === "none") return;
+    event.stopImmediatePropagation();
+    closePunchStatusMetricDetail();
+  }, true);
+  return popup;
+}
+
+function showPunchStatusMetricDetail(status, metric, label, value) {
+  const popup = ensurePunchStatusMetricDetail();
+  const title = document.getElementById("punchStatusMetricDetailTitle");
+  const body = document.getElementById("punchStatusMetricDetailBody");
+  if (!title || !body) return;
+  title.textContent = `${label}：${String(value ?? "0")}`;
+  body.innerHTML = "";
+  const period = document.createElement("p");
+  period.textContent = `${status.employeeNo} ${status.name} / ${status.periodLabel || status.targetKey || ""}`;
+  Object.assign(period.style, { margin: "0 0 12px", fontSize: "13px", color: "#555" });
+  body.appendChild(period);
+
+  if (metric === "time" || metric === "break") {
+    const note = document.createElement("p");
+    note.textContent = metric === "time"
+      ? "通常の出勤・退勤時刻との差を表示します。休憩時間だけが変わった日は含みません。"
+      : "基本休憩時間と、最終的な退勤記録に保存された実際の休憩時間を比較しています。";
+    Object.assign(note.style, { margin: "0 0 12px", fontSize: "12px", color: "#555" });
+    body.appendChild(note);
+  }
+
+  const entries = getPunchStatusMetricRows(status, metric);
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.textContent = "該当する日付はありません。";
+    Object.assign(empty.style, { margin: "10px 0", padding: "16px", background: "#f5f5f5", borderRadius: "8px" });
+    body.appendChild(empty);
+  } else {
+    const heads = {
+      worked: ["日付", "出勤", "退勤", "実働"],
+      absent: ["日付", "状況"],
+      break: ["日付", "基本休憩", "実際の休憩", "差"],
+      time: ["日付", "通常の勤務時刻", "打刻時刻"],
+      hours: ["日付", "出勤", "退勤", "実働"],
+      overtime: ["日付", "実働", "残業"],
+      paid: ["日付", "登録内容"]
+    };
+    const scroller = document.createElement("div");
+    scroller.style.overflowX = "auto";
+    const table = document.createElement("table");
+    Object.assign(table.style, { width: "100%", borderCollapse: "collapse", fontSize: "13px" });
+    const header = document.createElement("tr");
+    (heads[metric] || ["日付", "内容"]).forEach((text) => {
+      const th = document.createElement("th");
+      th.textContent = text;
+      Object.assign(th.style, { padding: "9px 8px", border: "1px solid #ddd", background: "#f2f2f2", whiteSpace: "nowrap", textAlign: "left" });
+      header.appendChild(th);
+    });
+    const thead = document.createElement("thead");
+    thead.appendChild(header);
+    table.appendChild(thead);
+    const tbody = document.createElement("tbody");
+    entries.forEach(({ row, index }) => {
+      const date = getPunchStatusMetricDayLabel(status, row, index);
+      const start = combinePunchStatusTime(row.startHour, row.startMinute) || "-";
+      const end = combinePunchStatusTime(row.endHour, row.endMinute) || "-";
+      let cells;
+      if (metric === "worked" || metric === "hours") cells = [date, start, end, `${row.workHours || "0"}時間`];
+      else if (metric === "absent") cells = [date, "出勤・有給・出張の登録なし"];
+      else if (metric === "break") {
+        const delta = Number(row.actualBreakMinutes) - Number(row.baseBreakMinutes);
+        cells = [date, `${row.baseBreakMinutes}分`, `${row.actualBreakMinutes}分`, `${Math.abs(delta)}分${delta < 0 ? "少ない" : "多い"}`];
+      } else if (metric === "time") {
+        cells = [date, `${row.scheduledStartTime || "-"} ～ ${row.scheduledEndTime || "-"}`, `${start} ～ ${end}`];
+      } else if (metric === "overtime") cells = [date, `${row.workHours || "0"}時間`, `${row.overtime || "0"}時間`];
+      else cells = [date, "有給"];
+      const tr = document.createElement("tr");
+      cells.forEach((value) => {
+        const td = document.createElement("td");
+        td.textContent = String(value);
+        Object.assign(td.style, { padding: "9px 8px", border: "1px solid #e3e3e3", whiteSpace: "nowrap" });
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    scroller.appendChild(table);
+    body.appendChild(scroller);
+  }
+  const summary = document.createElement("p");
+  summary.textContent = `該当：${entries.length}日`;
+  Object.assign(summary.style, { margin: "12px 0 0", fontWeight: "700", fontSize: "13px" });
+  body.appendChild(summary);
+  popup.style.display = "block";
+}
+
+function createPunchStatusMetricButton(status, metric, label, value, top, akugyo) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = `${label}：${String(value ?? "").trim() || "0"}`;
+  button.setAttribute("aria-label", `${label}の詳細を開く`);
+  button.title = `${label}の日付別の詳細を表示`;
+  const styles = top
+    ? { display: "block", padding: "7px 8px", borderRadius: "999px", background: akugyo ? "#ffe8e8" : "#f2f2f2", fontWeight: "700", textAlign: "center", whiteSpace: "nowrap" }
+    : { padding: "8px 5px", borderRadius: "10px", background: "#f2f2f2", fontWeight: "700", fontSize: "13px", textAlign: "center", lineHeight: "1.35" };
+  Object.assign(button.style, styles, {
+    border: "0", color: "inherit", fontFamily: "inherit", cursor: "pointer", width: "100%",
+    boxSizing: "border-box", ...(top ? { whiteSpace: "normal", overflowWrap: "anywhere", minHeight: "38px" } : {})
+  });
+  button.addEventListener("click", () => showPunchStatusMetricDetail(status, metric, label, value));
+  return button;
+}
+
 function renderAkugyoPunchStatusEmployee(status, content) {
   content.innerHTML = "";
 
@@ -1755,11 +1940,13 @@ function renderAkugyoPunchStatusEmployee(status, content) {
 
   const summary = document.createElement("div");
   Object.assign(summary.style, { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "14px" });
-  [["出勤日数", status.workedDays], ["非出勤日数", getPunchStatusNonAttendanceDays(status)]].forEach(([label, value]) => {
-    const chip = document.createElement("span");
-    chip.textContent = `${label}：${String(value ?? "").trim() || "0"}`;
-    Object.assign(chip.style, { display: "block", padding: "7px 8px", borderRadius: "999px", background: "#ffe8e8", fontWeight: "700", textAlign: "center", whiteSpace: "nowrap" });
-    summary.appendChild(chip);
+  [
+    ["worked", "出勤日数", status.workedDays],
+    ["absent", "非出勤日数", getPunchStatusNonAttendanceDays(status)],
+    ["break", "休憩変更回数", getPunchStatusMetricRows(status, "break").length],
+    ["time", "勤務時間変更回数", getPunchStatusMetricRows(status, "time").length]
+  ].forEach(([metric, label, value]) => {
+    summary.appendChild(createPunchStatusMetricButton(status, metric, label, value, true, true));
   });
   content.appendChild(summary);
 
@@ -1908,11 +2095,12 @@ function renderAkugyoPunchStatusEmployee(status, content) {
   const totals = getPunchStatusTotals(status);
   const bottomSummary = document.createElement("div");
   Object.assign(bottomSummary.style, { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px", marginTop: "14px" });
-  [["総労働時間", totals.totalWorkHours], ["残業", totals.totalOvertime], ["有給", String(status.paidLeaveDays ?? "").trim() || "0"]].forEach(([label, value]) => {
-    const chip = document.createElement("div");
-    chip.textContent = `${label}：${value}`;
-    Object.assign(chip.style, { padding: "8px 5px", borderRadius: "10px", background: "#f2f2f2", fontWeight: "700", fontSize: "13px", textAlign: "center", lineHeight: "1.35" });
-    bottomSummary.appendChild(chip);
+  [
+    ["hours", "総労働時間", totals.totalWorkHours],
+    ["overtime", "残業", totals.totalOvertime],
+    ["paid", "有給", String(status.paidLeaveDays ?? "").trim() || "0"]
+  ].forEach(([metric, label, value]) => {
+    bottomSummary.appendChild(createPunchStatusMetricButton(status, metric, label, value, false, true));
   });
   content.appendChild(bottomSummary);
 }
@@ -2756,6 +2944,7 @@ function ensurePunchStatusViewer() {
 }
 
 function closePunchStatusViewer() {
+  closePunchStatusMetricDetail();
   const overlay = document.getElementById("punchStatusViewer");
   if (overlay) overlay.hidden = true;
   document.body.style.overflow = "";
@@ -2882,21 +3071,12 @@ function renderPunchStatusEmployee(status, content) {
   });
 
   [
-    ["出勤日数", status.workedDays],
-    ["非出勤日数", getPunchStatusNonAttendanceDays(status)]
-  ].forEach(([label, value]) => {
-    const chip = document.createElement("span");
-    chip.textContent = `${label}：${String(value ?? "").trim() || "0"}`;
-    Object.assign(chip.style, {
-      display: "block",
-      padding: "7px 8px",
-      borderRadius: "999px",
-      background: "#f2f2f2",
-      fontWeight: "700",
-      textAlign: "center",
-      whiteSpace: "nowrap"
-    });
-    summary.appendChild(chip);
+    ["worked", "出勤日数", status.workedDays],
+    ["absent", "非出勤日数", getPunchStatusNonAttendanceDays(status)],
+    ["break", "休憩変更回数", getPunchStatusMetricRows(status, "break").length],
+    ["time", "勤務時間変更回数", getPunchStatusMetricRows(status, "time").length]
+  ].forEach(([metric, label, value]) => {
+    summary.appendChild(createPunchStatusMetricButton(status, metric, label, value, true, false));
   });
   content.appendChild(summary);
 
@@ -2973,22 +3153,11 @@ function renderPunchStatusEmployee(status, content) {
   });
 
   [
-    ["総労働時間", totals.totalWorkHours],
-    ["残業", totals.totalOvertime],
-    ["有給", String(status.paidLeaveDays ?? "").trim() || "0"]
-  ].forEach(([label, value]) => {
-    const chip = document.createElement("div");
-    chip.textContent = `${label}：${value}`;
-    Object.assign(chip.style, {
-      padding: "8px 5px",
-      borderRadius: "10px",
-      background: "#f2f2f2",
-      fontWeight: "700",
-      fontSize: "13px",
-      textAlign: "center",
-      lineHeight: "1.35"
-    });
-    bottomSummary.appendChild(chip);
+    ["hours", "総労働時間", totals.totalWorkHours],
+    ["overtime", "残業", totals.totalOvertime],
+    ["paid", "有給", String(status.paidLeaveDays ?? "").trim() || "0"]
+  ].forEach(([metric, label, value]) => {
+    bottomSummary.appendChild(createPunchStatusMetricButton(status, metric, label, value, false, false));
   });
   content.appendChild(bottomSummary);
 
@@ -3003,6 +3172,7 @@ function renderPunchStatusEmployee(status, content) {
 }
 
 function showPunchStatusViewer(result, monthLabel) {
+  closePunchStatusMetricDetail();
   currentPunchStatusResult = result || null;
   currentPunchStatusMonthLabel = monthLabel || "";
   const statuses = Array.isArray(result && result.statuses) ? result.statuses : [];
