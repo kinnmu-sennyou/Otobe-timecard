@@ -9,7 +9,7 @@ const BASE_EMPLOYEES = [
 ];
 
 const ACTIONS = ["出勤", "退勤", "現刻出勤", "途中退社", "有給", "出張"];
-const BREAK_MODES = ["normal", "half", "none"];
+const BREAK_MODES = ["normal", "none", "minutes15", "minutes30", "minutes45"];
 const DEFAULT_EMPLOYEE_KEY = "timecard:defaultEmployeeNo";
 const EXTRA_EMPLOYEES_KEY = "timecard:extraEmployees";
 const SHEET_BROWSER_MEMO_KEY = "timecard:sheetBrowserMemo";
@@ -53,7 +53,7 @@ let akugyoLeaveCalendarDirty = false;
 const employeeSearchInput = document.getElementById("employeeSearch");
 const employeeSelect = document.getElementById("employeeSelect");
 const actionButtons = document.getElementById("actionButtons");
-const breakButtons = document.getElementById("breakButtons");
+const breakSelect = document.getElementById("breakSelect");
 const selectedEmployeeText = document.getElementById("selectedEmployee");
 const setDefaultEmployeeButton = document.getElementById("setDefaultEmployeeButton");
 const changeDefaultEmployeeButton = document.getElementById("changeDefaultEmployeeButton");
@@ -856,21 +856,13 @@ function selectAction(action) {
 }
 
 function buildBreakEvents() {
-  if (!breakButtons) return;
-
-  breakButtons.querySelectorAll("[data-break-mode]").forEach((button) => {
-    button.addEventListener("click", () => selectBreakMode(button.dataset.breakMode));
-  });
+  if (!breakSelect) return;
+  breakSelect.addEventListener("change", () => selectBreakMode(breakSelect.value));
 }
 
 function selectBreakMode(mode) {
   selectedBreakMode = BREAK_MODES.includes(mode) ? mode : "normal";
-
-  if (!breakButtons) return;
-
-  breakButtons.querySelectorAll("[data-break-mode]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.breakMode === selectedBreakMode);
-  });
+  if (breakSelect) breakSelect.value = selectedBreakMode;
 }
 
 function getSelectedBreakMode() {
@@ -4358,7 +4350,7 @@ function setControlsDisabled(disabled) {
   if (employeeSearchInput) employeeSearchInput.disabled = disabled;
   if (employeeSelect) employeeSelect.disabled = disabled || !employeeSelect.options.length;
   actionButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
-  if (breakButtons) breakButtons.querySelectorAll("button").forEach((button) => { button.disabled = disabled; });
+  if (breakSelect) breakSelect.disabled = disabled;
   editUpdateButton.disabled = disabled;
   if (editDeleteButton) editDeleteButton.disabled = disabled;
   editDate.disabled = disabled;
