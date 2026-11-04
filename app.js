@@ -60,6 +60,7 @@ const changeDefaultEmployeeButton = document.getElementById("changeDefaultEmploy
 const defaultEmployeeUnregisteredArea = document.getElementById("defaultEmployeeUnregisteredArea");
 const defaultEmployeeRegisteredArea = document.getElementById("defaultEmployeeRegisteredArea");
 const defaultEmployeeStatus = document.getElementById("defaultEmployeeStatus");
+const defaultStaffRegistrationSummary = document.getElementById("defaultStaffRegistrationSummary");
 const returnToDefaultEmployeeButton = document.getElementById("returnToDefaultEmployeeButton");
 const refreshStaffListButton = document.getElementById("refreshStaffListButton");
 const editUpdateButton = document.getElementById("editUpdateButton");
@@ -137,6 +138,8 @@ const timePickerConfirmButton = document.getElementById("timePickerConfirmButton
 let registrationOriginalEmployeeNo = "";
 let registrationOriginalName = "";
 let registrationLoadToken = 0;
+// 表示専用。サーバーの登録内容を再利用し、打刻データや勤務表には書き込みません。
+const defaultStaffRegistrationCache = new Map();
 
 let timePickerTarget = null;
 let timePickerPhase = "hour";
@@ -318,6 +321,9 @@ async function refreshEmployeesAfterStartup(requestOptions) {
     updateSelectedEmployeeAccessLock();
     updatePunchStatusButtonState();
     updateAkugyoLeaveCalendarButtonState();
+    if (!selectedEmployee || selectedEmployee.no !== getDefaultEmployeeNo()) {
+      void loadMissingDefaultStaffRegistrationSummary();
+    }
     return true;
   } catch (error) {
     console.warn("スタッフ一覧のバックグラウンド更新に失敗したため、端末内の情報を継続して使用します。", error);
@@ -431,6 +437,9 @@ async function refreshStaffListManually() {
     updateSelectedEmployeeAccessLock();
     updatePunchStatusButtonState();
     updateAkugyoLeaveCalendarButtonState();
+    if (!selectedEmployee || selectedEmployee.no !== getDefaultEmployeeNo()) {
+      void loadMissingDefaultStaffRegistrationSummary();
+    }
     showMessage("スタッフ一覧を最新情報に更新しました。", "ok");
   } catch (error) {
     handleError(error);
@@ -674,8 +683,80 @@ function updateDefaultEmployeeRegistrationUi() {
   }
 
   updatePunchStatusButtonState();
+  updateDefaultStaffRegistrationSummaryDisplay();
 }
 
+// 基本の登録時刻を、0埋めした HH:MM で表示します。
+function normalizeDefaultStaffSummaryClock(value) {
+  const formatted = normalizeScheduleTimeForDisplay(value);
+  const match = String(formatted || "").match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return "--:--";
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) return "--:--";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+function formatDefaultStaffSummaryMinutes(totalMinutes) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes < 0) return "--:--";
+  const rounded = Math.round(totalMinutes);
+  return `${String(Math.floor(rounded / 60)).padStart(2, "0")}:${String(rounded % 60).padStart(2, "0")}`;
+}
+
+function updateDefaultStaffRegistrationSummaryDisplay() {
+  if (!defaultStaffRegistrationSummary) return;
+  const defaultNo = getDefaultEmployeeNo();
+  const employee = EMPLOYEES.find((item) => item.no === defaultNo);
+  // 未登録端末では追加欄を出さず、既存画面の余白・配置を維持します。
+  if (!defaultNo || !employee) {
+    defaultStaffRegistrationSummary.hidden = true;
+    return;
+  }
+  defaultStaffRegistrationSummary.hidden = false;
+  if (!defaultStaffRegistrationCache.has(defaultNo)) {
+    defaultStaffRegistrationSummary.textContent = "登録内容：読み込み中...";
+    return;
+  }
+  const registration = defaultStaffRegistrationCache.get(defaultNo);
+  if (!registration) {
+    defaultStaffRegistrationSummary.textContent = "登録内容：取得できませんでした";
+    return;
+  }
+  const start = normalizeDefaultStaffSummaryClock(registration.startTime);
+  const end = normalizeDefaultStaffSummaryClock(registration.endTime);
+  const breakMinutes = Number(registration.breakMinutes);
+  const breakText = formatDefaultStaffSummaryMinutes(breakMinutes);
+  let workText = "--:--";
+  if (start !== "--:--" && end !== "--:--" && breakText !== "--:--") {
+    const [startHour, startMinute] = start.split(":").map(Number);
+    const [endHour, endMinute] = end.split(":").map(Number);
+    const workMinutes = endHour * 60 + endMinute - startHour * 60 - startMinute - breakMinutes;
+    workText = formatDefaultStaffSummaryMinutes(workMinutes);
+  }
+  defaultStaffRegistrationSummary.textContent =
+    `登録内容：出勤${start} / 退勤${end} / 休憩時間${breakText} / 勤務時間${workText}`;
+}
+
+// 初回のスタッフ一覧同期時など、デフォルトスタッフが選択されていない場合だけ補完取得。
+async function loadMissingDefaultStaffRegistrationSummary() {
+  const defaultNo = getDefaultEmployeeNo();
+  const employee = EMPLOYEES.find((item) => item.no === defaultNo);
+  if (!employee || defaultStaffRegistrationCache.has(defaultNo)) return;
+  try {
+    const result = await postToScript({
+      mode: "getStaffRegistration",
+      employeeNo: employee.no,
+      name: employee.name,
+      appVersion: APP_VERSION,
+    }, { priority: "background" });
+    if (!result || !result.ok) throw new Error("登録内容を取得できませんでした。");
+    defaultStaffRegistrationCache.set(defaultNo, result.registration || result);
+  } catch (error) {
+    console.warn("デフォルトスタッフ登録内容の表示に失敗しました。", error);
+    defaultStaffRegistrationCache.set(defaultNo, null);
+  }
+  updateDefaultStaffRegistrationSummaryDisplay();
+}
 
 function getDefaultEmployeeNo() {
   return normalizeEmployeeNo(localStorage.getItem(DEFAULT_EMPLOYEE_KEY));
@@ -4163,6 +4244,8 @@ async function loadSelectedRegistration(emp, showResultMessage) {
     if (!selectedEmployee || normalizeEmployeeNo(selectedEmployee.no) !== checkedNo) return;
 
     const registration = result.registration || result;
+    defaultStaffRegistrationCache.set(checkedNo, registration);
+    updateDefaultStaffRegistrationSummaryDisplay();
     registrationOriginalEmployeeNo = normalizeEmployeeNo(registration.employeeNo || checkedNo);
     registrationOriginalName = String(registration.staffName || registration.name || emp.name).trim();
 
@@ -4191,6 +4274,10 @@ async function loadSelectedRegistration(emp, showResultMessage) {
     if (token !== registrationLoadToken) return;
     console.error(error);
     registrationOriginalEmployeeNo = "";
+    if (checkedNo === getDefaultEmployeeNo()) {
+      defaultStaffRegistrationCache.set(checkedNo, null);
+      updateDefaultStaffRegistrationSummaryDisplay();
+    }
     setRegistrationEditStatus(`読み込みに失敗しました：${error.message}`, "error");
     updateRegistrationEditControlsState();
     if (showResultMessage) handleError(error);
@@ -4353,6 +4440,9 @@ async function saveRegistrationDetails() {
 
     const savedNo = normalizeEmployeeNo(result.employeeNo || employeeNo);
     const savedName = String(result.staffName || name).trim();
+    // 保存成功時は表示用キャッシュを破棄。既存の登録内容再読込で表示を更新します。
+    defaultStaffRegistrationCache.delete(oldEmployeeNo);
+    defaultStaffRegistrationCache.delete(savedNo);
     if (wasDefaultEmployee) localStorage.setItem(DEFAULT_EMPLOYEE_KEY, savedNo);
     if (selectedSheetEmployeeNos.has(oldEmployeeNo)) {
       selectedSheetEmployeeNos.delete(oldEmployeeNo);
