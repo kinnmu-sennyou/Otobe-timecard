@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>管理者用：打刻状況確認</title>
-  <link rel="stylesheet" href="./admin-attendance.css?v=20261104">
+  <link rel="stylesheet" href="./admin-attendance.css?v=20261104b">
 </head>
 <body>
   <main class="admin-page">
@@ -31,18 +31,36 @@
     <section class="card">
       <h2>★打刻履歴★</h2>
       <p class="small muted">処理ログと現存する打刻記録を区別して表示します。処理ログには削除・修正履歴が含まれます。</p>
-      <div class="filters">
-        <label>対象月<select id="monthFilter"><option value="all">全月</option></select></label>
-        <label>記録区分<select id="sourceFilter"><option value="all">すべて</option><option value="log">処理ログ</option><option value="current">現存記録</option></select></label>
-        <label>打刻種類<select id="actionFilter"><option value="all">打刻の種類：すべて</option></select></label>
-        <label>並び順<select id="sortOrder"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
-        <label>検索<input id="historySearch" type="search" placeholder="日時・結果など"></label>
+      <div class="history-filter-controls">
+        <section class="date-filter-panel" aria-label="日時指定">
+          <div class="date-filter-head">
+            <div class="date-filter-title">日時指定 <span>ホイールを上下にスライドして選択</span></div>
+            <div class="date-filter-actions">
+              <label class="date-basis-label">絞り込む日時
+                <select id="historyDateBasis"><option value="timestamp">処理日時</option><option value="date">打刻の対象日</option></select>
+              </label>
+              <button id="resetHistoryDate" type="button" class="date-reset-button">全期間に戻す</button>
+            </div>
+          </div>
+          <div class="date-wheel-group" id="historyDateWheels" role="group" aria-label="日時を上下にスライドして指定">
+            <div class="date-wheel-field"><span>年</span><div class="date-wheel-list" id="wheelYear" role="listbox" aria-label="年"></div></div>
+            <div class="date-wheel-field"><span>月</span><div class="date-wheel-list" id="wheelMonth" role="listbox" aria-label="月"></div></div>
+            <div class="date-wheel-field"><span>日</span><div class="date-wheel-list" id="wheelDay" role="listbox" aria-label="日"></div></div>
+            <div class="date-wheel-field time-wheel"><span>時</span><div class="date-wheel-list" id="wheelHour" role="listbox" aria-label="時"></div></div>
+            <div class="date-wheel-field time-wheel"><span>分</span><div class="date-wheel-list" id="wheelMinute" role="listbox" aria-label="分"></div></div>
+          </div>
+          <p id="historyDateSummary" class="date-selection-summary" aria-live="polite">全期間の履歴を表示</p>
+        </section>
+        <div class="history-filter-side">
+          <label>打刻種類<select id="actionFilter"><option value="all">すべて</option></select></label>
+          <label>並び順<select id="sortOrder"><option value="new">新しい順</option><option value="old">古い順</option></select></label>
+        </div>
       </div>
       <p class="small muted" id="historyCount">スタッフ選択後に表示します。</p>
       <div class="history-scroll"><table><thead><tr><th scope="col">日時</th><th scope="col">打刻の種類</th><th scope="col">結果</th></tr></thead><tbody id="historyBody"><tr><td colspan="3" class="muted">スタッフを選んでね。</td></tr></tbody></table></div>
       <p class="small muted">※保存されている範囲の履歴です。古いログや削除済み打刻の詳細は保存上限のため表示できないことがあります。月別の休憩差・有給時間は、現在の勤務予定との比較による参考値です。</p>
     </section>
   </main>
-  <script src="./admin-attendance.js?v=20261104"></script>
+  <script src="./admin-attendance.js?v=20261104b"></script>
 </body>
 </html>
