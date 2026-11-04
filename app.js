@@ -974,13 +974,17 @@ async function confirmPunchBeforeSending(payload) {
   const messages = [];
   const breakDiff = Number(check.breakDifferenceMinutes);
   if (Number.isFinite(breakDiff) && breakDiff !== 0) {
-    messages.push(`この打刻は通常の休憩時間より【${Math.abs(breakDiff)}】分${breakDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
+    messages.push(`この打刻は通常の休憩時間が【${Math.abs(breakDiff)}】分${breakDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
   }
 
   if (check.workDifferenceMinutes !== null && check.workDifferenceMinutes !== undefined) {
     const workDiff = Number(check.workDifferenceMinutes);
     if (Number.isFinite(workDiff) && workDiff !== 0) {
-      messages.push(`この打刻は通常の勤務時間より【${Math.abs(workDiff)}】分${workDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
+      messages.push(`この打刻は通常の勤務時間が【${Math.abs(workDiff)}】分${workDiff < 0 ? "少ない" : "多い"}時間で打刻しようとしていますが、間違いありませんか？`);
+      // 勤務時間の差には休憩時間の増減も含まれるため、変更した場合だけ補足する。
+      if (Number.isFinite(breakDiff) && breakDiff !== 0) {
+        messages.push("（※休憩時間の変動があった際は差異も含む）");
+      }
     }
   }
 
@@ -1001,7 +1005,34 @@ function showPunchConfirmationDialog(messages) {
     area.replaceChildren();
     messages.forEach((line) => {
       const paragraph = document.createElement("p");
-      paragraph.textContent = line;
+      if (line === "（※休憩時間の変動があった際は差異も含む）") {
+        paragraph.textContent = line;
+        paragraph.style.fontSize = "13px";
+        paragraph.style.color = "#666";
+        paragraph.style.marginTop = "-8px";
+      } else {
+        // HTMLは解釈させず、強調対象だけspanで色付けする。
+        String(line).split(/(休憩時間|勤務時間|【\d+】|少ない|多い)/g).forEach((part) => {
+          if (!part) return;
+          if (/^【\d+】$/.test(part)) {
+            paragraph.appendChild(document.createTextNode("【"));
+            const number = document.createElement("span");
+            number.textContent = part.slice(1, -1);
+            number.style.color = "#1555d8";
+            number.style.fontWeight = "700";
+            paragraph.appendChild(number);
+            paragraph.appendChild(document.createTextNode("】"));
+          } else if (/^(休憩時間|勤務時間|少ない|多い)$/.test(part)) {
+            const emphasis = document.createElement("span");
+            emphasis.textContent = part;
+            emphasis.style.color = "#d10027";
+            emphasis.style.fontWeight = "700";
+            paragraph.appendChild(emphasis);
+          } else {
+            paragraph.appendChild(document.createTextNode(part));
+          }
+        });
+      }
       area.appendChild(paragraph);
     });
 
