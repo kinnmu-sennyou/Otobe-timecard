@@ -74,12 +74,14 @@
 
         <div class="break-area compact-break-area" id="breakArea">
           <div class="section-title">休憩設定</div>
-          <div class="break-grid compact-break-grid" id="breakButtons" role="group" aria-label="休憩設定">
-            <button type="button" data-break-mode="normal">通常休憩</button>
-            <button type="button" data-break-mode="half">半分休憩</button>
-            <button type="button" data-break-mode="none">休憩なし</button>
-          </div>
-          <p class="small">休憩設定は、打刻ボタン押下前にご選択ください</p>
+          <p class="small" style="margin:0 0 12px;">基本の休憩時間より少なくする場合など、休憩時間が変わる場合に「実際に休憩した時間」を選択してください</p>
+          <select id="breakSelect" aria-label="実際に休憩した時間を選択" style="width:100%;min-height:52px;">
+            <option value="normal" selected>基本の休憩時間（変更なし）</option>
+            <option value="none">休憩なし</option>
+            <option value="minutes15">15分</option>
+            <option value="minutes30">30分</option>
+            <option value="minutes45">45分</option>
+          </select>
         </div>
 
       </div>
@@ -477,6 +479,6 @@
     </section>
   </div>
 
-<script src="./app.js?v=parking-by-weekday-20260928-73"></script>
+<script src="./app.js?v=parking-by-weekday-20260928-73-break-minutes-20261104"></script>
 </body>
 </html>
